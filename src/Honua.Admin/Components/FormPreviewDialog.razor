@@ -1,6 +1,8 @@
 @using Honua.Admin.Models
-@using QRCoder
 @using MudBlazor
+@inject IFormDeploymentService FormDeploymentService
+@inject ISnackbar Snackbar
+@inject ILogger<FormPreviewDialog> Logger
 
 <MudDialog>
     <DialogContent>
@@ -14,18 +16,18 @@
                             <MudPaper Elevation="2" Class="pa-4" Style="max-height: 600px; overflow-y: auto;">
                                 <MudText Typo="Typo.h6" GutterBottom="true">
                                     <MudIcon Icon="@Icons.Material.Filled.Assignment" Class="mr-2" />
-                                    @Form.Name
+                                    @FormName
                                 </MudText>
 
-                                @if (!string.IsNullOrEmpty(Form.Description))
+                                @if (!string.IsNullOrEmpty(FormDescription))
                                 {
                                     <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-4">
-                                        @Form.Description
+                                        @FormDescription
                                     </MudText>
                                 }
 
                                 <!-- Render form questions -->
-                                @foreach (var question in Form.Survey.Where(s => !s.Type.StartsWith("begin_") && !s.Type.StartsWith("end_")))
+                                @foreach (var question in RenderableQuestions)
                                 {
                                     <MudCard Elevation="1" Class="mb-3">
                                         <MudCardContent>
@@ -36,7 +38,7 @@
 
                                 <MudDivider Class="my-4" />
 
-                                <MudStack Row AlignItems="Center" Justify="Justify.Center">
+                                <MudStack Row AlignItems="AlignItems.Center" Justify="Justify.Center">
                                     <MudButton Variant="Variant.Filled"
                                               Color="Color.Primary"
                                               StartIcon="@Icons.Material.Filled.Send">
@@ -57,7 +59,7 @@
                                     Mobile Access
                                 </MudText>
 
-                                <MudStack AlignItems="Center" Class="mb-4">
+                                <MudStack AlignItems="AlignItems.Center" Class="mb-4">
                                     <!-- QR Code would be generated here -->
                                     <MudPaper Elevation="1" Class="pa-4" Style="background: white;">
                                         <div style="width: 150px; height: 150px; border: 2px dashed #ccc; display: flex; align-items: center; justify-content: center;">
@@ -73,7 +75,7 @@
                                 </MudStack>
 
                                 <MudTextField Label="Form URL"
-                                             Value="@Preview.PreviewUrl"
+                                             Value="@PreviewUrl"
                                              Variant="Variant.Outlined"
                                              ReadOnly="true"
                                              Adornment="Adornment.End"
@@ -87,24 +89,24 @@
                                 </MudText>
 
                                 <MudStack Spacing="2">
-                                    <MudStack Row AlignItems="Center" Justify="Justify.SpaceBetween">
+                                    <MudStack Row AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
                                         <MudText Typo="Typo.caption">Form ID:</MudText>
-                                        <MudText Typo="Typo.caption">@Form.Settings.FormId</MudText>
+                                        <MudText Typo="Typo.caption">@FormId</MudText>
                                     </MudStack>
 
-                                    <MudStack Row AlignItems="Center" Justify="Justify.SpaceBetween">
+                                    <MudStack Row AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
                                         <MudText Typo="Typo.caption">Version:</MudText>
-                                        <MudText Typo="Typo.caption">@Form.Version</MudText>
+                                        <MudText Typo="Typo.caption">@FormVersion</MudText>
                                     </MudStack>
 
-                                    <MudStack Row AlignItems="Center" Justify="Justify.SpaceBetween">
+                                    <MudStack Row AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
                                         <MudText Typo="Typo.caption">Questions:</MudText>
-                                        <MudText Typo="Typo.caption">@Form.Survey.Count(s => !s.Type.StartsWith("begin_") && !s.Type.StartsWith("end_"))</MudText>
+                                        <MudText Typo="Typo.caption">@RenderableQuestions.Count</MudText>
                                     </MudStack>
 
-                                    <MudStack Row AlignItems="Center" Justify="Justify.SpaceBetween">
+                                    <MudStack Row AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
                                         <MudText Typo="Typo.caption">Required Fields:</MudText>
-                                        <MudText Typo="Typo.caption">@Form.Survey.Count(s => s.Required == "yes")</MudText>
+                                        <MudText Typo="Typo.caption">@RequiredQuestionCount</MudText>
                                     </MudStack>
                                 </MudStack>
                             </MudPaper>
@@ -120,9 +122,9 @@
                                 Form Validation Results
                             </MudText>
 
-                            @if (Preview.ValidationResults.Any())
+                            @if (ValidationResults.Count != 0)
                             {
-                                foreach (var result in Preview.ValidationResults)
+                                foreach (var result in ValidationResults)
                                 {
                                     <MudAlert Severity="@GetValidationSeverity(result.Severity)" Class="mb-2">
                                         <MudStack>
@@ -150,7 +152,7 @@
                             else
                             {
                                 <MudAlert Severity="Severity.Success">
-                                    <MudStack Row AlignItems="Center">
+                                    <MudStack Row AlignItems="AlignItems.Center">
                                         <MudIcon Icon="@Icons.Material.Filled.CheckCircle" />
                                         <MudText>
                                             <strong>Form validation passed!</strong> Your form is ready for deployment.
@@ -199,12 +201,12 @@
 
                             <MudPaper Elevation="1" Class="pa-4" Style="background-color: #f5f5f5; max-height: 400px; overflow-y: auto;">
                                 <code style="font-family: 'Consolas', 'Monaco', 'Courier New', monospace; font-size: 12px; white-space: pre-wrap;">
-                                    @(Form.XFormsXml ?? "<!-- XForms XML will be generated when form is deployed -->")
+                                    @XFormsXml
                                 </code>
                             </MudPaper>
 
-                            <MudStack Row AlignItems="Center" Justify="Justify.SpaceBetween" Class="mt-2">
-                                <MudStack Row AlignItems="Center">
+                            <MudStack Row AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Class="mt-2">
+                                <MudStack Row AlignItems="AlignItems.Center">
                                     <MudIcon Icon="@Icons.Material.Filled.Info" Color="Color.Info" Size="Size.Small" />
                                     <MudText Typo="Typo.caption">
                                         Compatible with ODK, KoBo Toolbox, and OpenRosa standard
@@ -229,20 +231,47 @@
         <MudButton Color="Color.Success"
                   Variant="Variant.Filled"
                   StartIcon="@Icons.Material.Filled.Publish"
-                  OnClick="DeployForm">
-            Deploy Form
+                  OnClick="DeployForm"
+                  Disabled="isDeploying">
+            @(isDeploying ? "Deploying..." : "Deploy Form")
         </MudButton>
     </DialogActions>
 </MudDialog>
 
 @code {
-    [CascadingParameter] MudDialogInstance MudDialog { get; set; } = null!;
+    [CascadingParameter] IMudDialogInstance MudDialog { get; set; } = null!;
 
     [Parameter] public XlsForm Form { get; set; } = new();
     [Parameter] public FormPreview Preview { get; set; } = new();
 
+    private bool isDeploying;
+
+    private IReadOnlyList<XlsFormSurveyRow> RenderableQuestions => FormPreviewWorkflow.GetRenderableQuestions(Form);
+
+    private IReadOnlyList<FormValidationResult> ValidationResults => Preview?.ValidationResults ?? Array.Empty<FormValidationResult>();
+
+    private int RequiredQuestionCount => FormPreviewWorkflow.GetRequiredQuestionCount(Form);
+
+    private string FormName => string.IsNullOrWhiteSpace(Form?.Name) ? "Untitled Form" : Form.Name;
+
+    private string? FormDescription => Form?.Description;
+
+    private string FormVersion => string.IsNullOrWhiteSpace(Form?.Version) ? "n/a" : Form.Version;
+
+    private string FormId => string.IsNullOrWhiteSpace(Form?.Settings?.FormId) ? "n/a" : Form.Settings.FormId;
+
+    private string PreviewUrl => string.IsNullOrWhiteSpace(Preview?.PreviewUrl) ? string.Empty : Preview.PreviewUrl!;
+
+    private string XFormsXml => string.IsNullOrWhiteSpace(Form?.XFormsXml)
+        ? "<!-- XForms XML will be generated when form is deployed -->"
+        : Form.XFormsXml;
+
     private RenderFragment RenderQuestion(XlsFormSurveyRow question)
     {
+        var questionLabel = string.IsNullOrWhiteSpace(question.Label) ? question.Name : question.Label;
+        var questionType = string.IsNullOrWhiteSpace(question.Type) ? "text" : question.Type;
+        var isRequired = string.Equals(question.Required, "yes", StringComparison.OrdinalIgnoreCase);
+
         return builder =>
         {
             builder.OpenElement(0, "div");
@@ -253,8 +282,8 @@
             builder.AddAttribute(3, "GutterBottom", true);
             builder.AddAttribute(4, "ChildContent", (RenderFragment)(labelBuilder =>
             {
-                labelBuilder.AddContent(0, question.Label ?? question.Name);
-                if (question.Required == "yes")
+                labelBuilder.AddContent(0, questionLabel);
+                if (isRequired)
                 {
                     labelBuilder.AddMarkupContent(1, " <span style='color: red;'>*</span>");
                 }
@@ -276,13 +305,13 @@
             }
 
             // Question input based on type
-            switch (question.Type)
+            switch (questionType)
             {
                 case "text":
                 case "string":
                     builder.OpenComponent<MudTextField<string>>(10);
                     builder.AddAttribute(11, "Variant", Variant.Outlined);
-                    builder.AddAttribute(12, "Placeholder", $"Enter {question.Label?.ToLower() ?? question.Name}");
+                    builder.AddAttribute(12, "Placeholder", $"Enter {questionLabel?.ToLowerInvariant() ?? question.Name}");
                     builder.CloseComponent();
                     break;
 
@@ -307,7 +336,9 @@
                     builder.AddAttribute(13, "ChildContent", (RenderFragment)(selectBuilder =>
                     {
                         // Add sample options
-                        var choices = Form.Choices.Where(c => c.ListName == question.Choice).ToList();
+                        var choices = (Form?.Choices ?? Array.Empty<XlsFormChoiceRow>())
+                            .Where(c => c.ListName == question.Choice)
+                            .ToList();
                         if (choices.Any())
                         {
                             foreach (var choice in choices)
@@ -411,7 +442,7 @@
                 default:
                     builder.OpenComponent<MudTextField<string>>(10);
                     builder.AddAttribute(11, "Variant", Variant.Outlined);
-                    builder.AddAttribute(12, "Placeholder", $"Enter {question.Type}");
+                    builder.AddAttribute(12, "Placeholder", $"Enter {questionType}");
                     builder.CloseComponent();
                     break;
             }
@@ -435,7 +466,32 @@
 
     private async Task DeployForm()
     {
-        // Implementation would deploy the form
-        MudDialog.Close(DialogResult.Ok("deploy"));
+        if (isDeploying)
+        {
+            return;
+        }
+
+        isDeploying = true;
+        try
+        {
+            var result = await FormDeploymentService.DeployAsync(Form);
+            if (!result.Succeeded)
+            {
+                Snackbar.Add(result.Message, Severity.Error);
+                return;
+            }
+
+            Snackbar.Add(result.Message, Severity.Success);
+            MudDialog.Close(DialogResult.Ok(result));
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Unexpected deployment failure for form {FormId}.", FormId);
+            Snackbar.Add("Unexpected deployment error. Please try again.", Severity.Error);
+        }
+        finally
+        {
+            isDeploying = false;
+        }
     }
 }

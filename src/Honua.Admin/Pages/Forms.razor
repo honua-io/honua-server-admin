@@ -1,0 +1,19 @@
+@page "/forms"
+@attribute [Authorize]
+
+<PageTitle>Forms</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="mt-4">
+    <MudText Typo="Typo.h4" GutterBottom="true">
+        <MudIcon Icon="@Icons.Material.Filled.Assignment" Class="mr-2" />
+        Forms
+    </MudText>
+
+    <MudText Typo="Typo.body1" Class="mb-4">
+        Form management will be shown here. Create and deploy OpenRosa-compatible forms for mobile workflows.
+    </MudText>
+
+    <MudAlert Severity="Severity.Info">
+        Form listing UI is in progress. Existing dialogs remain available for integration.
+    </MudAlert>
+</MudContainer>

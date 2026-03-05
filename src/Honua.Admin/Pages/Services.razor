@@ -1,0 +1,19 @@
+@page "/services"
+@attribute [Authorize]
+
+<PageTitle>Services</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="mt-4">
+    <MudText Typo="Typo.h4" GutterBottom="true">
+        <MudIcon Icon="@Icons.Material.Filled.CloudQueue" Class="mr-2" />
+        Services
+    </MudText>
+
+    <MudText Typo="Typo.body1" Class="mb-4">
+        Service endpoints and protocol settings are managed from this page.
+    </MudText>
+
+    <MudAlert Severity="Severity.Info">
+        Service configuration route is now wired and protected by authorization.
+    </MudAlert>
+</MudContainer>

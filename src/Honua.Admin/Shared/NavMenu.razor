@@ -4,13 +4,17 @@
     <MudNavLink Href="/" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Dashboard">
         Dashboard
     </MudNavLink>
-    <MudNavLink Href="/forms" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Assignment">
-        Forms
-    </MudNavLink>
-    <MudNavLink Href="/layers" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Layers">
-        Layers
-    </MudNavLink>
-    <MudNavLink Href="/services" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.CloudQueue">
-        Services
-    </MudNavLink>
+    <AuthorizeView>
+        <Authorized>
+            <MudNavLink Href="/forms" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Assignment">
+                Forms
+            </MudNavLink>
+            <MudNavLink Href="/layers" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Layers">
+                Layers
+            </MudNavLink>
+            <MudNavLink Href="/services" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.CloudQueue">
+                Services
+            </MudNavLink>
+        </Authorized>
+    </AuthorizeView>
 </MudNavMenu>
