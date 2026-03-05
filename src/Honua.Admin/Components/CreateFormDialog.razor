@@ -1,11 +1,8 @@
 @using Honua.Admin.Models
 @using Honua.Admin.Services
-@using Honua.Core.Features.Catalog.Abstractions
-@using Honua.Core.Features.Catalog.Domain
 @inject IXlsFormService XlsFormService
-@inject ILayerCatalog LayerCatalog
-@inject IServiceCatalog ServiceCatalog
 @inject ISnackbar Snackbar
+@inject ILogger<CreateFormDialog> Logger
 
 <MudDialog>
     <DialogContent>
@@ -33,7 +30,7 @@
                             <MudSelect T="string" @bind-Value="selectedServiceId"
                                       Label="Service"
                                       Variant="Variant.Outlined"
-                                      OnSelectionChanged="OnServiceChanged">
+                                      @bind-Value:after="OnServiceChanged">
                                 @foreach (var service in services)
                                 {
                                     <MudSelectItem Value="service.Id">@service.Name</MudSelectItem>
@@ -44,7 +41,7 @@
                         @if (!string.IsNullOrEmpty(selectedServiceId) && layers.Any())
                         {
                             <MudItem xs="12">
-                                <MudSelect T="int" @bind-Value="selectedLayerId"
+                                <MudSelect T="int?" @bind-Value="selectedLayerId"
                                           Label="Layer"
                                           Variant="Variant.Outlined">
                                     @foreach (var layer in layers)
@@ -59,61 +56,57 @@
                                 </MudSelect>
                             </MudItem>
 
-                            @if (selectedLayerId > 0)
+                            @if (selectedLayer is not null)
                             {
-                                var selectedLayer = layers.FirstOrDefault(l => l.Id == selectedLayerId);
-                                if (selectedLayer != null)
-                                {
-                                    <MudItem xs="12">
-                                        <MudCard Elevation="1">
-                                            <MudCardContent>
-                                                <MudText Typo="Typo.subtitle2" GutterBottom="true">
-                                                    Layer Preview: @selectedLayer.Name
-                                                </MudText>
-                                                <MudText Typo="Typo.body2" Color="Color.Secondary">
-                                                    @selectedLayer.Description
-                                                </MudText>
+                                <MudItem xs="12">
+                                    <MudCard Elevation="1">
+                                        <MudCardContent>
+                                            <MudText Typo="Typo.subtitle2" GutterBottom="true">
+                                                Layer Preview: @selectedLayer.Name
+                                            </MudText>
+                                            <MudText Typo="Typo.body2" Color="Color.Secondary">
+                                                @selectedLayer.Description
+                                            </MudText>
 
-                                                <MudText Typo="Typo.caption" Class="mt-2">
-                                                    <strong>Geometry:</strong> @selectedLayer.GeometryType<br/>
-                                                    <strong>Fields:</strong> @selectedLayer.AttributeFields.Count<br/>
-                                                    <strong>Editable:</strong> @(selectedLayer.IsEditable ? "Yes" : "No")
-                                                </MudText>
+                                            <MudText Typo="Typo.caption" Class="mt-2">
+                                                <strong>Geometry:</strong> @selectedLayer.GeometryType<br/>
+                                                <strong>Fields:</strong> @selectedLayer.AttributeFields.Count<br/>
+                                                <strong>Editable:</strong> @(selectedLayer.IsEditable ? "Yes" : "No")
+                                            </MudText>
 
-                                                <MudExpansionPanels Elevation="0" Class="mt-2">
-                                                    <MudExpansionPanel Title="Attribute Fields">
-                                                        <MudSimpleTable Dense="true" Hover="true">
-                                                            <thead>
+                                            <MudExpansionPanels Elevation="0" Class="mt-2">
+                                                <MudExpansionPanel Text="Attribute Fields">
+                                                    <MudSimpleTable Dense="true" Hover="true">
+                                                        <thead>
+                                                            <tr>
+                                                                <th>Field Name</th>
+                                                                <th>Type</th>
+                                                                <th>Nullable</th>
+                                                                <th>Suggested Form Type</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody>
+                                                            @foreach (var field in selectedLayer.AttributeFields)
+                                                            {
+                                                                var suggestion = XlsFormService.SuggestFormField(field);
                                                                 <tr>
-                                                                    <th>Field Name</th>
-                                                                    <th>Type</th>
-                                                                    <th>Nullable</th>
-                                                                    <th>Suggested Form Type</th>
+                                                                    <td>@(field.Alias ?? field.Name)</td>
+                                                                    <td>@field.Type</td>
+                                                                    <td>@(field.IsNullable ? "Yes" : "No")</td>
+                                                                    <td>
+                                                                        <MudChip T="string" Size="Size.Small" Color="Color.Secondary">
+                                                                            @suggestion.SuggestedType
+                                                                        </MudChip>
+                                                                    </td>
                                                                 </tr>
-                                                            </thead>
-                                                            <tbody>
-                                                                @foreach (var field in selectedLayer.AttributeFields)
-                                                                {
-                                                                    var suggestion = XlsFormService.SuggestFormField(field);
-                                                                    <tr>
-                                                                        <td>@(field.Alias ?? field.Name)</td>
-                                                                        <td>@field.Type</td>
-                                                                        <td>@(field.IsNullable ? "Yes" : "No")</td>
-                                                                        <td>
-                                                                            <MudChip T="string" Size="Size.Small" Color="Color.Secondary">
-                                                                                @suggestion.SuggestedType
-                                                                            </MudChip>
-                                                                        </td>
-                                                                    </tr>
-                                                                }
-                                                            </tbody>
-                                                        </MudSimpleTable>
-                                                    </MudExpansionPanel>
-                                                </MudExpansionPanels>
-                                            </MudCardContent>
-                                        </MudCard>
-                                    </MudItem>
-                                }
+                                                            }
+                                                        </tbody>
+                                                    </MudSimpleTable>
+                                                </MudExpansionPanel>
+                                            </MudExpansionPanels>
+                                        </MudCardContent>
+                                    </MudCard>
+                                </MudItem>
                             }
                         }
 
@@ -185,10 +178,10 @@
 
                         <MudItem xs="12">
                             <MudSelect T="string" Label="Template Category" Variant="Variant.Outlined">
-                                <MudSelectItem Value="infrastructure">Infrastructure Inspection</MudSelectItem>
-                                <MudSelectItem Value="environmental">Environmental Monitoring</MudSelectItem>
-                                <MudSelectItem Value="asset">Asset Management</MudSelectItem>
-                                <MudSelectItem Value="survey">Survey & Mapping</MudSelectItem>
+                                <MudSelectItem Value="@("infrastructure")">Infrastructure Inspection</MudSelectItem>
+                                <MudSelectItem Value="@("environmental")">Environmental Monitoring</MudSelectItem>
+                                <MudSelectItem Value="@("asset")">Asset Management</MudSelectItem>
+                                <MudSelectItem Value="@("survey")">Survey & Mapping</MudSelectItem>
                             </MudSelect>
                         </MudItem>
 
@@ -209,20 +202,20 @@
         <MudButton Color="Color.Primary"
                   Variant="Variant.Filled"
                   OnClick="CreateForm"
-                  Disabled="!CanCreate()">
+                  Disabled="!CanCreate() || isLoading">
             Create Form
         </MudButton>
     </DialogActions>
 </MudDialog>
 
 @code {
-    [CascadingParameter] MudDialogInstance MudDialog { get; set; } = null!;
+    [CascadingParameter] IMudDialogInstance MudDialog { get; set; } = null!;
 
     private List<ServiceDefinition> services = new();
     private List<LayerDefinition> layers = new();
 
     private string selectedServiceId = string.Empty;
-    private int selectedLayerId = 0;
+    private int? selectedLayerId;
     private string formName = string.Empty;
     private string formDescription = string.Empty;
 
@@ -230,13 +223,14 @@
     private string blankFormDescription = string.Empty;
 
     private bool isLoading = false;
+    private LayerDefinition? selectedLayer => CreateFormWorkflow.TryGetSelectedLayer(selectedLayerId, layers);
 
     protected override async Task OnInitializedAsync()
     {
         await LoadServices();
     }
 
-    private async Task LoadServices()
+    private Task LoadServices()
     {
         try
         {
@@ -245,21 +239,24 @@
             services = new List<ServiceDefinition>
             {
                 new() { Id = "sample_service", Name = "Sample GIS Service", Description = "Example service for demonstration" }
-                // In production: services = await ServiceCatalog.GetServicesAsync();
             };
         }
         catch (Exception ex)
         {
-            Snackbar.Add($"Error loading services: {ex.Message}", Severity.Error);
+            Logger.LogError(ex, "Failed to load services for form creation.");
+            Snackbar.Add("Unable to load available services. Please try again.", Severity.Error);
         }
+
+        return Task.CompletedTask;
     }
 
-    private async Task OnServiceChanged()
+    private Task OnServiceChanged()
     {
         if (string.IsNullOrEmpty(selectedServiceId))
         {
             layers.Clear();
-            return;
+            selectedLayerId = null;
+            return Task.CompletedTask;
         }
 
         try
@@ -276,29 +273,30 @@
                     IsEditable = true,
                     AttributeFields = new[]
                     {
-                        new FieldDefinition { Name = "NAME", Type = FieldType.String, Alias = "Feature Name", IsNullable = false },
-                        new FieldDefinition { Name = "STATUS", Type = FieldType.String, Alias = "Status", IsNullable = true },
-                        new FieldDefinition { Name = "PRIORITY", Type = FieldType.Integer, Alias = "Priority", IsNullable = true },
-                        new FieldDefinition { Name = "NOTES", Type = FieldType.String, Alias = "Notes", Length = 255, IsNullable = true },
-                        new FieldDefinition { Name = "CREATED_DATE", Type = FieldType.Date, Alias = "Created Date", IsNullable = false }
+                        new FieldDefinition { Name = "NAME", Type = Honua.Admin.Models.FieldType.String, Alias = "Feature Name", IsNullable = false },
+                        new FieldDefinition { Name = "STATUS", Type = Honua.Admin.Models.FieldType.String, Alias = "Status", IsNullable = true },
+                        new FieldDefinition { Name = "PRIORITY", Type = Honua.Admin.Models.FieldType.Integer, Alias = "Priority", IsNullable = true },
+                        new FieldDefinition { Name = "NOTES", Type = Honua.Admin.Models.FieldType.String, Alias = "Notes", Length = 255, IsNullable = true },
+                        new FieldDefinition { Name = "CREATED_DATE", Type = Honua.Admin.Models.FieldType.Date, Alias = "Created Date", IsNullable = false }
                     }
                 }
             };
-            // In production: layers = await LayerCatalog.GetLayersAsync(selectedServiceId);
-
-            selectedLayerId = 0;
+            selectedLayerId = null;
             formName = string.Empty;
         }
         catch (Exception ex)
         {
-            Snackbar.Add($"Error loading layers: {ex.Message}", Severity.Error);
+            Logger.LogError(ex, "Failed to load layers for service {ServiceId}.", selectedServiceId);
+            Snackbar.Add("Unable to load layers for this service. Please retry.", Severity.Error);
         }
+
+        return Task.CompletedTask;
     }
 
     private bool CanCreate()
     {
         // Check if we have enough information to create a form
-        if (!string.IsNullOrEmpty(selectedServiceId) && selectedLayerId > 0 && !string.IsNullOrEmpty(formName))
+        if (CreateFormWorkflow.CanCreateFromLayer(selectedServiceId, selectedLayerId, formName, layers))
         {
             return true;
         }
@@ -318,11 +316,12 @@
         isLoading = true;
         try
         {
-            if (!string.IsNullOrEmpty(selectedServiceId) && selectedLayerId > 0)
+            if (CreateFormWorkflow.CanCreateFromLayer(selectedServiceId, selectedLayerId, formName, layers)
+                && selectedLayer is not null)
             {
                 // Create from layer schema
                 var template = await XlsFormService.CreateFormFromLayerAsync(
-                    selectedServiceId, selectedLayerId, formName);
+                    selectedServiceId, selectedLayer, formName);
 
                 template.Description = formDescription;
                 MudDialog.Close(DialogResult.Ok(template));
@@ -335,7 +334,8 @@
         }
         catch (Exception ex)
         {
-            Snackbar.Add($"Error creating form: {ex.Message}", Severity.Error);
+            Logger.LogError(ex, "Failed to create form for service {ServiceId} layer {LayerId}.", selectedServiceId, selectedLayerId);
+            Snackbar.Add("Unable to create the form. Please review your inputs and try again.", Severity.Error);
         }
         finally
         {

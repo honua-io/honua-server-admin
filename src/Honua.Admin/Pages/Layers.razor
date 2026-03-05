@@ -1,0 +1,19 @@
+@page "/layers"
+@attribute [Authorize]
+
+<PageTitle>Layers</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="mt-4">
+    <MudText Typo="Typo.h4" GutterBottom="true">
+        <MudIcon Icon="@Icons.Material.Filled.Layers" Class="mr-2" />
+        Layers
+    </MudText>
+
+    <MudText Typo="Typo.body1" Class="mb-4">
+        Layer catalog and schema management will be available here.
+    </MudText>
+
+    <MudAlert Severity="Severity.Info">
+        Layer management route is now wired and protected by authorization.
+    </MudAlert>
+</MudContainer>

@@ -1,5 +1,4 @@
 @using Honua.Admin.Models
-@using ApexCharts
 @using MudBlazor
 
 <MudDialog>
@@ -20,7 +19,7 @@
                         <!-- Key Metrics Cards -->
                         <MudItem xs="6" md="3">
                             <MudPaper Elevation="2" Class="pa-4">
-                                <MudStack AlignItems="Center">
+                                <MudStack AlignItems="AlignItems.Center">
                                     <MudIcon Icon="@Icons.Material.Filled.Assignment" Color="Color.Primary" Size="Size.Large" />
                                     <MudText Typo="Typo.h4">@Analytics.TotalSubmissions</MudText>
                                     <MudText Typo="Typo.caption" Align="Align.Center">Total Submissions</MudText>
@@ -30,7 +29,7 @@
 
                         <MudItem xs="6" md="3">
                             <MudPaper Elevation="2" Class="pa-4">
-                                <MudStack AlignItems="Center">
+                                <MudStack AlignItems="AlignItems.Center">
                                     <MudIcon Icon="@Icons.Material.Filled.Today" Color="Color.Success" Size="Size.Large" />
                                     <MudText Typo="Typo.h4">@Analytics.SubmissionsToday</MudText>
                                     <MudText Typo="Typo.caption" Align="Align.Center">Today</MudText>
@@ -40,7 +39,7 @@
 
                         <MudItem xs="6" md="3">
                             <MudPaper Elevation="2" Class="pa-4">
-                                <MudStack AlignItems="Center">
+                                <MudStack AlignItems="AlignItems.Center">
                                     <MudIcon Icon="@Icons.Material.Filled.DateRange" Color="Color.Info" Size="Size.Large" />
                                     <MudText Typo="Typo.h4">@Analytics.SubmissionsThisWeek</MudText>
                                     <MudText Typo="Typo.caption" Align="Align.Center">This Week</MudText>
@@ -50,7 +49,7 @@
 
                         <MudItem xs="6" md="3">
                             <MudPaper Elevation="2" Class="pa-4">
-                                <MudStack AlignItems="Center">
+                                <MudStack AlignItems="AlignItems.Center">
                                     <MudIcon Icon="@Icons.Material.Filled.Timer" Color="Color.Warning" Size="Size.Large" />
                                     <MudText Typo="Typo.h4">@FormatDuration(Analytics.AverageCompletionTime)</MudText>
                                     <MudText Typo="Typo.caption" Align="Align.Center">Avg Completion</MudText>
@@ -67,7 +66,7 @@
 
                                 <!-- Chart would go here -->
                                 <div style="height: 300px; display: flex; align-items: center; justify-content: center; background: #f5f5f5; border-radius: 4px;">
-                                    <MudStack AlignItems="Center">
+                                    <MudStack AlignItems="AlignItems.Center">
                                         <MudIcon Icon="@Icons.Material.Filled.TrendingUp" Size="Size.Large" Color="Color.Primary" />
                                         <MudText Typo="Typo.body2" Color="Color.Secondary">
                                             Submission trend chart would be displayed here
@@ -90,8 +89,8 @@
                                 <MudStack Spacing="2">
                                     @foreach (var device in Analytics.MostActiveDevices)
                                     {
-                                        <MudStack Row AlignItems="Center" Justify="Justify.SpaceBetween">
-                                            <MudStack Row AlignItems="Center">
+                                        <MudStack Row AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
+                                            <MudStack Row AlignItems="AlignItems.Center">
                                                 <MudIcon Icon="@Icons.Material.Filled.PhoneAndroid" Size="Size.Small" />
                                                 <MudText Typo="Typo.body2">@device</MudText>
                                             </MudStack>
@@ -128,7 +127,7 @@
                         {
                             <MudItem xs="12" md="6">
                                 <MudPaper Elevation="1" Class="pa-4">
-                                    <MudStack Row AlignItems="Center" Justify="Justify.SpaceBetween" Class="mb-2">
+                                    <MudStack Row AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Class="mb-2">
                                         <MudText Typo="Typo.subtitle2">@field.Key</MudText>
                                         <MudText Typo="Typo.body2">@field.Value%</MudText>
                                     </MudStack>
@@ -195,7 +194,7 @@
                         <!-- Performance Cards -->
                         <MudItem xs="6" md="3">
                             <MudPaper Elevation="2" Class="pa-4">
-                                <MudStack AlignItems="Center">
+                                <MudStack AlignItems="AlignItems.Center">
                                     <MudIcon Icon="@Icons.Material.Filled.Download" Color="Color.Primary" Size="Size.Large" />
                                     <MudText Typo="Typo.h4">2.3s</MudText>
                                     <MudText Typo="Typo.caption" Align="Align.Center">Avg Download Time</MudText>
@@ -205,7 +204,7 @@
 
                         <MudItem xs="6" md="3">
                             <MudPaper Elevation="2" Class="pa-4">
-                                <MudStack AlignItems="Center">
+                                <MudStack AlignItems="AlignItems.Center">
                                     <MudIcon Icon="@Icons.Material.Filled.CloudUpload" Color="Color.Success" Size="Size.Large" />
                                     <MudText Typo="Typo.h4">1.8s</MudText>
                                     <MudText Typo="Typo.caption" Align="Align.Center">Avg Upload Time</MudText>
@@ -215,7 +214,7 @@
 
                         <MudItem xs="6" md="3">
                             <MudPaper Elevation="2" Class="pa-4">
-                                <MudStack AlignItems="Center">
+                                <MudStack AlignItems="AlignItems.Center">
                                     <MudIcon Icon="@Icons.Material.Filled.Compress" Color="Color.Info" Size="Size.Large" />
                                     <MudText Typo="Typo.h4">65%</MudText>
                                     <MudText Typo="Typo.caption" Align="Align.Center">Data Compression</MudText>
@@ -225,7 +224,7 @@
 
                         <MudItem xs="6" md="3">
                             <MudPaper Elevation="2" Class="pa-4">
-                                <MudStack AlignItems="Center">
+                                <MudStack AlignItems="AlignItems.Center">
                                     <MudIcon Icon="@Icons.Material.Filled.OfflineBolt" Color="Color.Warning" Size="Size.Large" />
                                     <MudText Typo="Typo.h4">97%</MudText>
                                     <MudText Typo="Typo.caption" Align="Align.Center">Offline Success</MudText>
@@ -244,18 +243,18 @@
                                 <MudGrid>
                                     <MudItem xs="6">
                                         <MudStack Spacing="2">
-                                            <MudStack Row AlignItems="Center">
+                                            <MudStack Row AlignItems="AlignItems.Center">
                                                 <MudIcon Icon="@Icons.Material.Filled.DataUsage" Color="Color.Primary" Size="Size.Small" />
                                                 <MudText Typo="Typo.body2">60% smaller payloads</MudText>
                                             </MudStack>
 
-                                            <MudStack Row AlignItems="Center">
+                                            <MudStack Row AlignItems="AlignItems.Center">
                                                 <MudIcon Icon="@Icons.Material.Filled.Speed" Color="Color.Success" Size="Size.Small" />
                                                 <MudText Typo="Typo.body2">70% fewer network calls</MudText>
                                             </MudStack>
 
-                                            <MudStack Row AlignItems="Center">
-                                                <MudIcon Icon="@Icons.Material.Filled.Battery90" Color="Color.Info" Size="Size.Small" />
+                                            <MudStack Row AlignItems="AlignItems.Center">
+                                                <MudIcon Icon="@Icons.Material.Filled.BatteryFull" Color="Color.Info" Size="Size.Small" />
                                                 <MudText Typo="Typo.body2">30% battery savings</MudText>
                                             </MudStack>
                                         </MudStack>
@@ -263,17 +262,17 @@
 
                                     <MudItem xs="6">
                                         <MudStack Spacing="2">
-                                            <MudStack Row AlignItems="Center">
+                                            <MudStack Row AlignItems="AlignItems.Center">
                                                 <MudIcon Icon="@Icons.Material.Filled.ErrorOutline" Color="Color.Warning" Size="Size.Small" />
                                                 <MudText Typo="Typo.body2">10x better error handling</MudText>
                                             </MudStack>
 
-                                            <MudStack Row AlignItems="Center">
+                                            <MudStack Row AlignItems="AlignItems.Center">
                                                 <MudIcon Icon="@Icons.Material.Filled.SyncProblem" Color="Color.Secondary" Size="Size.Small" />
                                                 <MudText Typo="Typo.body2">Real-time conflict resolution</MudText>
                                             </MudStack>
 
-                                            <MudStack Row AlignItems="Center">
+                                            <MudStack Row AlignItems="AlignItems.Center">
                                                 <MudIcon Icon="@Icons.Material.Filled.Smartphone" Color="Color.Primary" Size="Size.Small" />
                                                 <MudText Typo="Typo.body2">Mobile-first optimizations</MudText>
                                             </MudStack>
@@ -299,7 +298,7 @@
 
                                 <MudStack Spacing="3">
                                     <div>
-                                        <MudStack Row AlignItems="Center" Justify="Justify.SpaceBetween">
+                                        <MudStack Row AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
                                             <MudText Typo="Typo.body2">WiFi</MudText>
                                             <MudText Typo="Typo.caption">45%</MudText>
                                         </MudStack>
@@ -307,7 +306,7 @@
                                     </div>
 
                                     <div>
-                                        <MudStack Row AlignItems="Center" Justify="Justify.SpaceBetween">
+                                        <MudStack Row AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
                                             <MudText Typo="Typo.body2">4G/5G</MudText>
                                             <MudText Typo="Typo.caption">40%</MudText>
                                         </MudStack>
@@ -315,7 +314,7 @@
                                     </div>
 
                                     <div>
-                                        <MudStack Row AlignItems="Center" Justify="Justify.SpaceBetween">
+                                        <MudStack Row AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
                                             <MudText Typo="Typo.body2">3G</MudText>
                                             <MudText Typo="Typo.caption">15%</MudText>
                                         </MudStack>
@@ -347,19 +346,24 @@
 </MudDialog>
 
 @code {
-    [CascadingParameter] MudDialogInstance MudDialog { get; set; } = null!;
+    [CascadingParameter] IMudDialogInstance MudDialog { get; set; } = null!;
 
     [Parameter] public FormAnalytics Analytics { get; set; } = new();
 
     private string FormatDuration(double seconds)
     {
         var time = TimeSpan.FromSeconds(seconds);
-        return time.TotalMinutes switch
+        if (time.TotalMinutes < 1)
         {
-            < 1 => $"{time.Seconds}s",
-            < 60 => $"{time.Minutes}m {time.Seconds}s",
-            _ => $"{time.Hours}h {time.Minutes}m"
-        };
+            return $"{time.Seconds}s";
+        }
+
+        if (time.TotalMinutes < 60)
+        {
+            return $"{time.Minutes}m {time.Seconds}s";
+        }
+
+        return $"{time.Hours}h {time.Minutes}m";
     }
 
     private Color GetCompletionColor(int percentage)

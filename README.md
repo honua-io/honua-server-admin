@@ -14,7 +14,7 @@ This is the official admin UI for managing Honua Server instances:
 ## Architecture
 
 - **Frontend**: Blazor WebAssembly with MudBlazor components
-- **Backend Communication**: Uses [honua-sdk-dotnet](https://github.com/honua-io/honua-sdk-dotnet) for gRPC client
+- **Backend Communication**: Typed HTTP services from the admin client to Honua Server endpoints
 - **Deployment**: Static web app (can be hosted on CDN)
 
 ## Development
@@ -42,16 +42,22 @@ dotnet run --project src/Honua.Admin
 
 ### Configuration
 
-Configure server connection in `src/Honua.Admin/appsettings.json`:
+Configure server connection in `src/Honua.Admin/wwwroot/appsettings.json`:
 
 ```json
 {
   "HonuaServer": {
     "BaseUrl": "https://your-server.com",
-    "ApiKey": "your-api-key"
+    "DeployEndpoint": "/api/admin/forms/deploy"
+  },
+  "Authentication": {
+    "Authority": "https://identity.example.com",
+    "ClientId": "honua-admin-web"
   }
 }
 ```
+
+Do not store API keys or other long-lived secrets in Blazor WebAssembly configuration. Browser-delivered config is public by design. Use an identity provider and server-issued tokens instead.
 
 ## Features
 
