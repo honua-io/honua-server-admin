@@ -1,0 +1,31 @@
+<Project Sdk="Microsoft.NET.Sdk.BlazorWebAssembly">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <OverrideHtmlAssetPlaceholders>true</OverrideHtmlAssetPlaceholders>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <RootNamespace>Honua.Admin</RootNamespace>
+    <!-- Temporarily allow CS1591 for Admin UI while core business logic enforces docs -->
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly" Version="10.0.3" />
+    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.DevServer" Version="10.0.3" PrivateAssets="all" />
+    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.Authentication" Version="10.0.3" />
+    <PackageReference Include="Microsoft.Extensions.Http" Version="10.0.3" />
+    <PackageReference Include="MudBlazor" Version="8.15.0" />
+    <PackageReference Include="QRCoder" Version="1.6.0" />
+    <PackageReference Include="Blazor-ApexCharts" Version="3.4.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- TODO: Replace with NuGet package reference once SDK is published -->
+    <!-- <PackageReference Include="Honua.Sdk.Grpc" Version="0.1.0-alpha.1" /> -->
+    <ProjectReference Include="../../../honua-sdk-dotnet/src/Honua.Sdk.Grpc/Honua.Sdk.Grpc.csproj" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,74 @@
+@page "/"
+@using MudBlazor
+
+<PageTitle>Honua Server Admin</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="mt-4">
+    <MudText Typo="Typo.h3" GutterBottom="true">
+        <MudIcon Icon="@Icons.Material.Filled.AdminPanelSettings" Class="mr-3" />
+        Honua Server Administration
+    </MudText>
+
+    <MudText Typo="Typo.body1" Class="mb-4">
+        Welcome to the Honua Server admin interface. Manage your geospatial services, layers, and data collection forms.
+    </MudText>
+
+    <MudGrid>
+        <MudItem xs="12" sm="6" md="4">
+            <MudCard Elevation="2">
+                <MudCardContent>
+                    <MudText Typo="Typo.h6">
+                        <MudIcon Icon="@Icons.Material.Filled.Assignment" Class="mr-2" />
+                        Forms
+                    </MudText>
+                    <MudText Typo="Typo.body2">
+                        Create and manage OpenRosa-compatible data collection forms for mobile teams.
+                    </MudText>
+                </MudCardContent>
+                <MudCardActions>
+                    <MudButton Variant="Variant.Text" Color="Color.Primary" Href="/forms">
+                        Manage Forms
+                    </MudButton>
+                </MudCardActions>
+            </MudCard>
+        </MudItem>
+
+        <MudItem xs="12" sm="6" md="4">
+            <MudCard Elevation="2">
+                <MudCardContent>
+                    <MudText Typo="Typo.h6">
+                        <MudIcon Icon="@Icons.Material.Filled.Layers" Class="mr-2" />
+                        Layers
+                    </MudText>
+                    <MudText Typo="Typo.body2">
+                        Configure feature layers and manage spatial data schemas.
+                    </MudText>
+                </MudCardContent>
+                <MudCardActions>
+                    <MudButton Variant="Variant.Text" Color="Color.Primary" Href="/layers">
+                        View Layers
+                    </MudButton>
+                </MudCardActions>
+            </MudCard>
+        </MudItem>
+
+        <MudItem xs="12" sm="6" md="4">
+            <MudCard Elevation="2">
+                <MudCardContent>
+                    <MudText Typo="Typo.h6">
+                        <MudIcon Icon="@Icons.Material.Filled.CloudQueue" Class="mr-2" />
+                        Services
+                    </MudText>
+                    <MudText Typo="Typo.body2">
+                        Manage map services, endpoints, and API configurations.
+                    </MudText>
+                </MudCardContent>
+                <MudCardActions>
+                    <MudButton Variant="Variant.Text" Color="Color.Primary" Href="/services">
+                        Configure Services
+                    </MudButton>
+                </MudCardActions>
+            </MudCard>
+        </MudItem>
+    </MudGrid>
+</MudContainer>
