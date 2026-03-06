@@ -34,4 +34,32 @@ public sealed class CreateFormWorkflowTests
 
         Assert.False(result);
     }
+
+    [Fact]
+    public void CanCreateBlankForm_ReturnsTrue_WhenNameProvided()
+    {
+        var result = CreateFormWorkflow.CanCreateBlankForm("  Blank Form  ");
+
+        Assert.True(result);
+    }
+
+    [Fact]
+    public void CanCreateBlankForm_ReturnsFalse_WhenNameMissing()
+    {
+        var result = CreateFormWorkflow.CanCreateBlankForm("   ");
+
+        Assert.False(result);
+    }
+
+    [Fact]
+    public void CreateBlankForm_CreatesTemplateWithSanitizedFormId()
+    {
+        var form = CreateFormWorkflow.CreateBlankForm("  Damage Assessment 2026  ", "  mobile ops ");
+
+        Assert.Equal("Damage Assessment 2026", form.Name);
+        Assert.Equal("mobile ops", form.Description);
+        Assert.Equal("damage-assessment-2026", form.Settings.FormId);
+        Assert.Empty(form.Survey);
+        Assert.Empty(form.Choices);
+    }
 }

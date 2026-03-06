@@ -32,10 +32,16 @@ public sealed class FormDeploymentService : IFormDeploymentService
     public async Task<FormDeploymentResult> DeployAsync(XlsForm form, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(form);
+        var settings = form.Settings;
 
         if (string.IsNullOrWhiteSpace(_options.DeployEndpoint))
         {
             return FormDeploymentResult.Failure("Deployment endpoint is not configured.");
+        }
+
+        if (settings is null || string.IsNullOrWhiteSpace(settings.FormId))
+        {
+            return FormDeploymentResult.Failure("Form settings are incomplete. Form ID is required.");
         }
 
         var payload = new DeployFormRequest
@@ -43,7 +49,7 @@ public sealed class FormDeploymentService : IFormDeploymentService
             Name = form.Name,
             Description = form.Description,
             Version = form.Version,
-            FormId = form.Settings.FormId,
+            FormId = settings.FormId,
             XFormsXml = form.XFormsXml
         };
 

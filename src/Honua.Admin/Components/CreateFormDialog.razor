@@ -301,9 +301,9 @@
             return true;
         }
 
-        if (!string.IsNullOrEmpty(blankFormName))
+        if (CreateFormWorkflow.CanCreateBlankForm(blankFormName))
         {
-            return true; // Would be enabled when visual designer is ready
+            return true;
         }
 
         return false;
@@ -326,10 +326,10 @@
                 template.Description = formDescription;
                 MudDialog.Close(DialogResult.Ok(template));
             }
-            else if (!string.IsNullOrEmpty(blankFormName))
+            else if (CreateFormWorkflow.CanCreateBlankForm(blankFormName))
             {
-                // Create blank form (when visual designer is ready)
-                Snackbar.Add("Blank form creation coming soon!", Severity.Info);
+                var blankForm = CreateFormWorkflow.CreateBlankForm(blankFormName, blankFormDescription);
+                MudDialog.Close(DialogResult.Ok(blankForm));
             }
         }
         catch (Exception ex)

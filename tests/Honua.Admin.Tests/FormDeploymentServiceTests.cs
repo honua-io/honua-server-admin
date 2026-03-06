@@ -59,6 +59,24 @@ public sealed class FormDeploymentServiceTests
         Assert.Equal("dep-123", result.DeploymentId);
     }
 
+    [Fact]
+    public async Task DeployAsync_ReturnsFailure_WhenFormSettingsMissing()
+    {
+        using var client = new HttpClient(new StubHttpMessageHandler(_ => throw new InvalidOperationException("should not call")));
+        var service = BuildService(client, new HonuaAdminOptions { DeployEndpoint = "/deploy" });
+        var form = new XlsForm
+        {
+            Name = "Inspection Form",
+            Version = "1.0.0",
+            Settings = null!
+        };
+
+        var result = await service.DeployAsync(form);
+
+        Assert.False(result.Succeeded);
+        Assert.Equal("Form settings are incomplete. Form ID is required.", result.Message);
+    }
+
     private static FormDeploymentService BuildService(HttpClient client, HonuaAdminOptions options)
     {
         client.BaseAddress ??= new Uri("https://localhost");

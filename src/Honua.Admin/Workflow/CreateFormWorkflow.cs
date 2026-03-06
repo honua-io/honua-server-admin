@@ -48,4 +48,55 @@ public static class CreateFormWorkflow
         var layerId = selectedLayerId.Value;
         return layers.FirstOrDefault(layer => layer.Id == layerId);
     }
+
+    /// <summary>
+    /// Returns true when all required inputs for blank form creation are present.
+    /// </summary>
+    public static bool CanCreateBlankForm(string? formName)
+    {
+        return !string.IsNullOrWhiteSpace(formName);
+    }
+
+    /// <summary>
+    /// Creates a minimal blank form model for manual design workflows.
+    /// </summary>
+    public static XlsForm CreateBlankForm(string formName, string? description)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(formName);
+
+        var normalizedName = formName.Trim();
+        var normalizedDescription = string.IsNullOrWhiteSpace(description) ? null : description.Trim();
+
+        return new XlsForm
+        {
+            Name = normalizedName,
+            Description = normalizedDescription,
+            Version = "1.0.0",
+            Settings = new XlsFormSettings
+            {
+                FormId = SanitizeFormId(normalizedName)
+            },
+            Survey = Array.Empty<XlsFormSurveyRow>(),
+            Choices = Array.Empty<XlsFormChoiceRow>(),
+            XFormsXml = null
+        };
+    }
+
+    private static string SanitizeFormId(string formName)
+    {
+        var chars = formName
+            .Trim()
+            .ToLowerInvariant()
+            .Select(ch => char.IsLetterOrDigit(ch) ? ch : '-')
+            .ToArray();
+
+        var compacted = new string(chars);
+        while (compacted.Contains("--", StringComparison.Ordinal))
+        {
+            compacted = compacted.Replace("--", "-", StringComparison.Ordinal);
+        }
+
+        compacted = compacted.Trim('-');
+        return string.IsNullOrWhiteSpace(compacted) ? "form" : compacted;
+    }
 }
