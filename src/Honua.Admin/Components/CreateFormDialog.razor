@@ -12,7 +12,7 @@
                 Choose how to create your OpenRosa-compatible data collection form.
             </MudText>
 
-            <MudTabs Elevation="1" Rounded="true" Color="Color.Primary">
+            <MudTabs Elevation="1" Rounded="true" Color="Color.Primary" @bind-ActivePanelIndex="_activeTabIndex">
                 <!-- Create from Layer -->
                 <MudTabPanel Text="From Layer Schema" Icon="@Icons.Material.Filled.Layers">
                     <MudGrid Class="mt-4">
@@ -221,6 +221,7 @@
 
     private string blankFormName = string.Empty;
     private string blankFormDescription = string.Empty;
+    private int _activeTabIndex;
 
     private bool isLoading = false;
     private LayerDefinition? selectedLayer => CreateFormWorkflow.TryGetSelectedLayer(selectedLayerId, layers);
@@ -293,21 +294,12 @@
         return Task.CompletedTask;
     }
 
-    private bool CanCreate()
+    private bool CanCreate() => _activeTabIndex switch
     {
-        // Check if we have enough information to create a form
-        if (CreateFormWorkflow.CanCreateFromLayer(selectedServiceId, selectedLayerId, formName, layers))
-        {
-            return true;
-        }
-
-        if (CreateFormWorkflow.CanCreateBlankForm(blankFormName))
-        {
-            return true;
-        }
-
-        return false;
-    }
+        0 => CreateFormWorkflow.CanCreateFromLayer(selectedServiceId, selectedLayerId, formName, layers),
+        1 => CreateFormWorkflow.CanCreateBlankForm(blankFormName),
+        _ => false
+    };
 
     private async Task CreateForm()
     {
@@ -316,7 +308,8 @@
         isLoading = true;
         try
         {
-            if (CreateFormWorkflow.CanCreateFromLayer(selectedServiceId, selectedLayerId, formName, layers)
+            if (_activeTabIndex == 0
+                && CreateFormWorkflow.CanCreateFromLayer(selectedServiceId, selectedLayerId, formName, layers)
                 && selectedLayer is not null)
             {
                 // Create from layer schema
@@ -326,7 +319,7 @@
                 template.Description = formDescription;
                 MudDialog.Close(DialogResult.Ok(template));
             }
-            else if (CreateFormWorkflow.CanCreateBlankForm(blankFormName))
+            else if (_activeTabIndex == 1 && CreateFormWorkflow.CanCreateBlankForm(blankFormName))
             {
                 var blankForm = CreateFormWorkflow.CreateBlankForm(blankFormName, blankFormDescription);
                 MudDialog.Close(DialogResult.Ok(blankForm));

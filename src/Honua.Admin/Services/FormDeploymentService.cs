@@ -74,9 +74,9 @@ public sealed class FormDeploymentService : IFormDeploymentService
                 deployResponse = await response.Content.ReadFromJsonAsync<DeployFormResponse>(
                     cancellationToken: cancellationToken);
             }
-            catch (JsonException jsonException)
+            catch (Exception ex) when (ex is JsonException or NotSupportedException)
             {
-                _logger.LogWarning(jsonException, "Deployment succeeded but response payload was not JSON.");
+                _logger.LogWarning(ex, "Deployment succeeded but response payload was not valid JSON.");
             }
 
             var successMessage = string.IsNullOrWhiteSpace(deployResponse?.Message)
