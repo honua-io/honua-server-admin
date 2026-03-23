@@ -293,7 +293,8 @@
         {
             var request = new CreateDeployOperationRequest { PlanId = _deployPlan.PlanId };
             _currentOperation = await AdminClient.CreateDeployOperationAsync(request);
-            Snackbar.Add($"Operation {_currentOperation.OperationId} created", Severity.Success);
+            _currentOperation = await AdminClient.SubmitDeployOperationAsync(_currentOperation.OperationId);
+            Snackbar.Add($"Operation {_currentOperation.OperationId} submitted", Severity.Success);
         }
         catch (HonuaAdminApiException ex) { Snackbar.Add($"Execute failed: {ex.Message}", Severity.Error); }
         catch (HttpRequestException ex) { Snackbar.Add($"Connection failed: {ex.Message}", Severity.Error); }

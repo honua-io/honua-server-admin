@@ -1,14 +1,17 @@
 using System.Net;
+using Microsoft.AspNetCore.Components;
 
 namespace Honua.Admin.Auth;
 
 public sealed class GlobalErrorHandler : DelegatingHandler
 {
     private readonly AdminAuthStateProvider _auth;
+    private readonly NavigationManager _navigation;
 
-    public GlobalErrorHandler(AdminAuthStateProvider auth)
+    public GlobalErrorHandler(AdminAuthStateProvider auth, NavigationManager navigation)
     {
         _auth = auth;
+        _navigation = navigation;
     }
 
     protected override async Task<HttpResponseMessage> SendAsync(
@@ -30,6 +33,7 @@ public sealed class GlobalErrorHandler : DelegatingHandler
         if (response.StatusCode == HttpStatusCode.Unauthorized)
         {
             await _auth.LogoutAsync();
+            _navigation.NavigateTo("/login", forceLoad: true);
             throw new HttpRequestException("Session expired. Please log in again.");
         }
 

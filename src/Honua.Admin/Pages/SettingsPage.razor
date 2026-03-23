@@ -28,7 +28,7 @@
         </MudCardContent>
         <MudCardActions>
             <MudButton Variant="Variant.Outlined" Color="Color.Primary"
-                       OnClick="ChangeConnection" StartIcon="@Icons.Material.Filled.SwapHoriz"
+                       OnClick="ChangeConnectionAsync" StartIcon="@Icons.Material.Filled.SwapHoriz"
                        aria-label="Change connection">
                 Change Connection
             </MudButton>
@@ -55,9 +55,10 @@
 @code {
     private bool _showApiKey;
 
-    private void ChangeConnection()
+    private async Task ChangeConnectionAsync()
     {
-        Navigation.NavigateTo("/login");
+        await Auth.LogoutAsync();
+        Navigation.NavigateTo("/login", forceLoad: true);
     }
 
     private async Task LogoutAsync()
