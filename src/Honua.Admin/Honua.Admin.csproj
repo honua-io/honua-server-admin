@@ -16,16 +16,13 @@
     <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly" Version="10.0.3" />
     <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.DevServer" Version="10.0.3" PrivateAssets="all" />
     <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.Authentication" Version="10.0.3" />
-    <PackageReference Include="Microsoft.Extensions.Http" Version="10.0.3" />
+    <PackageReference Include="Microsoft.Extensions.Http" Version="10.0.5" />
     <PackageReference Include="MudBlazor" Version="8.15.0" />
-    <PackageReference Include="QRCoder" Version="1.6.0" />
-    <PackageReference Include="Blazor-ApexCharts" Version="3.4.0" />
   </ItemGroup>
 
   <ItemGroup>
     <!-- TODO: Replace with NuGet package reference once SDK is published -->
-    <!-- <PackageReference Include="Honua.Sdk.Grpc" Version="0.1.0-alpha.1" /> -->
-    <ProjectReference Include="../../../honua-sdk-dotnet/src/Honua.Sdk.Grpc/Honua.Sdk.Grpc.csproj" />
+    <ProjectReference Include="../../../honua-sdk-dotnet/src/Honua.Sdk.Admin/Honua.Sdk.Admin.csproj" />
   </ItemGroup>
 
 </Project>

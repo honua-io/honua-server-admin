@@ -1,0 +1,374 @@
+@page "/deploy"
+@inject IHonuaAdminClient AdminClient
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
+
+<PageTitle>Deploy Control — Honua Server Admin</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="mt-4">
+    <MudText Typo="Typo.h4" GutterBottom="true">Deploy Control</MudText>
+
+    <MudTabs Elevation="2" Rounded="true" ApplyEffectsToContainer="true">
+        @* ── Preflight Tab ── *@
+        <MudTabPanel Text="Preflight" Icon="@Icons.Material.Filled.Checklist">
+            <MudCard Class="ma-4">
+                <MudCardContent>
+                    <MudText Typo="Typo.body2" Class="mb-4">
+                        Run preflight checks to verify deployment readiness.
+                    </MudText>
+
+                    @if (_preflightResult is not null)
+                    {
+                        <MudAlert Severity="@(_preflightResult.Ready ? Severity.Success : Severity.Warning)" Class="mb-4">
+                            @(_preflightResult.Ready ? "All preflight checks passed." : "Some checks failed. Review before proceeding.")
+                        </MudAlert>
+
+                        <MudDataGrid Items="_preflightResult.Checks" Dense="true" Hover="true">
+                            <Columns>
+                                <PropertyColumn Property="x => x.Name" Title="Check" />
+                                <TemplateColumn T="PreflightCheck" Title="Status">
+                                    <CellTemplate>
+                                        <MudIcon Icon="@(context.Item.Passed ? Icons.Material.Filled.CheckCircle : Icons.Material.Filled.Cancel)"
+                                                 Color="@(context.Item.Passed ? Color.Success : Color.Error)" Size="Size.Small" />
+                                    </CellTemplate>
+                                </TemplateColumn>
+                                <PropertyColumn Property="x => x.Message" Title="Message" />
+                            </Columns>
+                        </MudDataGrid>
+
+                        @if (_preflightResult.Warnings.Count > 0)
+                        {
+                            <MudText Typo="Typo.subtitle1" Class="mt-4 mb-2">Warnings</MudText>
+                            @foreach (var w in _preflightResult.Warnings)
+                            {
+                                <MudAlert Severity="Severity.Warning" Dense="true" Class="mb-1">@w</MudAlert>
+                            }
+                        }
+                    }
+                </MudCardContent>
+                <MudCardActions>
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="RunPreflightAsync"
+                               Disabled="_runningPreflight" StartIcon="@Icons.Material.Filled.FlightTakeoff"
+                               aria-label="Run preflight checks">
+                        @(_runningPreflight ? "Checking..." : "Run Preflight")
+                    </MudButton>
+                </MudCardActions>
+            </MudCard>
+        </MudTabPanel>
+
+        @* ── Plan Tab ── *@
+        <MudTabPanel Text="Plan" Icon="@Icons.Material.Filled.ListAlt">
+            <MudCard Class="ma-4">
+                <MudCardContent>
+                    <MudText Typo="Typo.body2" Class="mb-4">
+                        Create a deployment plan to preview operations before executing.
+                    </MudText>
+
+                    <MudTextField @bind-Value="_targetVersion" Label="Target Version (optional)"
+                                  Variant="Variant.Outlined" Class="mb-4"
+                                  HelperText="Leave empty for latest available version" />
+                    <MudCheckBox T="bool" @bind-Value="_includeDataMigrations" Label="Include Data Migrations" />
+
+                    @if (_deployPlan is not null)
+                    {
+                        <MudAlert Severity="Severity.Info" Class="mt-4 mb-4">
+                            Plan @_deployPlan.PlanId created at @_deployPlan.CreatedAt.ToString("g")
+                            @if (!string.IsNullOrEmpty(_deployPlan.EstimatedDuration))
+                            {
+                                @: — Estimated: @_deployPlan.EstimatedDuration
+                            }
+                        </MudAlert>
+
+                        <MudDataGrid Items="_deployPlan.Operations" Dense="true" Hover="true">
+                            <Columns>
+                                <PropertyColumn Property="x => x.Type" Title="Type" />
+                                <PropertyColumn Property="x => x.Target" Title="Target" />
+                                <PropertyColumn Property="x => x.Description" Title="Description" />
+                            </Columns>
+                        </MudDataGrid>
+                    }
+                </MudCardContent>
+                <MudCardActions>
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="CreatePlanAsync"
+                               Disabled="_creatingPlan" StartIcon="@Icons.Material.Filled.PlaylistAdd"
+                               aria-label="Create deploy plan">
+                        @(_creatingPlan ? "Planning..." : "Create Plan")
+                    </MudButton>
+                    @if (_deployPlan is not null)
+                    {
+                        <MudButton Variant="Variant.Filled" Color="Color.Warning" OnClick="ExecutePlanAsync"
+                                   Disabled="_executingPlan" StartIcon="@Icons.Material.Filled.RocketLaunch"
+                                   aria-label="Execute deploy plan" Class="ml-2">
+                            @(_executingPlan ? "Deploying..." : "Execute Plan")
+                        </MudButton>
+                    }
+                </MudCardActions>
+            </MudCard>
+        </MudTabPanel>
+
+        @* ── Operations Tab ── *@
+        <MudTabPanel Text="Operations" Icon="@Icons.Material.Filled.History">
+            <MudCard Class="ma-4">
+                <MudCardContent>
+                    @if (_currentOperation is not null)
+                    {
+                        <MudGrid>
+                            <MudItem xs="12" md="4">
+                                <MudField Label="Operation ID" Variant="Variant.Outlined">@_currentOperation.OperationId</MudField>
+                            </MudItem>
+                            <MudItem xs="12" md="4">
+                                <MudField Label="Plan ID" Variant="Variant.Outlined">@_currentOperation.PlanId</MudField>
+                            </MudItem>
+                            <MudItem xs="12" md="4">
+                                <MudField Label="Status" Variant="Variant.Outlined">
+                                    <MudChip T="string" Size="Size.Small" Color="@GetStatusColor(_currentOperation.Status)">
+                                        @_currentOperation.Status
+                                    </MudChip>
+                                </MudField>
+                            </MudItem>
+                            <MudItem xs="12" md="4">
+                                <MudField Label="Created" Variant="Variant.Outlined">@_currentOperation.CreatedAt.ToString("g")</MudField>
+                            </MudItem>
+                            <MudItem xs="12" md="4">
+                                <MudField Label="Started" Variant="Variant.Outlined">@(_currentOperation.StartedAt?.ToString("g") ?? "—")</MudField>
+                            </MudItem>
+                            <MudItem xs="12" md="4">
+                                <MudField Label="Completed" Variant="Variant.Outlined">@(_currentOperation.CompletedAt?.ToString("g") ?? "—")</MudField>
+                            </MudItem>
+                            @if (!string.IsNullOrEmpty(_currentOperation.Error))
+                            {
+                                <MudItem xs="12">
+                                    <MudAlert Severity="Severity.Error">@_currentOperation.Error</MudAlert>
+                                </MudItem>
+                            }
+                        </MudGrid>
+                    }
+                    else
+                    {
+                        <EmptyState Icon="@Icons.Material.Filled.RocketLaunch" Title="No active operation"
+                                    Description="Create a plan and execute it to start a deploy operation." />
+                    }
+                </MudCardContent>
+                <MudCardActions>
+                    @if (_currentOperation is not null)
+                    {
+                        <MudButton Variant="Variant.Outlined" Color="Color.Primary" OnClick="RefreshOperationAsync"
+                                   StartIcon="@Icons.Material.Filled.Refresh" aria-label="Refresh operation status">Refresh</MudButton>
+                        @if (_currentOperation.Status is "pending" or "created")
+                        {
+                            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="SubmitOperationAsync"
+                                       Disabled="_submitting" StartIcon="@Icons.Material.Filled.Send"
+                                       aria-label="Submit operation" Class="ml-2">
+                                @(_submitting ? "Submitting..." : "Submit")
+                            </MudButton>
+                        }
+                        @if (_currentOperation.Status is "running" or "completed" or "failed")
+                        {
+                            <MudButton Variant="Variant.Outlined" Color="Color.Error" OnClick="RollbackOperationAsync"
+                                       Disabled="_rollingBack" StartIcon="@Icons.Material.Filled.Undo"
+                                       aria-label="Rollback operation" Class="ml-2">
+                                @(_rollingBack ? "Rolling back..." : "Rollback")
+                            </MudButton>
+                        }
+                    }
+                </MudCardActions>
+            </MudCard>
+        </MudTabPanel>
+
+        @* ── Manifest Tab (kept from original) ── *@
+        <MudTabPanel Text="Manifest" Icon="@Icons.Material.Filled.CompareArrows">
+            <MudCard Class="ma-4">
+                <MudCardContent>
+                    <MudTextField @bind-Value="_exportNamespace" Label="Namespace (optional)" Variant="Variant.Outlined"
+                                  Placeholder="Leave empty for all" Class="mb-4" />
+
+                    @if (_exportedManifest is not null)
+                    {
+                        <MudGrid Class="mb-4">
+                            <MudItem xs="12" md="4">
+                                <MudField Label="Generated At" Variant="Variant.Outlined">@_exportedManifest.GeneratedAt.ToString("u")</MudField>
+                            </MudItem>
+                            <MudItem xs="12" md="4">
+                                <MudField Label="Resources" Variant="Variant.Outlined">@_exportedManifest.Resources.Count</MudField>
+                            </MudItem>
+                            <MudItem xs="12" md="4">
+                                <MudField Label="Hash" Variant="Variant.Outlined">@(_exportedManifest.ManifestHash ?? "N/A")</MudField>
+                            </MudItem>
+                        </MudGrid>
+
+                        @if (_exportedManifest.DriftedResources.Count > 0)
+                        {
+                            <MudAlert Severity="Severity.Warning" Class="mb-4">
+                                @_exportedManifest.DriftedResources.Count drifted resource(s)
+                            </MudAlert>
+                        }
+
+                        <MudTextField Value="@_exportedJson" Label="Manifest JSON" Variant="Variant.Outlined"
+                                      Lines="15" ReadOnly="true" Style="font-family: monospace; font-size: 0.85rem;" />
+                    }
+                </MudCardContent>
+                <MudCardActions>
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="ExportManifestAsync"
+                               Disabled="_exporting" StartIcon="@Icons.Material.Filled.Download"
+                               aria-label="Export manifest">
+                        @(_exporting ? "Exporting..." : "Export")
+                    </MudButton>
+                </MudCardActions>
+            </MudCard>
+        </MudTabPanel>
+    </MudTabs>
+</MudContainer>
+
+@code {
+    // Preflight
+    private DeployPreflightResult? _preflightResult;
+    private bool _runningPreflight;
+
+    // Plan
+    private string _targetVersion = string.Empty;
+    private bool _includeDataMigrations = true;
+    private DeployPlan? _deployPlan;
+    private bool _creatingPlan;
+    private bool _executingPlan;
+
+    // Operations
+    private DeployOperation? _currentOperation;
+    private bool _submitting;
+    private bool _rollingBack;
+
+    // Manifest
+    private MetadataManifest? _exportedManifest;
+    private string? _exportedJson;
+    private string _exportNamespace = string.Empty;
+    private bool _exporting;
+
+    private async Task RunPreflightAsync()
+    {
+        _runningPreflight = true;
+        try
+        {
+            _preflightResult = await AdminClient.GetDeployPreflightAsync();
+            Snackbar.Add(_preflightResult.Ready ? "All checks passed" : "Some checks failed",
+                         _preflightResult.Ready ? Severity.Success : Severity.Warning);
+        }
+        catch (HonuaAdminApiException ex) { Snackbar.Add($"Preflight failed: {ex.Message}", Severity.Error); }
+        catch (HttpRequestException ex) { Snackbar.Add($"Connection failed: {ex.Message}", Severity.Error); }
+        finally { _runningPreflight = false; }
+    }
+
+    private async Task CreatePlanAsync()
+    {
+        _creatingPlan = true;
+        try
+        {
+            var request = new CreateDeployPlanRequest
+            {
+                TargetVersion = string.IsNullOrWhiteSpace(_targetVersion) ? null : _targetVersion.Trim(),
+                IncludeDataMigrations = _includeDataMigrations
+            };
+            _deployPlan = await AdminClient.CreateDeployPlanAsync(request);
+            Snackbar.Add($"Plan created with {_deployPlan.Operations.Count} operation(s)", Severity.Success);
+        }
+        catch (HonuaAdminApiException ex) { Snackbar.Add($"Plan failed: {ex.Message}", Severity.Error); }
+        catch (HttpRequestException ex) { Snackbar.Add($"Connection failed: {ex.Message}", Severity.Error); }
+        finally { _creatingPlan = false; }
+    }
+
+    private async Task ExecutePlanAsync()
+    {
+        if (_deployPlan is null) return;
+
+        var parameters = new DialogParameters<ConfirmDialog>
+        {
+            { x => x.ContentText, $"Execute deploy plan {_deployPlan.PlanId}? This will apply {_deployPlan.Operations.Count} operation(s)." },
+            { x => x.ButtonText, "Execute" },
+            { x => x.ButtonColor, Color.Warning }
+        };
+        var dialog = await DialogService.ShowAsync<ConfirmDialog>("Execute Deploy", parameters);
+        var result = await dialog.Result;
+        if (result is null || result.Canceled) return;
+
+        _executingPlan = true;
+        try
+        {
+            var request = new CreateDeployOperationRequest { PlanId = _deployPlan.PlanId };
+            _currentOperation = await AdminClient.CreateDeployOperationAsync(request);
+            Snackbar.Add($"Operation {_currentOperation.OperationId} created", Severity.Success);
+        }
+        catch (HonuaAdminApiException ex) { Snackbar.Add($"Execute failed: {ex.Message}", Severity.Error); }
+        catch (HttpRequestException ex) { Snackbar.Add($"Connection failed: {ex.Message}", Severity.Error); }
+        finally { _executingPlan = false; }
+    }
+
+    private async Task RefreshOperationAsync()
+    {
+        if (_currentOperation is null) return;
+        try
+        {
+            _currentOperation = await AdminClient.GetDeployOperationAsync(_currentOperation.OperationId);
+        }
+        catch (HonuaAdminApiException ex) { Snackbar.Add($"Refresh failed: {ex.Message}", Severity.Error); }
+    }
+
+    private async Task SubmitOperationAsync()
+    {
+        if (_currentOperation is null) return;
+        _submitting = true;
+        try
+        {
+            _currentOperation = await AdminClient.SubmitDeployOperationAsync(_currentOperation.OperationId);
+            Snackbar.Add("Operation submitted", Severity.Success);
+        }
+        catch (HonuaAdminApiException ex) { Snackbar.Add($"Submit failed: {ex.Message}", Severity.Error); }
+        finally { _submitting = false; }
+    }
+
+    private async Task RollbackOperationAsync()
+    {
+        if (_currentOperation is null) return;
+
+        var parameters = new DialogParameters<ConfirmDialog>
+        {
+            { x => x.ContentText, "Rollback this deploy operation? This will attempt to revert all changes." },
+            { x => x.ButtonText, "Rollback" },
+            { x => x.ButtonColor, Color.Error }
+        };
+        var dialog = await DialogService.ShowAsync<ConfirmDialog>("Rollback Deploy", parameters);
+        var result = await dialog.Result;
+        if (result is null || result.Canceled) return;
+
+        _rollingBack = true;
+        try
+        {
+            _currentOperation = await AdminClient.RollbackDeployOperationAsync(_currentOperation.OperationId);
+            Snackbar.Add("Rollback initiated", Severity.Warning);
+        }
+        catch (HonuaAdminApiException ex) { Snackbar.Add($"Rollback failed: {ex.Message}", Severity.Error); }
+        finally { _rollingBack = false; }
+    }
+
+    private async Task ExportManifestAsync()
+    {
+        _exporting = true;
+        try
+        {
+            var ns = string.IsNullOrWhiteSpace(_exportNamespace) ? null : _exportNamespace.Trim();
+            _exportedManifest = await AdminClient.GetManifestAsync(ns);
+            _exportedJson = JsonSerializer.Serialize(_exportedManifest, new JsonSerializerOptions { WriteIndented = true });
+            Snackbar.Add($"Exported {_exportedManifest.Resources.Count} resources", Severity.Success);
+        }
+        catch (HonuaAdminApiException ex) { Snackbar.Add($"Export failed: {ex.Message}", Severity.Error); }
+        catch (HttpRequestException ex) { Snackbar.Add($"Connection failed: {ex.Message}", Severity.Error); }
+        finally { _exporting = false; }
+    }
+
+    private static Color GetStatusColor(string status) => status.ToLowerInvariant() switch
+    {
+        "completed" or "success" => Color.Success,
+        "running" or "in_progress" => Color.Info,
+        "pending" or "created" => Color.Default,
+        "failed" or "error" => Color.Error,
+        "rolled_back" => Color.Warning,
+        _ => Color.Default
+    };
+}

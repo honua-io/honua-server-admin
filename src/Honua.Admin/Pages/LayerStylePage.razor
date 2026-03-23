@@ -1,0 +1,357 @@
+@page "/layers/{LayerId:int}/style"
+@inject IHonuaAdminClient AdminClient
+@inject ISnackbar Snackbar
+@inject NavigationManager Navigation
+
+<PageTitle>Layer Style — Honua Server Admin</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="mt-4">
+    <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-4">
+        <MudIconButton Icon="@Icons.Material.Filled.ArrowBack"
+                       OnClick='() => Navigation.NavigateTo("/layers")' />
+        <MudText Typo="Typo.h4">Layer Style</MudText>
+        <MudChip T="string" Color="Color.Info" Size="Size.Small">Layer @LayerId</MudChip>
+    </MudStack>
+
+    <ErrorBanner Message="@_errorMessage" />
+    <LoadingOverlay Visible="_isLoading" />
+
+    @if (_style is not null)
+    {
+        <MudTabs Elevation="2" Rounded="true" ApplyEffectsToContainer="true" Class="mb-4"
+                 @bind-ActivePanelIndex="_activeTabIndex">
+            <MudTabPanel Text="MapLibre Style" Icon="@Icons.Material.Filled.Map">
+                <MudPaper Class="pa-4">
+                    <MudStack Row="true" Justify="Justify.FlexEnd" Class="mb-2" Spacing="2">
+                        @if (_isEditingMapLibre)
+                        {
+                            <MudButton Variant="Variant.Text" Color="Color.Default"
+                                       OnClick="CancelMapLibreEdit"
+                                       StartIcon="@Icons.Material.Filled.Cancel">
+                                Cancel
+                            </MudButton>
+                            <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                                       OnClick="SaveMapLibreAsync"
+                                       StartIcon="@Icons.Material.Filled.Save"
+                                       Disabled="_isSaving">
+                                @if (_isSaving)
+                                {
+                                    <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                                    @:Saving...
+                                }
+                                else
+                                {
+                                    @:Save
+                                }
+                            </MudButton>
+                        }
+                        else
+                        {
+                            <MudButton Variant="Variant.Outlined" Color="Color.Primary"
+                                       OnClick="EditMapLibre"
+                                       StartIcon="@Icons.Material.Filled.Edit">
+                                Edit
+                            </MudButton>
+                        }
+                    </MudStack>
+
+                    <MudTextField @bind-Value="_mapLibreJson" Label="MapLibre Style JSON"
+                                  Variant="Variant.Outlined" Lines="20"
+                                  ReadOnly="!_isEditingMapLibre"
+                                  Placeholder="No MapLibre style defined. Click Edit to add one."
+                                  Style="font-family: monospace; font-size: 0.85rem;" />
+
+                    @if (!string.IsNullOrEmpty(_mapLibreValidationError))
+                    {
+                        <MudAlert Severity="Severity.Error" Class="mt-2">@_mapLibreValidationError</MudAlert>
+                    }
+                </MudPaper>
+            </MudTabPanel>
+
+            <MudTabPanel Text="Drawing Info" Icon="@Icons.Material.Filled.Draw">
+                <MudPaper Class="pa-4">
+                    <MudStack Row="true" Justify="Justify.FlexEnd" Class="mb-2" Spacing="2">
+                        @if (_isEditingDrawingInfo)
+                        {
+                            <MudButton Variant="Variant.Text" Color="Color.Default"
+                                       OnClick="CancelDrawingInfoEdit"
+                                       StartIcon="@Icons.Material.Filled.Cancel">
+                                Cancel
+                            </MudButton>
+                            <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                                       OnClick="SaveDrawingInfoAsync"
+                                       StartIcon="@Icons.Material.Filled.Save"
+                                       Disabled="_isSaving">
+                                @if (_isSaving)
+                                {
+                                    <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                                    @:Saving...
+                                }
+                                else
+                                {
+                                    @:Save
+                                }
+                            </MudButton>
+                        }
+                        else
+                        {
+                            <MudButton Variant="Variant.Outlined" Color="Color.Primary"
+                                       OnClick="EditDrawingInfo"
+                                       StartIcon="@Icons.Material.Filled.Edit">
+                                Edit
+                            </MudButton>
+                        }
+                    </MudStack>
+
+                    <MudTextField @bind-Value="_drawingInfoJson" Label="Drawing Info JSON"
+                                  Variant="Variant.Outlined" Lines="20"
+                                  ReadOnly="!_isEditingDrawingInfo"
+                                  Placeholder="No drawing info defined. Click Edit to add one."
+                                  Style="font-family: monospace; font-size: 0.85rem;" />
+
+                    @if (!string.IsNullOrEmpty(_drawingInfoValidationError))
+                    {
+                        <MudAlert Severity="Severity.Error" Class="mt-2">@_drawingInfoValidationError</MudAlert>
+                    }
+                </MudPaper>
+            </MudTabPanel>
+        </MudTabs>
+    }
+</MudContainer>
+
+@code {
+    [Parameter] public int LayerId { get; set; }
+
+    private static readonly JsonSerializerOptions IndentedOptions = new()
+    {
+        WriteIndented = true
+    };
+
+    private bool _isLoading;
+    private bool _isSaving;
+    private string? _errorMessage;
+
+    private LayerStyleResponse? _style;
+    private int _activeTabIndex;
+
+    // MapLibre tab state
+    private string _mapLibreJson = string.Empty;
+    private string _mapLibreJsonOriginal = string.Empty;
+    private bool _isEditingMapLibre;
+    private string? _mapLibreValidationError;
+
+    // Drawing Info tab state
+    private string _drawingInfoJson = string.Empty;
+    private string _drawingInfoJsonOriginal = string.Empty;
+    private bool _isEditingDrawingInfo;
+    private string? _drawingInfoValidationError;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadStyleAsync();
+    }
+
+    private async Task LoadStyleAsync()
+    {
+        _isLoading = true;
+        _errorMessage = null;
+
+        try
+        {
+            _style = await AdminClient.GetLayerStyleAsync(LayerId);
+
+            _mapLibreJson = FormatJson(_style.MapLibreStyle);
+            _mapLibreJsonOriginal = _mapLibreJson;
+
+            _drawingInfoJson = FormatJson(_style.DrawingInfo);
+            _drawingInfoJsonOriginal = _drawingInfoJson;
+        }
+        catch (HonuaAdminApiException ex)
+        {
+            _errorMessage = $"{(int)ex.StatusCode} {ex.StatusCode}: {ex.Message}";
+            Snackbar.Add(_errorMessage, Severity.Error);
+        }
+        catch (HttpRequestException ex)
+        {
+            _errorMessage = $"Connection failed: {ex.Message}";
+            Snackbar.Add(_errorMessage, Severity.Error);
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private static string FormatJson(JsonElement? element)
+    {
+        if (element is null || element.Value.ValueKind == JsonValueKind.Undefined)
+            return string.Empty;
+
+        return JsonSerializer.Serialize(element.Value, IndentedOptions);
+    }
+
+    private static JsonElement? ParseJsonOrNull(string json)
+    {
+        if (string.IsNullOrWhiteSpace(json))
+            return null;
+
+        using var doc = JsonDocument.Parse(json);
+        return doc.RootElement.Clone();
+    }
+
+    // MapLibre editing
+    private void EditMapLibre()
+    {
+        _isEditingMapLibre = true;
+        _mapLibreValidationError = null;
+    }
+
+    private void CancelMapLibreEdit()
+    {
+        _mapLibreJson = _mapLibreJsonOriginal;
+        _isEditingMapLibre = false;
+        _mapLibreValidationError = null;
+    }
+
+    private async Task SaveMapLibreAsync()
+    {
+        _mapLibreValidationError = null;
+
+        JsonElement? parsed;
+        try
+        {
+            parsed = ParseJsonOrNull(_mapLibreJson);
+        }
+        catch (JsonException ex)
+        {
+            _mapLibreValidationError = $"Invalid JSON: {ex.Message}";
+            return;
+        }
+
+        _isSaving = true;
+        StateHasChanged();
+
+        try
+        {
+            // Preserve existing drawing info when saving MapLibre style
+            JsonElement? existingDrawingInfo;
+            try
+            {
+                existingDrawingInfo = ParseJsonOrNull(_drawingInfoJsonOriginal);
+            }
+            catch
+            {
+                existingDrawingInfo = _style?.DrawingInfo;
+            }
+
+            var request = new LayerStyleUpdateRequest
+            {
+                MapLibreStyle = parsed,
+                DrawingInfo = existingDrawingInfo
+            };
+
+            _style = await AdminClient.UpdateLayerStyleAsync(LayerId, request);
+
+            _mapLibreJson = FormatJson(_style.MapLibreStyle);
+            _mapLibreJsonOriginal = _mapLibreJson;
+            _drawingInfoJson = FormatJson(_style.DrawingInfo);
+            _drawingInfoJsonOriginal = _drawingInfoJson;
+
+            _isEditingMapLibre = false;
+            Snackbar.Add("MapLibre style saved.", Severity.Success);
+        }
+        catch (HonuaAdminApiException ex)
+        {
+            _errorMessage = $"{(int)ex.StatusCode} {ex.StatusCode}: {ex.Message}";
+            Snackbar.Add(_errorMessage, Severity.Error);
+        }
+        catch (HttpRequestException ex)
+        {
+            _errorMessage = $"Connection failed: {ex.Message}";
+            Snackbar.Add(_errorMessage, Severity.Error);
+        }
+        finally
+        {
+            _isSaving = false;
+            StateHasChanged();
+        }
+    }
+
+    // Drawing Info editing
+    private void EditDrawingInfo()
+    {
+        _isEditingDrawingInfo = true;
+        _drawingInfoValidationError = null;
+    }
+
+    private void CancelDrawingInfoEdit()
+    {
+        _drawingInfoJson = _drawingInfoJsonOriginal;
+        _isEditingDrawingInfo = false;
+        _drawingInfoValidationError = null;
+    }
+
+    private async Task SaveDrawingInfoAsync()
+    {
+        _drawingInfoValidationError = null;
+
+        JsonElement? parsed;
+        try
+        {
+            parsed = ParseJsonOrNull(_drawingInfoJson);
+        }
+        catch (JsonException ex)
+        {
+            _drawingInfoValidationError = $"Invalid JSON: {ex.Message}";
+            return;
+        }
+
+        _isSaving = true;
+        StateHasChanged();
+
+        try
+        {
+            // Preserve existing MapLibre style when saving drawing info
+            JsonElement? existingMapLibre;
+            try
+            {
+                existingMapLibre = ParseJsonOrNull(_mapLibreJsonOriginal);
+            }
+            catch
+            {
+                existingMapLibre = _style?.MapLibreStyle;
+            }
+
+            var request = new LayerStyleUpdateRequest
+            {
+                MapLibreStyle = existingMapLibre,
+                DrawingInfo = parsed
+            };
+
+            _style = await AdminClient.UpdateLayerStyleAsync(LayerId, request);
+
+            _mapLibreJson = FormatJson(_style.MapLibreStyle);
+            _mapLibreJsonOriginal = _mapLibreJson;
+            _drawingInfoJson = FormatJson(_style.DrawingInfo);
+            _drawingInfoJsonOriginal = _drawingInfoJson;
+
+            _isEditingDrawingInfo = false;
+            Snackbar.Add("Drawing info saved.", Severity.Success);
+        }
+        catch (HonuaAdminApiException ex)
+        {
+            _errorMessage = $"{(int)ex.StatusCode} {ex.StatusCode}: {ex.Message}";
+            Snackbar.Add(_errorMessage, Severity.Error);
+        }
+        catch (HttpRequestException ex)
+        {
+            _errorMessage = $"Connection failed: {ex.Message}";
+            Snackbar.Add(_errorMessage, Severity.Error);
+        }
+        finally
+        {
+            _isSaving = false;
+            StateHasChanged();
+        }
+    }
+}

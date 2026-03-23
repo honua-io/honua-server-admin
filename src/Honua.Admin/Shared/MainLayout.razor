@@ -1,25 +1,85 @@
-@inherits LayoutView
-@using MudBlazor
+@inherits LayoutComponentBase
+@inject AdminAuthStateProvider Auth
+@inject NavigationManager Navigation
 
-<MudThemeProvider />
+<MudThemeProvider @bind-IsDarkMode="_isDarkMode" />
 <MudDialogProvider />
 <MudSnackbarProvider />
 
-<MudLayout>
-    <MudAppBar>
-        <MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit" Edge="Edge.Start" />
-        <MudText Typo="Typo.h6">Honua Server Admin</MudText>
-        <MudSpacer />
-    </MudAppBar>
+@if (!_initialized)
+{
+    <MudLayout>
+        <MudMainContent Class="d-flex justify-center align-center" Style="height: 100vh;">
+            <MudProgressCircular Color="Color.Primary" Indeterminate="true" Size="Size.Large" />
+        </MudMainContent>
+    </MudLayout>
+}
+else if (!Auth.IsAuthenticated)
+{
+    <MudLayout>
+        <MudAppBar Elevation="1">
+            <MudText Typo="Typo.h6">Honua Server Admin</MudText>
+        </MudAppBar>
+        <MudMainContent Class="pt-16">
+            @Body
+        </MudMainContent>
+    </MudLayout>
+}
+else
+{
+    <MudLayout>
+        <MudAppBar Elevation="1">
+            <MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit" Edge="Edge.Start"
+                           OnClick="ToggleDrawer" aria-label="Toggle navigation" />
+            <MudText Typo="Typo.h6">Honua Server Admin</MudText>
+            <MudSpacer />
+            <MudIconButton Icon="@(_isDarkMode ? Icons.Material.Filled.LightMode : Icons.Material.Filled.DarkMode)"
+                           Color="Color.Inherit" OnClick="ToggleDarkMode" aria-label="Toggle dark mode" />
+            <MudIconButton Icon="@Icons.Material.Filled.Logout" Color="Color.Inherit"
+                           OnClick="LogoutAsync" aria-label="Logout" />
+        </MudAppBar>
 
-    <MudDrawer Open="true" Elevation="1">
-        <MudDrawerHeader>
-            <MudText Typo="Typo.h6">Admin</MudText>
-        </MudDrawerHeader>
-        <NavMenu />
-    </MudDrawer>
+        <MudDrawer @bind-Open="_drawerOpen" Elevation="1" Variant="DrawerVariant.Mini"
+                   OpenMiniOnHover="true">
+            <MudDrawerHeader>
+                <MudText Typo="Typo.h6">Admin</MudText>
+            </MudDrawerHeader>
+            <NavMenu />
+        </MudDrawer>
 
-    <MudMainContent Class="pt-16 px-16">
-        @Body
-    </MudMainContent>
-</MudLayout>
+        <MudMainContent Class="pt-16 px-4 pb-4">
+            @Body
+        </MudMainContent>
+    </MudLayout>
+}
+
+@code {
+    private bool _drawerOpen = true;
+    private bool _isDarkMode;
+    private bool _initialized;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await Auth.InitializeAsync();
+            _initialized = true;
+
+            if (!Auth.IsAuthenticated)
+            {
+                Navigation.NavigateTo("/login");
+            }
+
+            StateHasChanged();
+        }
+    }
+
+    private void ToggleDrawer() => _drawerOpen = !_drawerOpen;
+    private void ToggleDarkMode() => _isDarkMode = !_isDarkMode;
+
+    private async Task LogoutAsync()
+    {
+        await Auth.LogoutAsync();
+        Navigation.NavigateTo("/login", forceLoad: true);
+    }
+}

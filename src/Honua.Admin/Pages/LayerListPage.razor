@@ -1,0 +1,167 @@
+@page "/layers"
+@inject IHonuaAdminClient AdminClient
+@inject ISnackbar Snackbar
+@inject NavigationManager Navigation
+@inject IDialogService DialogService
+
+<PageTitle>Layers — Honua Server Admin</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
+    <MudText Typo="Typo.h4" GutterBottom="true">Layers</MudText>
+
+    <ErrorBanner Message="@_errorMessage" />
+
+    <MudSelect T="SecureConnectionSummary" Label="Connection" Variant="Variant.Outlined"
+               Value="_selectedConnection" ValueChanged="OnConnectionChanged"
+               ToStringFunc="c => c?.Name ?? string.Empty"
+               Class="mb-4" Placeholder="Select a connection" Disabled="_connections is null">
+        @if (_connections is not null)
+        {
+            @foreach (var conn in _connections)
+            {
+                <MudSelectItem T="SecureConnectionSummary" Value="conn">@conn.Name</MudSelectItem>
+            }
+        }
+    </MudSelect>
+
+    @if (_selectedConnection is null)
+    {
+        <EmptyState Icon="@Icons.Material.Filled.Cable" Title="Select a connection"
+                    Description="Choose a database connection above to view its layers." />
+    }
+    else if (_loadingLayers)
+    {
+        <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+    }
+    else if (_layers is not null)
+    {
+        <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-4" Spacing="2">
+            <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                       StartIcon="@Icons.Material.Filled.Publish" OnClick="NavigateToPublish">Publish Layer</MudButton>
+            <MudSpacer />
+            <MudButton Variant="Variant.Outlined" Color="Color.Success"
+                       StartIcon="@Icons.Material.Filled.ToggleOn" OnClick="EnableAllAsync" Disabled="_busy">Enable All</MudButton>
+            <MudButton Variant="Variant.Outlined" Color="Color.Warning"
+                       StartIcon="@Icons.Material.Filled.ToggleOff" OnClick="DisableAllAsync" Disabled="_busy">Disable All</MudButton>
+        </MudStack>
+
+        @if (_layers.Count == 0)
+        {
+            <EmptyState Icon="@Icons.Material.Filled.Layers" Title="No layers published"
+                        Description="This connection has no published layers yet.">
+                <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                           StartIcon="@Icons.Material.Filled.Publish" OnClick="NavigateToPublish" Class="mt-2">Publish First Layer</MudButton>
+            </EmptyState>
+        }
+        else
+        {
+            <MudDataGrid T="PublishedLayerSummary" Items="_layers" Dense="true" Hover="true" Filterable="true">
+                <Columns>
+                    <TemplateColumn T="PublishedLayerSummary" Title="Layer Name" SortBy="x => x.LayerName">
+                        <CellTemplate>
+                            <MudLink Href="@GetStyleUrl(context.Item)">@context.Item.LayerName</MudLink>
+                        </CellTemplate>
+                    </TemplateColumn>
+                    <TemplateColumn T="PublishedLayerSummary" Title="Table" SortBy="x => x.Table">
+                        <CellTemplate>@(context.Item.Schema).@(context.Item.Table)</CellTemplate>
+                    </TemplateColumn>
+                    <PropertyColumn Property="x => x.GeometryType" Title="Geometry" />
+                    <PropertyColumn Property="x => x.Srid" Title="SRID" />
+                    <PropertyColumn Property="x => x.FieldCount" Title="Fields" />
+                    <PropertyColumn Property="x => x.ServiceName" Title="Service" />
+                    <TemplateColumn T="PublishedLayerSummary" Title="Enabled" SortBy="x => x.Enabled">
+                        <CellTemplate>
+                            <MudSwitch T="bool" Value="context.Item.Enabled"
+                                       ValueChanged="v => ToggleEnabledAsync(context.Item, v)"
+                                       Color="Color.Success" Disabled="_togglingIds.Contains(context.Item.LayerId)"
+                                       aria-label="Toggle layer enabled" />
+                        </CellTemplate>
+                    </TemplateColumn>
+                </Columns>
+            </MudDataGrid>
+            <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mt-2">@_layers.Count layer(s)</MudText>
+        }
+    }
+</MudContainer>
+
+@code {
+    private bool _loadingLayers;
+    private bool _busy;
+    private string? _errorMessage;
+    private IReadOnlyList<SecureConnectionSummary>? _connections;
+    private SecureConnectionSummary? _selectedConnection;
+    private IReadOnlyList<PublishedLayerSummary>? _layers;
+    private HashSet<int> _togglingIds = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        try { _connections = await AdminClient.ListConnectionsAsync(); }
+        catch (HonuaAdminApiException ex) { _errorMessage = $"{(int)ex.StatusCode}: {ex.Message}"; }
+        catch (HttpRequestException ex) { _errorMessage = $"Connection failed: {ex.Message}"; }
+    }
+
+    private static string GetStyleUrl(PublishedLayerSummary l) => $"/layers/{l.LayerId}/style";
+    private void NavigateToPublish() => Navigation.NavigateTo($"/connections/{_selectedConnection?.ConnectionId}/publish");
+
+    private async Task OnConnectionChanged(SecureConnectionSummary? connection)
+    {
+        _selectedConnection = connection;
+        _layers = null;
+        if (connection is not null) await LoadLayersAsync();
+    }
+
+    private async Task LoadLayersAsync()
+    {
+        if (_selectedConnection is null) return;
+        _loadingLayers = true; _errorMessage = null; StateHasChanged();
+        try
+        {
+            _layers = await AdminClient.ListLayersAsync(_selectedConnection.ConnectionId.ToString());
+        }
+        catch (HonuaAdminApiException ex) { _errorMessage = $"{(int)ex.StatusCode}: {ex.Message}"; }
+        catch (HttpRequestException ex) { _errorMessage = $"Connection failed: {ex.Message}"; }
+        finally { _loadingLayers = false; StateHasChanged(); }
+    }
+
+    private async Task ToggleEnabledAsync(PublishedLayerSummary layer, bool enabled)
+    {
+        if (_selectedConnection is null) return;
+        _togglingIds.Add(layer.LayerId); StateHasChanged();
+        try
+        {
+            await AdminClient.SetLayerEnabledAsync(_selectedConnection.ConnectionId.ToString(), layer.LayerId, enabled, layer.ServiceName);
+            Snackbar.Add($"Layer '{layer.LayerName}' {(enabled ? "enabled" : "disabled")}.", enabled ? Severity.Success : Severity.Info);
+            await LoadLayersAsync();
+        }
+        catch (HonuaAdminApiException ex) { Snackbar.Add($"Failed: {ex.Message}", Severity.Error); }
+        finally { _togglingIds.Remove(layer.LayerId); StateHasChanged(); }
+    }
+
+    private async Task EnableAllAsync() => await BulkToggleAsync(true);
+    private async Task DisableAllAsync() => await BulkToggleAsync(false);
+
+    private async Task BulkToggleAsync(bool enabled)
+    {
+        if (_selectedConnection is null) return;
+        var action = enabled ? "Enable" : "Disable";
+        var parameters = new DialogParameters<ConfirmDialog>
+        {
+            { x => x.ContentText, $"{action} all layers for this connection?" },
+            { x => x.ButtonText, $"{action} All" },
+            { x => x.ButtonColor, enabled ? Color.Success : Color.Warning }
+        };
+        var dialog = await DialogService.ShowAsync<ConfirmDialog>("Confirm", parameters);
+        var result = await dialog.Result;
+        if (result is null || result.Canceled) return;
+
+        _busy = true; StateHasChanged();
+        try
+        {
+            await AdminClient.SetServiceLayersEnabledAsync(_selectedConnection.ConnectionId.ToString(), enabled);
+            Snackbar.Add($"All layers {(enabled ? "enabled" : "disabled")}.", enabled ? Severity.Success : Severity.Warning);
+            await LoadLayersAsync();
+        }
+        catch (HonuaAdminApiException ex) { Snackbar.Add($"Failed: {ex.Message}", Severity.Error); }
+        finally { _busy = false; StateHasChanged(); }
+    }
+}

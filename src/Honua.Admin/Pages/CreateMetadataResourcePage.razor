@@ -1,0 +1,174 @@
+@page "/metadata/new"
+@inherits AdminPageBase
+
+<PageTitle>Create Metadata Resource — Honua Server Admin</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="mt-4">
+    <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-4">
+        <MudIconButton Icon="@Icons.Material.Filled.ArrowBack" OnClick='() => Navigation.NavigateTo("/metadata")' />
+        <MudIcon Icon="@Icons.Material.Filled.NoteAdd" Size="Size.Large" Color="Color.Primary" />
+        <MudText Typo="Typo.h4">Create Metadata Resource</MudText>
+    </MudStack>
+
+    <ErrorBanner Message="@ErrorMessage" />
+
+    <MudPaper Elevation="2" Class="pa-6">
+        <MudGrid>
+            <MudItem xs="12" sm="6">
+                <MudTextField @bind-Value="_apiVersion" Label="API Version" Variant="Variant.Outlined"
+                              Required="true" RequiredError="API Version is required" />
+            </MudItem>
+            <MudItem xs="12" sm="6">
+                <MudTextField @bind-Value="_kind" Label="Kind" Variant="Variant.Outlined"
+                              Placeholder="e.g. Layer, Service"
+                              Required="true" RequiredError="Kind is required" />
+            </MudItem>
+            <MudItem xs="12" sm="6">
+                <MudTextField @bind-Value="_namespace" Label="Namespace" Variant="Variant.Outlined"
+                              Placeholder="e.g. default"
+                              Required="true" RequiredError="Namespace is required" />
+            </MudItem>
+            <MudItem xs="12" sm="6">
+                <MudTextField @bind-Value="_name" Label="Name" Variant="Variant.Outlined"
+                              Required="true" RequiredError="Name is required" />
+            </MudItem>
+        </MudGrid>
+
+        @* ───── Labels Editor ───── *@
+        <MudText Typo="Typo.h6" Class="mt-6 mb-2">Labels</MudText>
+        <MudDivider Class="mb-4" />
+
+        @for (var i = 0; i < _labels.Count; i++)
+        {
+            var index = i;
+            <MudGrid Class="mb-2">
+                <MudItem xs="5">
+                    <MudTextField @bind-Value="_labels[index].Key" Label="Key" Variant="Variant.Outlined" />
+                </MudItem>
+                <MudItem xs="5">
+                    <MudTextField @bind-Value="_labels[index].Value" Label="Value" Variant="Variant.Outlined" />
+                </MudItem>
+                <MudItem xs="2" Class="d-flex align-center">
+                    <MudIconButton Icon="@Icons.Material.Filled.RemoveCircleOutline" Color="Color.Error" Size="Size.Small"
+                                   OnClick="@(() => _labels.RemoveAt(index))" />
+                </MudItem>
+            </MudGrid>
+        }
+
+        <MudButton Variant="Variant.Text" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add"
+                   OnClick="@(() => _labels.Add(new LabelEntry()))">
+            Add Label
+        </MudButton>
+
+        @* ───── Spec JSON ───── *@
+        <MudText Typo="Typo.h6" Class="mt-6 mb-2">Spec (JSON)</MudText>
+        <MudDivider Class="mb-4" />
+
+        <MudTextField @bind-Value="_specJson" Lines="15" Variant="Variant.Outlined"
+                      Placeholder='{ "key": "value" }'
+                      Style="font-family: monospace;" />
+
+        @if (!string.IsNullOrEmpty(_jsonError))
+        {
+            <MudAlert Severity="Severity.Warning" Class="mt-2">@_jsonError</MudAlert>
+        }
+
+        @* ───── Actions ───── *@
+        <MudStack Row="true" Class="mt-6">
+            <MudSpacer />
+            <MudButton Variant="Variant.Outlined" Color="Color.Default"
+                       OnClick='() => Navigation.NavigateTo("/metadata")'>
+                Cancel
+            </MudButton>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                       OnClick="SaveAsync" Disabled="_saving"
+                       StartIcon="@Icons.Material.Filled.Save">
+                @if (_saving)
+                {
+                    <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                    @:Creating...
+                }
+                else
+                {
+                    @:Create Resource
+                }
+            </MudButton>
+        </MudStack>
+    </MudPaper>
+</MudContainer>
+
+@code {
+    private string _apiVersion = "honua.io/v1alpha1";
+    private string _kind = string.Empty;
+    private string _namespace = string.Empty;
+    private string _name = string.Empty;
+    private string _specJson = "{}";
+    private string? _jsonError;
+    private bool _saving;
+
+    private readonly List<LabelEntry> _labels = new();
+
+    private sealed class LabelEntry
+    {
+        public string Key { get; set; } = string.Empty;
+        public string Value { get; set; } = string.Empty;
+    }
+
+    private async Task SaveAsync()
+    {
+        // Validate required fields
+        if (string.IsNullOrWhiteSpace(_kind) || string.IsNullOrWhiteSpace(_namespace) || string.IsNullOrWhiteSpace(_name))
+        {
+            ErrorMessage = "Kind, Namespace, and Name are required.";
+            return;
+        }
+
+        // Validate JSON
+        _jsonError = null;
+        JsonElement spec;
+        try
+        {
+            spec = JsonSerializer.Deserialize<JsonElement>(_specJson ?? "{}");
+        }
+        catch (JsonException ex)
+        {
+            _jsonError = $"Invalid JSON: {ex.Message}";
+            return;
+        }
+
+        _saving = true;
+        StateHasChanged();
+
+        try
+        {
+            var labels = _labels
+                .Where(l => !string.IsNullOrWhiteSpace(l.Key))
+                .ToDictionary(l => l.Key.Trim(), l => l.Value.Trim());
+
+            var resource = new MetadataResource
+            {
+                ApiVersion = _apiVersion.Trim(),
+                Kind = _kind.Trim(),
+                Metadata = new ResourceMetadata
+                {
+                    Name = _name.Trim(),
+                    Namespace = _namespace.Trim(),
+                    Labels = labels.Count > 0 ? labels : null
+                },
+                Spec = spec
+            };
+
+            var created = await ExecuteAsync(() => AdminClient.CreateMetadataResourceAsync(resource));
+            if (created is not null)
+            {
+                Snackbar.Add("Resource created.", Severity.Success);
+                Navigation.NavigateTo($"/metadata/{Uri.EscapeDataString(created.Kind!)}/{Uri.EscapeDataString(created.Metadata!.Namespace!)}/{Uri.EscapeDataString(created.Metadata!.Name!)}");
+            }
+        }
+        finally
+        {
+            _saving = false;
+            StateHasChanged();
+        }
+    }
+}

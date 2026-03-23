@@ -1,0 +1,267 @@
+@page "/metadata/{Kind}/{Ns}/{Name}"
+@inherits AdminPageBase
+@inject IDialogService DialogService
+
+<PageTitle>@Kind/@Ns/@Name — Metadata Resource — Honua Server Admin</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="mt-4">
+    <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-4">
+        <MudIconButton Icon="@Icons.Material.Filled.ArrowBack" OnClick='() => Navigation.NavigateTo("/metadata")' />
+        <MudIcon Icon="@Icons.Material.Filled.Description" Size="Size.Large" Color="Color.Primary" />
+        <MudText Typo="Typo.h4">@Kind / @Ns / @Name</MudText>
+        <MudSpacer />
+        <MudButton Variant="Variant.Outlined" Color="Color.Error"
+                   StartIcon="@Icons.Material.Filled.Delete"
+                   OnClick="DeleteAsync">
+            Delete
+        </MudButton>
+        <MudIconButton Icon="@Icons.Material.Filled.Refresh" OnClick="LoadAsync" Disabled="IsLoading" />
+    </MudStack>
+
+    <ErrorBanner Message="@ErrorMessage" />
+    <LoadingOverlay Visible="IsLoading" />
+
+    @if (_resource?.Metadata is not null)
+    {
+        @* ───── Read-Only Metadata ───── *@
+        <MudPaper Elevation="1" Class="pa-4 mb-4">
+            <MudText Typo="Typo.h6" Class="mb-3">Resource Metadata</MudText>
+            <MudGrid>
+                <MudItem xs="12" sm="6" md="4">
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">ID</MudText>
+                    <MudText Typo="Typo.body2">@(_resource.Metadata.Id ?? "—")</MudText>
+                </MudItem>
+                <MudItem xs="12" sm="6" md="4">
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">Resource Version</MudText>
+                    <MudText Typo="Typo.body2">@(_resource.Metadata.ResourceVersion ?? "—")</MudText>
+                </MudItem>
+                <MudItem xs="12" sm="6" md="4">
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">Generation</MudText>
+                    <MudText Typo="Typo.body2">@(_resource.Metadata.Generation?.ToString() ?? "—")</MudText>
+                </MudItem>
+                <MudItem xs="12" sm="6" md="4">
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">Created At</MudText>
+                    <MudText Typo="Typo.body2">@(_resource.Metadata.CreatedAt?.LocalDateTime.ToString("F") ?? "—")</MudText>
+                </MudItem>
+                <MudItem xs="12" sm="6" md="4">
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">Updated At</MudText>
+                    <MudText Typo="Typo.body2">@(_resource.Metadata.UpdatedAt?.LocalDateTime.ToString("F") ?? "—")</MudText>
+                </MudItem>
+                <MudItem xs="12" sm="6" md="4">
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">API Version</MudText>
+                    <MudText Typo="Typo.body2">@(_resource.ApiVersion ?? "—")</MudText>
+                </MudItem>
+            </MudGrid>
+        </MudPaper>
+
+        @* ───── Labels Editor ───── *@
+        <MudPaper Elevation="1" Class="pa-4 mb-4">
+            <MudText Typo="Typo.h6" Class="mb-3">Labels</MudText>
+
+            @for (var i = 0; i < _labels.Count; i++)
+            {
+                var index = i;
+                <MudGrid Class="mb-2">
+                    <MudItem xs="5">
+                        <MudTextField @bind-Value="_labels[index].Key" Label="Key" Variant="Variant.Outlined" />
+                    </MudItem>
+                    <MudItem xs="5">
+                        <MudTextField @bind-Value="_labels[index].Value" Label="Value" Variant="Variant.Outlined" />
+                    </MudItem>
+                    <MudItem xs="2" Class="d-flex align-center">
+                        <MudIconButton Icon="@Icons.Material.Filled.RemoveCircleOutline" Color="Color.Error" Size="Size.Small"
+                                       OnClick="@(() => _labels.RemoveAt(index))" />
+                    </MudItem>
+                </MudGrid>
+            }
+
+            <MudButton Variant="Variant.Text" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add"
+                       OnClick="@(() => _labels.Add(new LabelEntry()))">
+                Add Label
+            </MudButton>
+        </MudPaper>
+
+        @* ───── Spec JSON Editor ───── *@
+        <MudPaper Elevation="1" Class="pa-4 mb-4">
+            <MudText Typo="Typo.h6" Class="mb-3">Spec (JSON)</MudText>
+
+            <MudTextField @bind-Value="_specJson" Lines="15" Variant="Variant.Outlined"
+                          Style="font-family: monospace;" />
+
+            @if (!string.IsNullOrEmpty(_jsonError))
+            {
+                <MudAlert Severity="Severity.Warning" Class="mt-2">@_jsonError</MudAlert>
+            }
+        </MudPaper>
+
+        @* ───── Status (Read-Only) ───── *@
+        @if (_resource.Status.HasValue)
+        {
+            <MudPaper Elevation="1" Class="pa-4 mb-4">
+                <MudText Typo="Typo.h6" Class="mb-3">Status (Read-Only)</MudText>
+                <MudTextField Value="@FormatJson(_resource.Status.Value)" Lines="10" Variant="Variant.Outlined"
+                              ReadOnly="true" Style="font-family: monospace;" />
+            </MudPaper>
+        }
+
+        @* ───── Actions ───── *@
+        <MudStack Row="true" Class="mb-6">
+            <MudSpacer />
+            <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                       OnClick="SaveAsync" Disabled="_saving"
+                       StartIcon="@Icons.Material.Filled.Save">
+                @if (_saving)
+                {
+                    <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                    @:Saving...
+                }
+                else
+                {
+                    @:Save Changes
+                }
+            </MudButton>
+        </MudStack>
+    }
+</MudContainer>
+
+@code {
+    [Parameter] public string Kind { get; set; } = string.Empty;
+    [Parameter] public string Ns { get; set; } = string.Empty;
+    [Parameter] public string Name { get; set; } = string.Empty;
+
+    private MetadataResource? _resource;
+    private string? _etag;
+    private bool _saving;
+    private string _specJson = "{}";
+    private string? _jsonError;
+
+    private readonly List<LabelEntry> _labels = new();
+
+    private sealed class LabelEntry
+    {
+        public string Key { get; set; } = string.Empty;
+        public string Value { get; set; } = string.Empty;
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        var result = await ExecuteAsync(async () =>
+        {
+            var (resource, etag) = await AdminClient.GetMetadataResourceAsync(Kind, Ns, Name);
+            return (resource, etag);
+        });
+
+        if (result.resource is not null)
+        {
+            _resource = result.resource;
+            _etag = result.etag;
+            PopulateFields(_resource);
+        }
+    }
+
+    private void PopulateFields(MetadataResource resource)
+    {
+        _specJson = FormatJson(resource.Spec);
+
+        _labels.Clear();
+        if (resource.Metadata?.Labels is not null)
+        {
+            foreach (var kvp in resource.Metadata.Labels)
+            {
+                _labels.Add(new LabelEntry { Key = kvp.Key, Value = kvp.Value });
+            }
+        }
+    }
+
+    private async Task SaveAsync()
+    {
+        // Validate JSON
+        _jsonError = null;
+        JsonElement spec;
+        try
+        {
+            spec = JsonSerializer.Deserialize<JsonElement>(_specJson ?? "{}");
+        }
+        catch (JsonException ex)
+        {
+            _jsonError = $"Invalid JSON: {ex.Message}";
+            return;
+        }
+
+        _saving = true;
+        StateHasChanged();
+
+        try
+        {
+            var labels = _labels
+                .Where(l => !string.IsNullOrWhiteSpace(l.Key))
+                .ToDictionary(l => l.Key.Trim(), l => l.Value.Trim());
+
+            var updated = new MetadataResource
+            {
+                ApiVersion = _resource!.ApiVersion,
+                Kind = _resource.Kind,
+                Metadata = new ResourceMetadata
+                {
+                    Name = _resource.Metadata!.Name,
+                    Namespace = _resource.Metadata.Namespace,
+                    Labels = labels.Count > 0 ? labels : null
+                },
+                Spec = spec
+            };
+
+            var result = await ExecuteAsync(() =>
+                AdminClient.UpdateMetadataResourceAsync(Kind, Ns, Name, updated, _etag));
+
+            if (result is not null)
+            {
+                // Reload to get the new ETag and server-computed fields
+                Snackbar.Add("Resource updated.", Severity.Success);
+                await LoadAsync();
+            }
+        }
+        catch (HonuaAdminApiException ex) when (ex.StatusCode == System.Net.HttpStatusCode.Conflict)
+        {
+            ErrorMessage = "Conflict: the resource was modified by another user. Please reload and try again.";
+            Snackbar.Add(ErrorMessage, Severity.Warning);
+        }
+        finally
+        {
+            _saving = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task DeleteAsync()
+    {
+        var parameters = new DialogParameters<ConfirmDialog>
+        {
+            { x => x.ContentText, $"Delete resource \"{Kind}/{Ns}/{Name}\"? This action cannot be undone." },
+            { x => x.ButtonText, "Delete" },
+            { x => x.ButtonColor, Color.Error }
+        };
+
+        var dialog = await DialogService.ShowAsync<ConfirmDialog>("Delete Resource", parameters);
+        var dialogResult = await dialog.Result;
+
+        if (dialogResult is null || dialogResult.Canceled)
+            return;
+
+        await ExecuteAsync(async () =>
+        {
+            await AdminClient.DeleteMetadataResourceAsync(Kind, Ns, Name, _etag);
+            Snackbar.Add("Resource deleted.", Severity.Success);
+            Navigation.NavigateTo("/metadata");
+        });
+    }
+
+    private static string FormatJson(JsonElement element)
+    {
+        return JsonSerializer.Serialize(element, new JsonSerializerOptions { WriteIndented = true });
+    }
+}

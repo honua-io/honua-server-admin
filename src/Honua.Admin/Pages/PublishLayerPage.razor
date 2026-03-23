@@ -1,0 +1,269 @@
+@page "/connections/{ConnectionId}/publish"
+@inject IHonuaAdminClient AdminClient
+@inject ISnackbar Snackbar
+@inject NavigationManager Navigation
+
+<PageTitle>Publish Layer — Honua Server Admin</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="mt-4">
+    <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-4">
+        <MudIconButton Icon="@Icons.Material.Filled.ArrowBack"
+                       OnClick='() => Navigation.NavigateTo("/layers")' />
+        <MudText Typo="Typo.h4">Publish Layer</MudText>
+    </MudStack>
+
+    <ErrorBanner Message="@_errorMessage" />
+    <LoadingOverlay Visible="_isLoading" />
+
+    <MudStack Row="true" Spacing="2" Class="mb-6">
+        @for (var i = 0; i < _stepTitles.Length; i++)
+        {
+            var step = i;
+            <MudChip T="string" Color="@(step == _currentStep ? Color.Primary : step < _currentStep ? Color.Success : Color.Default)"
+                     Variant="@(step == _currentStep ? Variant.Filled : Variant.Outlined)"
+                     Size="Size.Small">
+                @($"{step + 1}. {_stepTitles[step]}")
+            </MudChip>
+        }
+    </MudStack>
+
+    @if (_currentStep == 0)
+    {
+        @if (_tables is null)
+        {
+            <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="300px" />
+        }
+        else if (_tables.Count == 0)
+        {
+            <EmptyState Icon="@Icons.Material.Filled.TableChart" Title="No tables found"
+                        Description="This connection has no spatial tables to publish." />
+        }
+        else
+        {
+            <MudDataGrid T="TableInfo" Items="_tables" Dense="true" Hover="true" Filterable="true"
+                         RowClass="cursor-pointer" RowClick="OnTableRowClick"
+                         SelectedItem="_selectedTable" SelectedItemChanged="t => _selectedTable = t">
+                <Columns>
+                    <PropertyColumn Property="x => x.Schema" Title="Schema" />
+                    <PropertyColumn Property="x => x.Table" Title="Table" />
+                    <PropertyColumn Property="x => x.GeometryColumn" Title="Geometry Column" />
+                    <PropertyColumn Property="x => x.GeometryType" Title="Geometry Type" />
+                    <PropertyColumn Property="x => x.Srid" Title="SRID" />
+                    <PropertyColumn Property="x => x.EstimatedRows" Title="Est. Rows" />
+                </Columns>
+            </MudDataGrid>
+
+            @if (_selectedTable is not null)
+            {
+                <MudAlert Severity="Severity.Info" Class="mt-2">
+                    Selected: @_selectedTable.Schema.@_selectedTable.Table
+                </MudAlert>
+            }
+        }
+        <MudStack Row="true" Justify="Justify.FlexEnd" Class="mt-4">
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" Disabled="_selectedTable is null"
+                       OnClick="GoToStep2" EndIcon="@Icons.Material.Filled.ArrowForward">Next</MudButton>
+        </MudStack>
+    }
+
+    @if (_currentStep == 1)
+    {
+        <MudGrid>
+            <MudItem xs="12" md="6">
+                <MudTextField @bind-Value="_layerName" Label="Layer Name" Variant="Variant.Outlined" Required="true" />
+            </MudItem>
+            <MudItem xs="12" md="6">
+                <MudTextField @bind-Value="_serviceName" Label="Service Name" Variant="Variant.Outlined" HelperText="Optional" />
+            </MudItem>
+            <MudItem xs="12">
+                <MudTextField @bind-Value="_description" Label="Description" Variant="Variant.Outlined" Lines="2" />
+            </MudItem>
+            <MudItem xs="12" md="4">
+                <MudTextField @bind-Value="_geometryColumn" Label="Geometry Column" Variant="Variant.Outlined" />
+            </MudItem>
+            <MudItem xs="12" md="4">
+                <MudTextField @bind-Value="_geometryType" Label="Geometry Type" Variant="Variant.Outlined" />
+            </MudItem>
+            <MudItem xs="12" md="4">
+                <MudNumericField T="int?" @bind-Value="_srid" Label="SRID" Variant="Variant.Outlined" />
+            </MudItem>
+            <MudItem xs="12" md="6">
+                <MudTextField @bind-Value="_primaryKey" Label="Primary Key" Variant="Variant.Outlined" />
+            </MudItem>
+            <MudItem xs="12" md="6">
+                <MudSwitch T="bool" @bind-Value="_enabled" Label="Enabled" Color="Color.Primary" />
+            </MudItem>
+            <MudItem xs="12">
+                <MudText Typo="Typo.h6" Class="mb-2">Fields</MudText>
+                @if (_selectedTable?.Columns is not null)
+                {
+                    <MudStack Row="true" Class="mb-2" Spacing="2">
+                        <MudButton Variant="Variant.Text" Size="Size.Small" OnClick="SelectAllFields">Select All</MudButton>
+                        <MudButton Variant="Variant.Text" Size="Size.Small" OnClick="DeselectAllFields">Deselect All</MudButton>
+                    </MudStack>
+                    <MudGrid>
+                        @foreach (var col in _selectedTable.Columns)
+                        {
+                            <MudItem xs="12" sm="6" md="4">
+                                <MudCheckBox T="bool" Value="_selectedFields.Contains(col.Name)"
+                                             ValueChanged="v => ToggleField(col.Name, v)"
+                                             Label="@($"{col.Name} ({col.DataType})")" Color="Color.Primary" Dense="true" />
+                            </MudItem>
+                        }
+                    </MudGrid>
+                }
+            </MudItem>
+        </MudGrid>
+        <MudStack Row="true" Justify="Justify.SpaceBetween" Class="mt-4">
+            <MudButton Variant="Variant.Text" OnClick="() => _currentStep = 0" StartIcon="@Icons.Material.Filled.ArrowBack">Back</MudButton>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" Disabled="string.IsNullOrWhiteSpace(_layerName)"
+                       OnClick="() => _currentStep = 2" EndIcon="@Icons.Material.Filled.ArrowForward">Next</MudButton>
+        </MudStack>
+    }
+
+    @if (_currentStep == 2)
+    {
+        <MudCard Elevation="2">
+            <MudCardContent>
+                <MudText Typo="Typo.h6" Class="mb-4">Review Before Publishing</MudText>
+                <MudSimpleTable Dense="true" Hover="true" Bordered="true">
+                    <tbody>
+                        <tr><td><strong>Source</strong></td><td>@_selectedTable?.Schema.@_selectedTable?.Table</td></tr>
+                        <tr><td><strong>Layer Name</strong></td><td>@_layerName</td></tr>
+                        <tr><td><strong>Geometry</strong></td><td>@_geometryColumn (@_geometryType, SRID: @(_srid?.ToString() ?? "auto"))</td></tr>
+                        <tr><td><strong>Primary Key</strong></td><td>@_primaryKey</td></tr>
+                        <tr><td><strong>Service</strong></td><td>@(string.IsNullOrEmpty(_serviceName) ? "default" : _serviceName)</td></tr>
+                        <tr><td><strong>Enabled</strong></td><td>@(_enabled ? "Yes" : "No")</td></tr>
+                        <tr><td><strong>Fields (@_selectedFields.Count)</strong></td><td>@string.Join(", ", _selectedFields)</td></tr>
+                    </tbody>
+                </MudSimpleTable>
+            </MudCardContent>
+        </MudCard>
+        <MudStack Row="true" Justify="Justify.SpaceBetween" Class="mt-4">
+            <MudButton Variant="Variant.Text" OnClick="() => _currentStep = 1" StartIcon="@Icons.Material.Filled.ArrowBack">Back</MudButton>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="PublishAsync" Disabled="_isPublishing"
+                       StartIcon="@Icons.Material.Filled.Publish">@(_isPublishing ? "Publishing..." : "Publish Layer")</MudButton>
+        </MudStack>
+    }
+
+    @if (_currentStep == 3 && _publishedLayer is not null)
+    {
+        <MudAlert Severity="Severity.Success" Class="mb-4">Layer "@_publishedLayer.LayerName" published (ID: @_publishedLayer.LayerId).</MudAlert>
+        <MudStack Row="true" Justify="Justify.FlexEnd" Class="mt-4" Spacing="2">
+            <MudButton Variant="Variant.Text" OnClick='() => Navigation.NavigateTo($"/layers/{_publishedLayer.LayerId}/style")'
+                       StartIcon="@Icons.Material.Filled.Style">Edit Style</MudButton>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick='() => Navigation.NavigateTo("/layers")'
+                       StartIcon="@Icons.Material.Filled.Layers">View All Layers</MudButton>
+        </MudStack>
+    }
+</MudContainer>
+
+@code {
+    [Parameter] public string ConnectionId { get; set; } = null!;
+
+    private static readonly string[] _stepTitles = ["Select Table", "Configure", "Review", "Publish"];
+    private int _currentStep;
+    private bool _isLoading;
+    private bool _isPublishing;
+    private string? _errorMessage;
+
+    private IReadOnlyList<TableInfo>? _tables;
+    private TableInfo? _selectedTable;
+    private PublishedLayerSummary? _publishedLayer;
+    private HashSet<string> _selectedFields = new();
+
+    private string _layerName = string.Empty;
+    private string? _description;
+    private string? _geometryColumn;
+    private string? _geometryType;
+    private int? _srid;
+    private string? _primaryKey;
+    private string? _serviceName;
+    private bool _enabled = true;
+
+    protected override async Task OnInitializedAsync() => await LoadTablesAsync();
+
+    private async Task LoadTablesAsync()
+    {
+        _isLoading = true;
+        _errorMessage = null;
+        try
+        {
+            var response = await AdminClient.DiscoverTablesAsync(ConnectionId);
+            _tables = response.Tables;
+        }
+        catch (HonuaAdminApiException ex)
+        {
+            _errorMessage = $"{(int)ex.StatusCode} {ex.StatusCode}: {ex.Message}";
+            Snackbar.Add(_errorMessage, Severity.Error);
+        }
+        catch (HttpRequestException ex)
+        {
+            _errorMessage = $"Connection failed: {ex.Message}";
+            Snackbar.Add(_errorMessage, Severity.Error);
+        }
+        finally { _isLoading = false; }
+    }
+
+    private void OnTableRowClick(DataGridRowClickEventArgs<TableInfo> args) => _selectedTable = args.Item;
+
+    private void GoToStep2()
+    {
+        if (_selectedTable is null) return;
+        _layerName = _selectedTable.Table;
+        _geometryColumn = _selectedTable.GeometryColumn;
+        _geometryType = _selectedTable.GeometryType;
+        _srid = _selectedTable.Srid;
+        _enabled = true;
+        _primaryKey = _selectedTable.Columns.FirstOrDefault(c => c.IsPrimaryKey)?.Name;
+        _selectedFields = new HashSet<string>(_selectedTable.Columns.Select(c => c.Name));
+        _currentStep = 1;
+    }
+
+    private void ToggleField(string fieldName, bool selected)
+    {
+        if (selected) _selectedFields.Add(fieldName); else _selectedFields.Remove(fieldName);
+    }
+
+    private void SelectAllFields()
+    {
+        if (_selectedTable?.Columns is not null)
+            _selectedFields = new HashSet<string>(_selectedTable.Columns.Select(c => c.Name));
+    }
+
+    private void DeselectAllFields() => _selectedFields.Clear();
+
+    private async Task PublishAsync()
+    {
+        if (_selectedTable is null) return;
+        _isPublishing = true;
+        _errorMessage = null;
+        StateHasChanged();
+        try
+        {
+            var request = new PublishLayerRequest
+            {
+                Schema = _selectedTable.Schema, Table = _selectedTable.Table,
+                LayerName = _layerName, Description = _description,
+                GeometryColumn = _geometryColumn, GeometryType = _geometryType,
+                Srid = _srid, PrimaryKey = _primaryKey,
+                ServiceName = _serviceName, Enabled = _enabled,
+                Fields = _selectedFields.ToList()
+            };
+            _publishedLayer = await AdminClient.PublishLayerAsync(ConnectionId, request);
+            Snackbar.Add($"Layer \"{_publishedLayer.LayerName}\" published.", Severity.Success);
+            _currentStep = 3;
+        }
+        catch (HonuaAdminApiException ex)
+        {
+            _errorMessage = $"{(int)ex.StatusCode}: {ex.Message}";
+            Snackbar.Add(_errorMessage, Severity.Error);
+        }
+        catch (HttpRequestException ex)
+        {
+            _errorMessage = $"Connection failed: {ex.Message}";
+            Snackbar.Add(_errorMessage, Severity.Error);
+        }
+        finally { _isPublishing = false; StateHasChanged(); }
+    }
+}

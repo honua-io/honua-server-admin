@@ -1,0 +1,69 @@
+@page "/settings"
+@inject AdminAuthStateProvider Auth
+@inject ISnackbar Snackbar
+@inject NavigationManager Navigation
+
+<PageTitle>Settings — Honua Server Admin</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Medium" Class="mt-4">
+    <MudText Typo="Typo.h4" GutterBottom="true">Settings</MudText>
+
+    <MudCard Elevation="2" Class="mb-4">
+        <MudCardHeader>
+            <MudText Typo="Typo.h6">Connection</MudText>
+        </MudCardHeader>
+        <MudCardContent>
+            <MudField Label="Server URL" Variant="Variant.Outlined" Class="mb-4">@Auth.ServerUrl</MudField>
+            <MudField Label="API Key" Variant="Variant.Outlined">
+                @if (_showApiKey)
+                {
+                    @Auth.ApiKey
+                }
+                else
+                {
+                    @(new string('*', Math.Min(Auth.ApiKey.Length, 32)))
+                }
+            </MudField>
+            <MudCheckBox @bind-Value="_showApiKey" Label="Show API Key" Class="mt-2" />
+        </MudCardContent>
+        <MudCardActions>
+            <MudButton Variant="Variant.Outlined" Color="Color.Primary"
+                       OnClick="ChangeConnection" StartIcon="@Icons.Material.Filled.SwapHoriz"
+                       aria-label="Change connection">
+                Change Connection
+            </MudButton>
+            <MudSpacer />
+            <MudButton Variant="Variant.Outlined" Color="Color.Error"
+                       OnClick="LogoutAsync" StartIcon="@Icons.Material.Filled.Logout"
+                       aria-label="Disconnect from server">
+                Disconnect
+            </MudButton>
+        </MudCardActions>
+    </MudCard>
+
+    <MudCard Elevation="2">
+        <MudCardHeader>
+            <MudText Typo="Typo.h6">About</MudText>
+        </MudCardHeader>
+        <MudCardContent>
+            <MudField Label="Application" Variant="Variant.Outlined" Class="mb-4">Honua Server Admin</MudField>
+            <MudField Label="SDK Version" Variant="Variant.Outlined">0.1.0-alpha.1</MudField>
+        </MudCardContent>
+    </MudCard>
+</MudContainer>
+
+@code {
+    private bool _showApiKey;
+
+    private void ChangeConnection()
+    {
+        Navigation.NavigateTo("/login");
+    }
+
+    private async Task LogoutAsync()
+    {
+        await Auth.LogoutAsync();
+        Snackbar.Add("Disconnected", Severity.Info);
+        Navigation.NavigateTo("/login", forceLoad: true);
+    }
+}

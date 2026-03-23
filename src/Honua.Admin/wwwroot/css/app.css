@@ -1,0 +1,67 @@
+/* Honua Admin Responsive Styles */
+
+/* Ensure the app fills viewport */
+html, body, #app {
+    height: 100%;
+    margin: 0;
+}
+
+/* Make data grids scroll horizontally on small screens */
+.mud-table-container {
+    overflow-x: auto;
+}
+
+/* Reduce padding on mobile */
+@media (max-width: 600px) {
+    .mud-main-content {
+        padding-left: 8px !important;
+        padding-right: 8px !important;
+    }
+
+    .mud-container {
+        padding-left: 8px;
+        padding-right: 8px;
+    }
+
+    /* Stack toolbar buttons vertically on mobile */
+    .mud-stack.flex-row {
+        flex-wrap: wrap;
+    }
+
+    /* Reduce card padding */
+    .mud-card-content {
+        padding: 12px;
+    }
+
+    /* Make dialogs full-width on mobile */
+    .mud-dialog {
+        margin: 8px;
+        max-width: calc(100vw - 16px) !important;
+    }
+}
+
+@media (max-width: 960px) {
+    /* Collapse grid items to full width on tablets */
+    .mud-grid-item-xs-12.mud-grid-item-md-4,
+    .mud-grid-item-xs-12.mud-grid-item-md-6 {
+        max-width: 100%;
+        flex-basis: 100%;
+    }
+}
+
+/* JSON editor styling */
+.json-editor textarea {
+    font-family: 'Roboto Mono', 'Consolas', 'Courier New', monospace;
+    font-size: 0.85rem;
+    line-height: 1.4;
+}
+
+/* Cursor pointer for clickable cards */
+.cursor-pointer {
+    cursor: pointer;
+}
+
+/* Loading skeleton should match content height */
+.mud-skeleton {
+    border-radius: 4px;
+}

@@ -1,0 +1,17 @@
+@if (!string.IsNullOrEmpty(Message))
+{
+    <MudAlert Severity="Severity.Error" Class="mb-4" ShowCloseIcon="true" CloseIconClicked="OnDismiss">
+        @Message
+    </MudAlert>
+}
+
+@code {
+    [Parameter] public string? Message { get; set; }
+    [Parameter] public EventCallback OnDismissed { get; set; }
+
+    private async Task OnDismiss()
+    {
+        Message = null;
+        await OnDismissed.InvokeAsync();
+    }
+}

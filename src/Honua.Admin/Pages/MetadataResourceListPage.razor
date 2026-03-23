@@ -1,0 +1,135 @@
+@page "/metadata"
+@inherits AdminPageBase
+@inject IDialogService DialogService
+
+<PageTitle>Metadata Resources — Honua Server Admin</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="mt-4">
+    <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-4">
+        <MudIcon Icon="@Icons.Material.Filled.Description" Size="Size.Large" Color="Color.Primary" />
+        <MudText Typo="Typo.h4">Metadata Resources</MudText>
+        <MudSpacer />
+        <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                   StartIcon="@Icons.Material.Filled.Add"
+                   OnClick='() => Navigation.NavigateTo("/metadata/new")'>
+            Create Resource
+        </MudButton>
+        <MudIconButton Icon="@Icons.Material.Filled.Refresh" OnClick="LoadAsync" Disabled="IsLoading" />
+    </MudStack>
+
+    <ErrorBanner Message="@ErrorMessage" />
+
+    @* ───── Filter Bar ───── *@
+    <MudPaper Elevation="1" Class="pa-4 mb-4">
+        <MudGrid>
+            <MudItem xs="12" sm="4">
+                <MudTextField @bind-Value="_filterKind" Label="Kind" Placeholder="e.g. Layer, Service"
+                              Variant="Variant.Outlined" Immediate="true" />
+            </MudItem>
+            <MudItem xs="12" sm="4">
+                <MudTextField @bind-Value="_filterNamespace" Label="Namespace" Placeholder="e.g. default"
+                              Variant="Variant.Outlined" Immediate="true" />
+            </MudItem>
+            <MudItem xs="12" sm="4" Class="d-flex align-end">
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="LoadAsync"
+                           Disabled="IsLoading" StartIcon="@Icons.Material.Filled.FilterAlt">
+                    Apply Filter
+                </MudButton>
+            </MudItem>
+        </MudGrid>
+    </MudPaper>
+
+    <LoadingOverlay Visible="IsLoading" />
+
+    @if (!IsLoading && _resources is not null)
+    {
+        @if (_resources.Count == 0)
+        {
+            <EmptyState Icon="@Icons.Material.Filled.FolderOpen"
+                        Title="No metadata resources found"
+                        Description="No resources match the current filter criteria." />
+        }
+        else
+        {
+            <MudDataGrid T="MetadataResource" Items="_resources" Hover="true" Dense="true"
+                         RowClick="@(args => NavigateToDetail(args.Item))"
+                         RowClass="cursor-pointer">
+                <Columns>
+                    <PropertyColumn Property="x => x.Kind" Title="Kind" />
+                    <PropertyColumn Property="x => x.Metadata!.Namespace" Title="Namespace" />
+                    <PropertyColumn Property="x => x.Metadata!.Name" Title="Name" />
+                    <PropertyColumn Property="x => x.Metadata!.Generation" Title="Generation" />
+                    <TemplateColumn Title="Created">
+                        <CellTemplate>
+                            <MudText Typo="Typo.body2">@(context.Item.Metadata?.CreatedAt?.LocalDateTime.ToString("g") ?? "—")</MudText>
+                        </CellTemplate>
+                    </TemplateColumn>
+                    <TemplateColumn Title="Updated">
+                        <CellTemplate>
+                            <MudText Typo="Typo.body2">@(context.Item.Metadata?.UpdatedAt?.LocalDateTime.ToString("g") ?? "—")</MudText>
+                        </CellTemplate>
+                    </TemplateColumn>
+                    <TemplateColumn Title="Actions" CellClass="justify-end">
+                        <CellTemplate>
+                            <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" Size="Size.Small"
+                                           OnClick="@(() => DeleteResourceAsync(context.Item))"
+                                           aria-label="Delete resource" />
+                        </CellTemplate>
+                    </TemplateColumn>
+                </Columns>
+            </MudDataGrid>
+        }
+    }
+</MudContainer>
+
+@code {
+    private IReadOnlyList<MetadataResource>? _resources;
+    private string _filterKind = string.Empty;
+    private string _filterNamespace = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        var kind = string.IsNullOrWhiteSpace(_filterKind) ? null : _filterKind.Trim();
+        var ns = string.IsNullOrWhiteSpace(_filterNamespace) ? null : _filterNamespace.Trim();
+        _resources = await ExecuteAsync(() => AdminClient.ListMetadataResourcesAsync(kind, ns));
+    }
+
+    private void NavigateToDetail(MetadataResource resource)
+    {
+        if (resource.Kind is null || resource.Metadata?.Namespace is null || resource.Metadata?.Name is null)
+            return;
+
+        Navigation.NavigateTo($"/metadata/{Uri.EscapeDataString(resource.Kind)}/{Uri.EscapeDataString(resource.Metadata.Namespace)}/{Uri.EscapeDataString(resource.Metadata.Name)}");
+    }
+
+    private async Task DeleteResourceAsync(MetadataResource resource)
+    {
+        if (resource.Kind is null || resource.Metadata?.Namespace is null || resource.Metadata?.Name is null)
+            return;
+
+        var parameters = new DialogParameters<ConfirmDialog>
+        {
+            { x => x.ContentText, $"Delete resource \"{resource.Kind}/{resource.Metadata.Namespace}/{resource.Metadata.Name}\"? This action cannot be undone." },
+            { x => x.ButtonText, "Delete" },
+            { x => x.ButtonColor, Color.Error }
+        };
+
+        var dialog = await DialogService.ShowAsync<ConfirmDialog>("Delete Resource", parameters);
+        var result = await dialog.Result;
+
+        if (result is null || result.Canceled)
+            return;
+
+        await ExecuteAsync(async () =>
+        {
+            await AdminClient.DeleteMetadataResourceAsync(resource.Kind, resource.Metadata.Namespace, resource.Metadata.Name);
+            Snackbar.Add("Resource deleted.", Severity.Success);
+            await LoadAsync();
+        });
+    }
+}

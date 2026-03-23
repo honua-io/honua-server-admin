@@ -1,74 +1,88 @@
 @page "/"
-@using MudBlazor
 
-<PageTitle>Honua Server Admin</PageTitle>
+<PageTitle>Dashboard — Honua Server Admin</PageTitle>
 
 <MudContainer MaxWidth="MaxWidth.Large" Class="mt-4">
-    <MudText Typo="Typo.h3" GutterBottom="true">
-        <MudIcon Icon="@Icons.Material.Filled.AdminPanelSettings" Class="mr-3" />
-        Honua Server Administration
-    </MudText>
-
-    <MudText Typo="Typo.body1" Class="mb-4">
-        Welcome to the Honua Server admin interface. Manage your geospatial services, layers, and data collection forms.
+    <MudText Typo="Typo.h4" GutterBottom="true">Dashboard</MudText>
+    <MudText Typo="Typo.body1" Color="Color.Secondary" Class="mb-6">
+        Welcome to the Honua Server admin interface.
     </MudText>
 
     <MudGrid>
         <MudItem xs="12" sm="6" md="4">
-            <MudCard Elevation="2">
+            <MudCard Elevation="2" Class="cursor-pointer" @onclick='() => Navigation.NavigateTo("/server")'>
                 <MudCardContent>
-                    <MudText Typo="Typo.h6">
-                        <MudIcon Icon="@Icons.Material.Filled.Assignment" Class="mr-2" />
-                        Forms
-                    </MudText>
-                    <MudText Typo="Typo.body2">
-                        Create and manage OpenRosa-compatible data collection forms for mobile teams.
-                    </MudText>
+                    <MudStack Row="true" AlignItems="AlignItems.Center">
+                        <MudIcon Icon="@Icons.Material.Filled.Dns" Size="Size.Large" Color="Color.Primary" />
+                        <MudText Typo="Typo.h6">Server Info</MudText>
+                    </MudStack>
+                    <MudText Typo="Typo.body2" Class="mt-2">View version, capabilities, and configuration.</MudText>
                 </MudCardContent>
-                <MudCardActions>
-                    <MudButton Variant="Variant.Text" Color="Color.Primary" Href="/forms">
-                        Manage Forms
-                    </MudButton>
-                </MudCardActions>
             </MudCard>
         </MudItem>
 
         <MudItem xs="12" sm="6" md="4">
-            <MudCard Elevation="2">
+            <MudCard Elevation="2" Class="cursor-pointer" @onclick='() => Navigation.NavigateTo("/connections")'>
                 <MudCardContent>
-                    <MudText Typo="Typo.h6">
-                        <MudIcon Icon="@Icons.Material.Filled.Layers" Class="mr-2" />
-                        Layers
-                    </MudText>
-                    <MudText Typo="Typo.body2">
-                        Configure feature layers and manage spatial data schemas.
-                    </MudText>
+                    <MudStack Row="true" AlignItems="AlignItems.Center">
+                        <MudIcon Icon="@Icons.Material.Filled.Cable" Size="Size.Large" Color="Color.Primary" />
+                        <MudText Typo="Typo.h6">Connections</MudText>
+                    </MudStack>
+                    <MudText Typo="Typo.body2" Class="mt-2">Manage database connections and encryption.</MudText>
                 </MudCardContent>
-                <MudCardActions>
-                    <MudButton Variant="Variant.Text" Color="Color.Primary" Href="/layers">
-                        View Layers
-                    </MudButton>
-                </MudCardActions>
             </MudCard>
         </MudItem>
 
         <MudItem xs="12" sm="6" md="4">
-            <MudCard Elevation="2">
+            <MudCard Elevation="2" Class="cursor-pointer" @onclick='() => Navigation.NavigateTo("/layers")'>
                 <MudCardContent>
-                    <MudText Typo="Typo.h6">
-                        <MudIcon Icon="@Icons.Material.Filled.CloudQueue" Class="mr-2" />
-                        Services
-                    </MudText>
-                    <MudText Typo="Typo.body2">
-                        Manage map services, endpoints, and API configurations.
-                    </MudText>
+                    <MudStack Row="true" AlignItems="AlignItems.Center">
+                        <MudIcon Icon="@Icons.Material.Filled.Layers" Size="Size.Large" Color="Color.Primary" />
+                        <MudText Typo="Typo.h6">Layers</MudText>
+                    </MudStack>
+                    <MudText Typo="Typo.body2" Class="mt-2">Publish and manage feature layers.</MudText>
                 </MudCardContent>
-                <MudCardActions>
-                    <MudButton Variant="Variant.Text" Color="Color.Primary" Href="/services">
-                        Configure Services
-                    </MudButton>
-                </MudCardActions>
+            </MudCard>
+        </MudItem>
+
+        <MudItem xs="12" sm="6" md="4">
+            <MudCard Elevation="2" Class="cursor-pointer" @onclick='() => Navigation.NavigateTo("/services")'>
+                <MudCardContent>
+                    <MudStack Row="true" AlignItems="AlignItems.Center">
+                        <MudIcon Icon="@Icons.Material.Filled.CloudQueue" Size="Size.Large" Color="Color.Primary" />
+                        <MudText Typo="Typo.h6">Services</MudText>
+                    </MudStack>
+                    <MudText Typo="Typo.body2" Class="mt-2">Configure protocols, rendering, and access.</MudText>
+                </MudCardContent>
+            </MudCard>
+        </MudItem>
+
+        <MudItem xs="12" sm="6" md="4">
+            <MudCard Elevation="2" Class="cursor-pointer" @onclick='() => Navigation.NavigateTo("/metadata")'>
+                <MudCardContent>
+                    <MudStack Row="true" AlignItems="AlignItems.Center">
+                        <MudIcon Icon="@Icons.Material.Filled.Description" Size="Size.Large" Color="Color.Primary" />
+                        <MudText Typo="Typo.h6">Metadata</MudText>
+                    </MudStack>
+                    <MudText Typo="Typo.body2" Class="mt-2">Manage metadata resources and manifests.</MudText>
+                </MudCardContent>
+            </MudCard>
+        </MudItem>
+
+        <MudItem xs="12" sm="6" md="4">
+            <MudCard Elevation="2" Class="cursor-pointer" @onclick='() => Navigation.NavigateTo("/observability")'>
+                <MudCardContent>
+                    <MudStack Row="true" AlignItems="AlignItems.Center">
+                        <MudIcon Icon="@Icons.Material.Filled.MonitorHeart" Size="Size.Large" Color="Color.Primary" />
+                        <MudText Typo="Typo.h6">Operations</MudText>
+                    </MudStack>
+                    <MudText Typo="Typo.body2" Class="mt-2">Monitor errors, telemetry, and deployments.</MudText>
+                </MudCardContent>
             </MudCard>
         </MudItem>
     </MudGrid>
 </MudContainer>
+
+@code {
+    [Inject] private NavigationManager Navigation { get; set; } = null!;
+}

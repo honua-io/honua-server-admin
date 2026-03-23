@@ -1,0 +1,174 @@
+@page "/login"
+@inject AdminAuthStateProvider Auth
+@inject ISnackbar Snackbar
+@inject NavigationManager Navigation
+
+<PageTitle>Login — Honua Server Admin</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Small" Class="mt-16">
+    <MudCard Elevation="4">
+        <MudCardHeader>
+            <MudStack Row="true" AlignItems="AlignItems.Center">
+                <MudIcon Icon="@Icons.Material.Filled.AdminPanelSettings" Size="Size.Large" />
+                <MudText Typo="Typo.h5">Connect to Honua Server</MudText>
+            </MudStack>
+        </MudCardHeader>
+        <MudCardContent>
+            <MudTextField @bind-Value="_serverUrl" Label="Server URL" Placeholder="https://your-server:5001"
+                          Variant="Variant.Outlined" Adornment="Adornment.Start"
+                          AdornmentIcon="@Icons.Material.Filled.Dns" Class="mb-4"
+                          Required="true" RequiredError="Server URL is required"
+                          aria-label="Server URL" />
+
+            <MudTextField @bind-Value="_apiKey" Label="API Key" Placeholder="your-admin-api-key"
+                          Variant="Variant.Outlined" Adornment="Adornment.Start"
+                          AdornmentIcon="@Icons.Material.Filled.Key"
+                          InputType="@(_showApiKey ? InputType.Text : InputType.Password)"
+                          Required="true" RequiredError="API Key is required"
+                          aria-label="API Key" />
+            <MudCheckBox @bind-Value="_showApiKey" Label="Show API Key" Class="mb-4" />
+
+            @if (!string.IsNullOrEmpty(_errorMessage))
+            {
+                <MudAlert Severity="Severity.Error" Class="mb-4">@_errorMessage</MudAlert>
+            }
+
+            @if (_connectionSuccess)
+            {
+                <MudAlert Severity="Severity.Success" Class="mb-4">
+                    Connected to Honua Server @_serverVersion
+                </MudAlert>
+            }
+        </MudCardContent>
+        <MudCardActions Class="pa-4">
+            <MudButton Variant="Variant.Outlined" Color="Color.Default" OnClick="TestConnectionAsync"
+                       Disabled="_testing" StartIcon="@Icons.Material.Filled.NetworkCheck"
+                       aria-label="Test connection">
+                @if (_testing)
+                {
+                    <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                    @:Testing...
+                }
+                else
+                {
+                    @:Test Connection
+                }
+            </MudButton>
+            <MudSpacer />
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="ConnectAsync"
+                       Disabled="_connecting || string.IsNullOrWhiteSpace(_serverUrl) || string.IsNullOrWhiteSpace(_apiKey)"
+                       StartIcon="@Icons.Material.Filled.Login"
+                       aria-label="Connect to server">
+                @if (_connecting)
+                {
+                    <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                    @:Connecting...
+                }
+                else
+                {
+                    @:Connect
+                }
+            </MudButton>
+        </MudCardActions>
+    </MudCard>
+</MudContainer>
+
+@code {
+    private string _serverUrl = string.Empty;
+    private string _apiKey = string.Empty;
+    private bool _showApiKey;
+    private bool _testing;
+    private bool _connecting;
+    private bool _connectionSuccess;
+    private string? _errorMessage;
+    private string? _serverVersion;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await Auth.InitializeAsync();
+            if (Auth.IsAuthenticated)
+            {
+                Navigation.NavigateTo("/");
+            }
+            StateHasChanged();
+        }
+    }
+
+    private async Task TestConnectionAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_serverUrl) || string.IsNullOrWhiteSpace(_apiKey))
+        {
+            _errorMessage = "Please enter both server URL and API key.";
+            return;
+        }
+
+        _testing = true;
+        _errorMessage = null;
+        _connectionSuccess = false;
+
+        try
+        {
+            // Temporarily set credentials to test
+            await Auth.LoginAsync(_serverUrl, _apiKey);
+
+            using var http = new HttpClient();
+            http.BaseAddress = new Uri(_serverUrl.TrimEnd('/'));
+            http.DefaultRequestHeaders.TryAddWithoutValidation("X-API-Key", _apiKey);
+
+            var response = await http.GetAsync("/api/v1/admin/version");
+            response.EnsureSuccessStatusCode();
+
+            var version = await response.Content.ReadFromJsonAsync<AdminVersionResponse>();
+            _serverVersion = version?.Version ?? "unknown";
+            _connectionSuccess = true;
+
+            // Revert — user hasn't committed to connecting yet
+            await Auth.LogoutAsync();
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Connection failed: {ex.Message}";
+            await Auth.LogoutAsync();
+        }
+        finally
+        {
+            _testing = false;
+        }
+    }
+
+    private async Task ConnectAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_serverUrl) || string.IsNullOrWhiteSpace(_apiKey))
+        {
+            _errorMessage = "Please enter both server URL and API key.";
+            return;
+        }
+
+        _connecting = true;
+        _errorMessage = null;
+
+        try
+        {
+            using var http = new HttpClient();
+            http.BaseAddress = new Uri(_serverUrl.TrimEnd('/'));
+            http.DefaultRequestHeaders.TryAddWithoutValidation("X-API-Key", _apiKey);
+
+            var response = await http.GetAsync("/api/v1/admin/version");
+            response.EnsureSuccessStatusCode();
+
+            await Auth.LoginAsync(_serverUrl, _apiKey);
+            Snackbar.Add("Connected to Honua Server", Severity.Success);
+            Navigation.NavigateTo("/", forceLoad: true);
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Connection failed: {ex.Message}";
+        }
+        finally
+        {
+            _connecting = false;
+        }
+    }
+}

@@ -1,16 +1,44 @@
-@using MudBlazor
-
 <MudNavMenu>
-    <MudNavLink Href="/" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Dashboard">
+    <MudNavLink Href="/" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Dashboard" aria-label="Dashboard">
         Dashboard
     </MudNavLink>
-    <MudNavLink Href="/forms" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Assignment">
-        Forms
+
+    <MudNavLink Href="/server" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Dns" aria-label="Server Info">
+        Server Info
     </MudNavLink>
-    <MudNavLink Href="/layers" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Layers">
-        Layers
-    </MudNavLink>
-    <MudNavLink Href="/services" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.CloudQueue">
+
+    <MudNavGroup Title="Data" Icon="@Icons.Material.Filled.Storage" Expanded="true" aria-label="Data">
+        <MudNavLink Href="/connections" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Cable" aria-label="Connections">
+            Connections
+        </MudNavLink>
+        <MudNavLink Href="/layers" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Layers" aria-label="Layers">
+            Layers
+        </MudNavLink>
+    </MudNavGroup>
+
+    <MudNavLink Href="/services" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.CloudQueue" aria-label="Services">
         Services
+    </MudNavLink>
+
+    <MudNavGroup Title="Configuration" Icon="@Icons.Material.Filled.Settings" Expanded="false" aria-label="Configuration">
+        <MudNavLink Href="/metadata" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Description" aria-label="Metadata Resources">
+            Metadata Resources
+        </MudNavLink>
+        <MudNavLink Href="/manifests" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.CompareArrows" aria-label="Manifests">
+            Manifests
+        </MudNavLink>
+    </MudNavGroup>
+
+    <MudNavGroup Title="Operations" Icon="@Icons.Material.Filled.MonitorHeart" Expanded="false" aria-label="Operations">
+        <MudNavLink Href="/observability" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.BugReport" aria-label="Observability">
+            Observability
+        </MudNavLink>
+        <MudNavLink Href="/deploy" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.RocketLaunch" aria-label="Deploy Control">
+            Deploy Control
+        </MudNavLink>
+    </MudNavGroup>
+
+    <MudNavLink Href="/settings" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Tune" aria-label="Settings">
+        Settings
     </MudNavLink>
 </MudNavMenu>

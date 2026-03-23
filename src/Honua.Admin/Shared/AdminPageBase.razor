@@ -1,0 +1,51 @@
+@using Honua.Sdk.Admin
+@using Honua.Sdk.Admin.Exceptions
+@using MudBlazor
+
+@code {
+    [Inject] protected IHonuaAdminClient AdminClient { get; set; } = null!;
+    [Inject] protected ISnackbar Snackbar { get; set; } = null!;
+    [Inject] protected NavigationManager Navigation { get; set; } = null!;
+
+    protected bool IsLoading { get; set; }
+    protected string? ErrorMessage { get; set; }
+
+    protected async Task ExecuteAsync(Func<Task> action, string? loadingMessage = null)
+    {
+        IsLoading = true;
+        ErrorMessage = null;
+        StateHasChanged();
+
+        try
+        {
+            await action();
+        }
+        catch (HonuaAdminApiException ex)
+        {
+            ErrorMessage = $"{(int)ex.StatusCode} {ex.StatusCode}: {ex.Message}";
+            Snackbar.Add(ErrorMessage, Severity.Error);
+        }
+        catch (HttpRequestException ex)
+        {
+            ErrorMessage = $"Connection failed: {ex.Message}";
+            Snackbar.Add(ErrorMessage, Severity.Error);
+        }
+        catch (TaskCanceledException)
+        {
+            ErrorMessage = "Request timed out.";
+            Snackbar.Add(ErrorMessage, Severity.Warning);
+        }
+        finally
+        {
+            IsLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    protected async Task<T?> ExecuteAsync<T>(Func<Task<T>> action)
+    {
+        T? result = default;
+        await ExecuteAsync(async () => { result = await action(); });
+        return result;
+    }
+}

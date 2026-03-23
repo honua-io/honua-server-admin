@@ -1,0 +1,610 @@
+@page "/connections/{ConnectionId}"
+@inject IHonuaAdminClient AdminClient
+@inject ISnackbar Snackbar
+@inject NavigationManager Navigation
+@inject IDialogService DialogService
+
+<PageTitle>Connection Detail — Honua Server Admin</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="mt-4">
+    <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-4">
+        <MudIconButton Icon="@Icons.Material.Filled.ArrowBack"
+                       OnClick='() => Navigation.NavigateTo("/connections")' />
+        @if (_connection is not null)
+        {
+            <MudText Typo="Typo.h4">@_connection.Name</MudText>
+            <MudChip T="string" Size="Size.Small"
+                     Color="@(_connection.IsActive ? Color.Success : Color.Default)"
+                     Variant="Variant.Filled">
+                @(_connection.IsActive ? "Active" : "Inactive")
+            </MudChip>
+        }
+        else
+        {
+            <MudText Typo="Typo.h4">Connection Detail</MudText>
+        }
+    </MudStack>
+
+    <ErrorBanner Message="@_errorMessage" OnDismissed="() => _errorMessage = null" />
+
+    @if (_loading)
+    {
+        <MudProgressLinear Indeterminate="true" Color="Color.Primary" Class="mb-4" />
+        <MudSkeleton Width="100%" Height="400px" />
+    }
+    else if (_connection is not null)
+    {
+        <MudTabs Elevation="2" Rounded="true" ApplyEffectsToContainer="true" PanelClass="pa-4">
+            @* Details Tab *@
+            <MudTabPanel Text="Details" Icon="@Icons.Material.Filled.Info">
+                <MudForm @ref="_editForm">
+                    <MudGrid>
+                        <MudItem xs="12">
+                            <MudTextField Value="@_connection.Name" Label="Name" ReadOnly="true"
+                                          Variant="Variant.Outlined" Class="mb-3" />
+                        </MudItem>
+                        <MudItem xs="12">
+                            <MudTextField @bind-Value="_editDescription" Label="Description"
+                                          Variant="Variant.Outlined" Lines="2" Class="mb-3" />
+                        </MudItem>
+                        <MudItem xs="12" sm="8">
+                            <MudTextField @bind-Value="_editHost" Label="Host"
+                                          Variant="Variant.Outlined" />
+                        </MudItem>
+                        <MudItem xs="12" sm="4">
+                            <MudNumericField @bind-Value="_editPort" Label="Port"
+                                             Min="1" Max="65535"
+                                             Variant="Variant.Outlined" />
+                        </MudItem>
+                        <MudItem xs="12" sm="6">
+                            <MudTextField @bind-Value="_editDatabaseName" Label="Database Name"
+                                          Variant="Variant.Outlined" />
+                        </MudItem>
+                        <MudItem xs="12" sm="6">
+                            <MudTextField @bind-Value="_editUsername" Label="Username"
+                                          Variant="Variant.Outlined" />
+                        </MudItem>
+                        <MudItem xs="12" sm="6">
+                            <MudTextField @bind-Value="_editPassword" Label="New Password (leave blank to keep)"
+                                          InputType="InputType.Password"
+                                          Variant="Variant.Outlined" />
+                        </MudItem>
+                        <MudItem xs="12" sm="6">
+                            <MudTextField @bind-Value="_editSslMode" Label="SSL Mode"
+                                          Variant="Variant.Outlined" />
+                        </MudItem>
+                        <MudItem xs="12" sm="6">
+                            <MudSwitch T="bool" @bind-Value="_editSslRequired" Label="Require SSL"
+                                       Color="Color.Primary" />
+                        </MudItem>
+                        <MudItem xs="12" sm="6">
+                            <MudSwitch T="bool" @bind-Value="_editIsActive" Label="Active"
+                                       Color="Color.Success" />
+                        </MudItem>
+                    </MudGrid>
+
+                    <MudSimpleTable Dense="true" Hover="true" Class="mt-4 mb-4" Elevation="0">
+                        <tbody>
+                            <tr>
+                                <td><strong>Connection ID</strong></td>
+                                <td><MudText Typo="Typo.body2" Style="font-family: monospace;">@_connection.ConnectionId</MudText></td>
+                            </tr>
+                            <tr>
+                                <td><strong>Storage Type</strong></td>
+                                <td>@_connection.StorageType</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Credential Reference</strong></td>
+                                <td>@(_connection.CredentialReference ?? "Managed")</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Encryption Version</strong></td>
+                                <td>@_connection.EncryptionVersion</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Created</strong></td>
+                                <td>@_connection.CreatedAt.ToString("u") by @_connection.CreatedBy</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Updated</strong></td>
+                                <td>@_connection.UpdatedAt.ToString("u")</td>
+                            </tr>
+                        </tbody>
+                    </MudSimpleTable>
+
+                    <MudStack Row="true" Justify="Justify.FlexEnd">
+                        <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                                   StartIcon="@Icons.Material.Filled.Save"
+                                   OnClick="SaveDetailsAsync"
+                                   Disabled="_saving">
+                            @if (_saving)
+                            {
+                                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                                @:Saving...
+                            }
+                            else
+                            {
+                                @:Save Changes
+                            }
+                        </MudButton>
+                    </MudStack>
+                </MudForm>
+            </MudTabPanel>
+
+            @* Discovery Tab *@
+            <MudTabPanel Text="Discovery" Icon="@Icons.Material.Filled.TableChart"
+                         OnClick="LoadDiscoveryIfNeededAsync">
+                @if (_discoveryLoading)
+                {
+                    <MudProgressLinear Indeterminate="true" Color="Color.Primary" Class="mb-4" />
+                }
+                else if (_tables is null)
+                {
+                    <MudStack AlignItems="AlignItems.Center" Class="pa-4">
+                        <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                                   StartIcon="@Icons.Material.Filled.Search"
+                                   OnClick="DiscoverTablesAsync">
+                            Discover Tables
+                        </MudButton>
+                    </MudStack>
+                }
+                else if (_tables.Count == 0)
+                {
+                    <EmptyState Icon="@Icons.Material.Filled.TableChart"
+                                Title="No tables found"
+                                Description="No spatial tables were discovered in this database." />
+                }
+                else
+                {
+                    <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-3">
+                        Found @_tables.Count table(s) with geometry columns.
+                    </MudText>
+                    <MudDataGrid T="TableInfo" Items="_tables" Dense="true" Hover="true"
+                                 Striped="true" Bordered="false">
+                        <Columns>
+                            <PropertyColumn Property="x => x.Schema" Title="Schema" />
+                            <PropertyColumn Property="x => x.Table" Title="Table" />
+                            <PropertyColumn Property="x => x.GeometryColumn" Title="Geometry Column" />
+                            <PropertyColumn Property="x => x.GeometryType" Title="Geometry Type" />
+                            <PropertyColumn Property="x => x.Srid" Title="SRID" />
+                            <TemplateColumn Title="Est. Rows">
+                                <CellTemplate>
+                                    <MudText Typo="Typo.body2">@(context.Item.EstimatedRows?.ToString("N0") ?? "—")</MudText>
+                                </CellTemplate>
+                            </TemplateColumn>
+                            <TemplateColumn Title="Columns">
+                                <CellTemplate>
+                                    <MudButton Size="Size.Small" Variant="Variant.Text" Color="Color.Primary"
+                                               OnClick="() => ToggleColumns(context.Item)"
+                                               EndIcon="@(IsColumnsExpanded(context.Item) ? Icons.Material.Filled.ExpandLess : Icons.Material.Filled.ExpandMore)">
+                                        @(context.Item.Columns?.Count ?? 0) columns
+                                    </MudButton>
+                                </CellTemplate>
+                            </TemplateColumn>
+                        </Columns>
+                        <ChildRowContent>
+                            @if (IsColumnsExpanded(context.Item))
+                            {
+                                <MudTr>
+                                    <td colspan="100" style="padding: 0;">
+                                        <MudSimpleTable Dense="true" Hover="true" Elevation="0"
+                                                        Style="background-color: var(--mud-palette-background-grey);">
+                                            <thead>
+                                                <tr>
+                                                    <th>Column Name</th>
+                                                    <th>Data Type</th>
+                                                    <th>Nullable</th>
+                                                    <th>Primary Key</th>
+                                                    <th>Max Length</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                @if (context.Item.Columns is not null)
+                                                {
+                                                    @foreach (var col in context.Item.Columns)
+                                                    {
+                                                        <tr>
+                                                            <td><MudText Typo="Typo.body2" Style="font-family: monospace;">@col.Name</MudText></td>
+                                                            <td>@col.DataType</td>
+                                                            <td>
+                                                                <MudIcon Icon="@(col.IsNullable ? Icons.Material.Filled.Check : Icons.Material.Filled.Close)"
+                                                                         Size="Size.Small"
+                                                                         Color="@(col.IsNullable ? Color.Success : Color.Default)" />
+                                                            </td>
+                                                            <td>
+                                                                @if (col.IsPrimaryKey)
+                                                                {
+                                                                    <MudIcon Icon="@Icons.Material.Filled.Key" Size="Size.Small" Color="Color.Warning" />
+                                                                }
+                                                            </td>
+                                                            <td>@(col.MaxLength.HasValue ? col.MaxLength.Value.ToString() : "—")</td>
+                                                        </tr>
+                                                    }
+                                                }
+                                            </tbody>
+                                        </MudSimpleTable>
+                                    </td>
+                                </MudTr>
+                            }
+                        </ChildRowContent>
+                    </MudDataGrid>
+                }
+            </MudTabPanel>
+
+            @* Layers Tab *@
+            <MudTabPanel Text="Layers" Icon="@Icons.Material.Filled.Layers"
+                         OnClick="LoadLayersIfNeededAsync">
+                @if (_layersLoading)
+                {
+                    <MudProgressLinear Indeterminate="true" Color="Color.Primary" Class="mb-4" />
+                }
+                else if (_layers is null || _layers.Count == 0)
+                {
+                    <EmptyState Icon="@Icons.Material.Filled.Layers"
+                                Title="No layers published"
+                                Description="Publish a layer from the Discovery tab or use the button below.">
+                        <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                                   StartIcon="@Icons.Material.Filled.Publish"
+                                   OnClick='() => Navigation.NavigateTo($"/connections/{ConnectionId}/publish")'>
+                            Publish Layer
+                        </MudButton>
+                    </EmptyState>
+                }
+                else
+                {
+                    <MudStack Row="true" Justify="Justify.FlexEnd" Class="mb-3">
+                        <MudButton Variant="Variant.Outlined" Color="Color.Primary"
+                                   StartIcon="@Icons.Material.Filled.Publish"
+                                   OnClick='() => Navigation.NavigateTo($"/connections/{ConnectionId}/publish")'>
+                            Publish Layer
+                        </MudButton>
+                    </MudStack>
+                    <MudDataGrid T="PublishedLayerSummary" Items="_layers" Dense="true" Hover="true"
+                                 Striped="true" Bordered="false">
+                        <Columns>
+                            <PropertyColumn Property="x => x.LayerName" Title="Layer Name">
+                                <CellTemplate>
+                                    <MudText Typo="Typo.body2" Style="font-weight: 500;">@context.Item.LayerName</MudText>
+                                </CellTemplate>
+                            </PropertyColumn>
+                            <PropertyColumn Property="x => x.Schema" Title="Schema" />
+                            <PropertyColumn Property="x => x.Table" Title="Table" />
+                            <PropertyColumn Property="x => x.GeometryType" Title="Geometry" />
+                            <PropertyColumn Property="x => x.Srid" Title="SRID" />
+                            <TemplateColumn Title="Enabled">
+                                <CellTemplate>
+                                    <MudSwitch T="bool" Value="context.Item.Enabled" Color="Color.Success"
+                                               ValueChanged="@((bool val) => ToggleLayerEnabledAsync(context.Item, val))"
+                                               Disabled="_layerBusy" />
+                                </CellTemplate>
+                            </TemplateColumn>
+                            <TemplateColumn Title="Fields">
+                                <CellTemplate>
+                                    <MudText Typo="Typo.body2">@context.Item.FieldCount</MudText>
+                                </CellTemplate>
+                            </TemplateColumn>
+                        </Columns>
+                    </MudDataGrid>
+                }
+            </MudTabPanel>
+
+            @* Health Tab *@
+            <MudTabPanel Text="Health" Icon="@Icons.Material.Filled.MonitorHeart">
+                <MudStack AlignItems="AlignItems.Center" Spacing="4" Class="pa-4">
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                               StartIcon="@Icons.Material.Filled.NetworkCheck"
+                               OnClick="TestHealthAsync"
+                               Disabled="_healthTesting"
+                               Size="Size.Large">
+                        @if (_healthTesting)
+                        {
+                            <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                            @:Testing...
+                        }
+                        else
+                        {
+                            @:Test Connection
+                        }
+                    </MudButton>
+
+                    @if (_healthResult is not null)
+                    {
+                        <MudCard Elevation="1" Style="min-width: 400px;">
+                            <MudCardContent>
+                                <MudStack AlignItems="AlignItems.Center" Spacing="2">
+                                    <MudIcon Icon="@(_healthResult.IsHealthy ? Icons.Material.Filled.CheckCircle : Icons.Material.Filled.Error)"
+                                             Size="Size.Large"
+                                             Color="@(_healthResult.IsHealthy ? Color.Success : Color.Error)" />
+                                    <MudText Typo="Typo.h6">
+                                        @(_healthResult.IsHealthy ? "Healthy" : "Unhealthy")
+                                    </MudText>
+                                    @if (!string.IsNullOrEmpty(_healthResult.Message))
+                                    {
+                                        <MudText Typo="Typo.body2" Color="Color.Secondary">@_healthResult.Message</MudText>
+                                    }
+                                    <MudText Typo="Typo.caption">Tested at @_healthResult.TestedAt.ToString("u")</MudText>
+                                </MudStack>
+                            </MudCardContent>
+                        </MudCard>
+                    }
+
+                    @* Current health status from connection summary *@
+                    <MudSimpleTable Dense="true" Hover="true" Elevation="0" Style="min-width: 400px;">
+                        <tbody>
+                            <tr>
+                                <td><strong>Current Health Status</strong></td>
+                                <td>@(string.IsNullOrEmpty(_connection.HealthStatus) ? "Unknown" : _connection.HealthStatus)</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Last Health Check</strong></td>
+                                <td>@(_connection.LastHealthCheck?.ToString("u") ?? "Never")</td>
+                            </tr>
+                        </tbody>
+                    </MudSimpleTable>
+                </MudStack>
+            </MudTabPanel>
+        </MudTabs>
+    }
+</MudContainer>
+
+@code {
+    [Parameter] public string ConnectionId { get; set; } = null!;
+
+    private SecureConnectionDetail? _connection;
+    private MudForm _editForm = null!;
+    private string? _errorMessage;
+    private bool _loading = true;
+    private bool _saving;
+
+    // Mutable backing fields for the update form (init-only SDK model cannot be two-way bound)
+    private string? _editDescription;
+    private string? _editHost;
+    private int? _editPort;
+    private string? _editDatabaseName;
+    private string? _editUsername;
+    private string? _editPassword;
+    private string? _editSslMode;
+    private bool _editSslRequired;
+    private bool _editIsActive;
+
+    // Discovery state
+    private IReadOnlyList<TableInfo>? _tables;
+    private bool _discoveryLoading;
+    private bool _discoveryLoaded;
+    private HashSet<string> _expandedTables = new();
+
+    // Layers state
+    private IReadOnlyList<PublishedLayerSummary>? _layers;
+    private bool _layersLoading;
+    private bool _layersLoaded;
+    private bool _layerBusy;
+
+    // Health state
+    private ConnectionTestResult? _healthResult;
+    private bool _healthTesting;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadConnectionAsync();
+    }
+
+    private async Task LoadConnectionAsync()
+    {
+        _loading = true;
+        _errorMessage = null;
+
+        try
+        {
+            _connection = await AdminClient.GetConnectionAsync(ConnectionId);
+            PopulateEditFields();
+        }
+        catch (FormatException)
+        {
+            _errorMessage = "Invalid connection ID format.";
+            Snackbar.Add(_errorMessage, Severity.Error);
+        }
+        catch (HonuaAdminApiException ex)
+        {
+            _errorMessage = $"Failed to load connection: {(int)ex.StatusCode} {ex.Message}";
+            Snackbar.Add(_errorMessage, Severity.Error);
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Failed to load connection: {ex.Message}";
+            Snackbar.Add(_errorMessage, Severity.Error);
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private void PopulateEditFields()
+    {
+        if (_connection is null) return;
+
+        _editDescription = _connection.Description;
+        _editHost = _connection.Host;
+        _editPort = _connection.Port;
+        _editDatabaseName = _connection.DatabaseName;
+        _editUsername = _connection.Username;
+        _editPassword = null;
+        _editSslMode = _connection.SslMode;
+        _editSslRequired = _connection.SslRequired;
+        _editIsActive = _connection.IsActive;
+    }
+
+    private async Task SaveDetailsAsync()
+    {
+        _saving = true;
+        _errorMessage = null;
+
+        try
+        {
+            var updateRequest = new UpdateSecureConnectionRequest
+            {
+                Description = _editDescription,
+                Host = _editHost,
+                Port = _editPort,
+                DatabaseName = _editDatabaseName,
+                Username = _editUsername,
+                Password = string.IsNullOrEmpty(_editPassword) ? null : _editPassword,
+                SslMode = _editSslMode,
+                SslRequired = _editSslRequired,
+                IsActive = _editIsActive
+            };
+
+            await AdminClient.UpdateConnectionAsync(ConnectionId, updateRequest);
+            Snackbar.Add("Connection updated.", Severity.Success);
+            await LoadConnectionAsync();
+        }
+        catch (HonuaAdminApiException ex)
+        {
+            _errorMessage = $"Save failed: {(int)ex.StatusCode} {ex.Message}";
+            Snackbar.Add(_errorMessage, Severity.Error);
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Save failed: {ex.Message}";
+            Snackbar.Add(_errorMessage, Severity.Error);
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+
+    // Discovery
+    private async Task LoadDiscoveryIfNeededAsync()
+    {
+        if (_discoveryLoaded) return;
+        await DiscoverTablesAsync();
+    }
+
+    private async Task DiscoverTablesAsync()
+    {
+        _discoveryLoading = true;
+        StateHasChanged();
+
+        try
+        {
+            var result = await AdminClient.DiscoverTablesAsync(ConnectionId);
+            _tables = result.Tables;
+            _discoveryLoaded = true;
+        }
+        catch (HonuaAdminApiException ex)
+        {
+            Snackbar.Add($"Discovery failed: {(int)ex.StatusCode} {ex.Message}", Severity.Error);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Discovery failed: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _discoveryLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private void ToggleColumns(TableInfo table)
+    {
+        var key = $"{table.Schema}.{table.Table}";
+        if (!_expandedTables.Remove(key))
+        {
+            _expandedTables.Add(key);
+        }
+    }
+
+    private bool IsColumnsExpanded(TableInfo table) => _expandedTables.Contains($"{table.Schema}.{table.Table}");
+
+    // Layers
+    private async Task LoadLayersIfNeededAsync()
+    {
+        if (_layersLoaded) return;
+        await LoadLayersAsync();
+    }
+
+    private async Task LoadLayersAsync()
+    {
+        _layersLoading = true;
+        StateHasChanged();
+
+        try
+        {
+            _layers = await AdminClient.ListLayersAsync(ConnectionId, serviceName: null);
+            _layersLoaded = true;
+        }
+        catch (HonuaAdminApiException ex)
+        {
+            Snackbar.Add($"Failed to load layers: {(int)ex.StatusCode} {ex.Message}", Severity.Error);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Failed to load layers: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _layersLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task ToggleLayerEnabledAsync(PublishedLayerSummary layer, bool enabled)
+    {
+        _layerBusy = true;
+        try
+        {
+            await AdminClient.SetLayerEnabledAsync(ConnectionId, layer.LayerId, enabled, layer.ServiceName);
+            Snackbar.Add($"Layer '{layer.LayerName}' {(enabled ? "enabled" : "disabled")}.", Severity.Success);
+            await LoadLayersAsync();
+        }
+        catch (HonuaAdminApiException ex)
+        {
+            Snackbar.Add($"Failed to update layer: {(int)ex.StatusCode} {ex.Message}", Severity.Error);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Failed to update layer: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _layerBusy = false;
+        }
+    }
+
+    // Health
+    private async Task TestHealthAsync()
+    {
+        _healthTesting = true;
+        StateHasChanged();
+
+        try
+        {
+            _healthResult = await AdminClient.TestConnectionAsync(ConnectionId);
+            if (_healthResult.IsHealthy)
+            {
+                Snackbar.Add("Connection is healthy.", Severity.Success);
+            }
+            else
+            {
+                Snackbar.Add($"Connection unhealthy: {_healthResult.Message}", Severity.Warning);
+            }
+            // Reload to get updated health status
+            await LoadConnectionAsync();
+        }
+        catch (HonuaAdminApiException ex)
+        {
+            Snackbar.Add($"Health test failed: {(int)ex.StatusCode} {ex.Message}", Severity.Error);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Health test failed: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _healthTesting = false;
+            StateHasChanged();
+        }
+    }
+}

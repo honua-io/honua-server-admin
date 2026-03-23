@@ -1,0 +1,211 @@
+@page "/connections"
+@inject IHonuaAdminClient AdminClient
+@inject ISnackbar Snackbar
+@inject NavigationManager Navigation
+@inject IDialogService DialogService
+
+<PageTitle>Connections — Honua Server Admin</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
+    <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-4">
+        <MudText Typo="Typo.h4">Connections</MudText>
+        <MudSpacer />
+        <MudButton Variant="Variant.Outlined" Color="Color.Secondary"
+                   StartIcon="@Icons.Material.Filled.Shield"
+                   OnClick="ValidateEncryptionAsync" Disabled="_busy">Validate Encryption</MudButton>
+        <MudButton Variant="Variant.Outlined" Color="Color.Warning"
+                   StartIcon="@Icons.Material.Filled.VpnKey"
+                   OnClick="RotateEncryptionKeyAsync" Disabled="_busy">Rotate Key</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                   StartIcon="@Icons.Material.Filled.Add"
+                   OnClick="NavigateToNew">Add Connection</MudButton>
+    </MudStack>
+
+    <ErrorBanner Message="@_errorMessage" />
+
+    @if (_loading)
+    {
+        <MudProgressLinear Indeterminate="true" Color="Color.Primary" Class="mb-4" />
+    }
+
+    @if (_connections is not null && _connections.Count == 0 && !_loading)
+    {
+        <EmptyState Icon="@Icons.Material.Filled.Cable" Title="No connections"
+                    Description="Add a database connection to get started.">
+            <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                       StartIcon="@Icons.Material.Filled.Add" OnClick="NavigateToNew">Add Connection</MudButton>
+        </EmptyState>
+    }
+    else if (_connections is not null)
+    {
+        <MudDataGrid T="SecureConnectionSummary" Items="_connections" Dense="true" Hover="true" Striped="true" Elevation="2">
+            <Columns>
+                <TemplateColumn T="SecureConnectionSummary" Title="Name">
+                    <CellTemplate>
+                        <MudLink Href="@GetConnectionUrl(context.Item)">@context.Item.Name</MudLink>
+                    </CellTemplate>
+                </TemplateColumn>
+                <PropertyColumn Property="x => x.Host" Title="Host" />
+                <PropertyColumn Property="x => x.DatabaseName" Title="Database" />
+                <TemplateColumn T="SecureConnectionSummary" Title="Health">
+                    <CellTemplate>
+                        <MudChip T="string" Size="Size.Small" Color="@GetHealthColor(context.Item.HealthStatus)" Variant="Variant.Filled">
+                            @(context.Item.HealthStatus ?? "Unknown")
+                        </MudChip>
+                    </CellTemplate>
+                </TemplateColumn>
+                <TemplateColumn T="SecureConnectionSummary" Title="Active">
+                    <CellTemplate>
+                        <MudIcon Icon="@(context.Item.IsActive ? Icons.Material.Filled.CheckCircle : Icons.Material.Filled.Cancel)"
+                                 Color="@(context.Item.IsActive ? Color.Success : Color.Default)" Size="Size.Small" />
+                    </CellTemplate>
+                </TemplateColumn>
+                <TemplateColumn T="SecureConnectionSummary" Title="Last Check">
+                    <CellTemplate>
+                        @(context.Item.LastHealthCheck?.ToString("g") ?? "Never")
+                    </CellTemplate>
+                </TemplateColumn>
+                <TemplateColumn T="SecureConnectionSummary" Title="Actions" StickyRight="true">
+                    <CellTemplate>
+                        <MudStack Row="true" Spacing="1">
+                            <MudIconButton Icon="@Icons.Material.Filled.NetworkCheck" Size="Size.Small" Color="Color.Info"
+                                           OnClick="() => TestConnectionAsync(context.Item)" Disabled="_busy"
+                                           aria-label="Test connection" />
+                            <MudIconButton Icon="@Icons.Material.Filled.Edit" Size="Size.Small" Color="Color.Primary"
+                                           OnClick="() => NavigateToConnection(context.Item)"
+                                           aria-label="Edit connection" />
+                            <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small" Color="Color.Error"
+                                           OnClick="() => DeleteConnectionAsync(context.Item)" Disabled="_busy"
+                                           aria-label="Delete connection" />
+                        </MudStack>
+                    </CellTemplate>
+                </TemplateColumn>
+            </Columns>
+        </MudDataGrid>
+    }
+</MudContainer>
+
+@code {
+    private IReadOnlyList<SecureConnectionSummary>? _connections;
+    private string? _errorMessage;
+    private bool _loading = true;
+    private bool _busy;
+
+    protected override async Task OnInitializedAsync() => await LoadConnectionsAsync();
+
+    private static string GetConnectionUrl(SecureConnectionSummary c) => $"/connections/{c.ConnectionId}";
+    private void NavigateToNew() => Navigation.NavigateTo("/connections/new");
+    private void NavigateToConnection(SecureConnectionSummary c) => Navigation.NavigateTo($"/connections/{c.ConnectionId}");
+
+    private static Color GetHealthColor(string? status) => status?.ToLowerInvariant() switch
+    {
+        "healthy" => Color.Success,
+        "unhealthy" => Color.Error,
+        "degraded" => Color.Warning,
+        _ => Color.Default
+    };
+
+    private async Task LoadConnectionsAsync()
+    {
+        _loading = true;
+        try
+        {
+            _connections = await AdminClient.ListConnectionsAsync();
+        }
+        catch (HonuaAdminApiException ex)
+        {
+            _errorMessage = $"Failed to load: {(int)ex.StatusCode} {ex.Message}";
+            Snackbar.Add(_errorMessage, Severity.Error);
+        }
+        catch (HttpRequestException ex)
+        {
+            _errorMessage = $"Connection failed: {ex.Message}";
+            Snackbar.Add(_errorMessage, Severity.Error);
+        }
+        finally { _loading = false; }
+    }
+
+    private async Task TestConnectionAsync(SecureConnectionSummary connection)
+    {
+        _busy = true; StateHasChanged();
+        try
+        {
+            var result = await AdminClient.TestConnectionAsync(connection.ConnectionId.ToString());
+            Snackbar.Add(result.IsHealthy ? $"'{connection.Name}' is healthy." : $"'{connection.Name}': {result.Message}",
+                         result.IsHealthy ? Severity.Success : Severity.Warning);
+            await LoadConnectionsAsync();
+        }
+        catch (HonuaAdminApiException ex) { Snackbar.Add($"Test failed: {ex.Message}", Severity.Error); }
+        catch (HttpRequestException ex) { Snackbar.Add($"Connection failed: {ex.Message}", Severity.Error); }
+        finally { _busy = false; StateHasChanged(); }
+    }
+
+    private async Task DeleteConnectionAsync(SecureConnectionSummary connection)
+    {
+        var parameters = new DialogParameters<ConfirmDialog>
+        {
+            { x => x.ContentText, $"Delete connection '{connection.Name}'? This cannot be undone." },
+            { x => x.ButtonText, "Delete" },
+            { x => x.ButtonColor, Color.Error }
+        };
+        var dialog = await DialogService.ShowAsync<ConfirmDialog>("Delete Connection", parameters);
+        var result = await dialog.Result;
+        if (result is null || result.Canceled) return;
+
+        _busy = true; StateHasChanged();
+        try
+        {
+            await AdminClient.DeleteConnectionAsync(connection.ConnectionId.ToString());
+            Snackbar.Add($"'{connection.Name}' deleted.", Severity.Success);
+            await LoadConnectionsAsync();
+        }
+        catch (HonuaAdminApiException ex) { Snackbar.Add($"Delete failed: {ex.Message}", Severity.Error); }
+        catch (HttpRequestException ex) { Snackbar.Add($"Connection failed: {ex.Message}", Severity.Error); }
+        finally { _busy = false; StateHasChanged(); }
+    }
+
+    private async Task ValidateEncryptionAsync()
+    {
+        var parameters = new DialogParameters<ConfirmDialog>
+        {
+            { x => x.ContentText, "Validate encryption for all stored credentials?" },
+            { x => x.ButtonText, "Validate" },
+            { x => x.ButtonColor, Color.Info }
+        };
+        var dialog = await DialogService.ShowAsync<ConfirmDialog>("Validate Encryption", parameters);
+        var result = await dialog.Result;
+        if (result is null || result.Canceled) return;
+
+        _busy = true; StateHasChanged();
+        try
+        {
+            var v = await AdminClient.ValidateEncryptionAsync();
+            Snackbar.Add(v.IsValid ? $"Encryption valid (key v{v.CurrentKeyVersion})" : $"Invalid: {v.Message}",
+                         v.IsValid ? Severity.Success : Severity.Error);
+        }
+        catch (HonuaAdminApiException ex) { Snackbar.Add($"Validation failed: {ex.Message}", Severity.Error); }
+        finally { _busy = false; StateHasChanged(); }
+    }
+
+    private async Task RotateEncryptionKeyAsync()
+    {
+        var parameters = new DialogParameters<ConfirmDialog>
+        {
+            { x => x.ContentText, "Rotate the encryption key? All credentials will be re-encrypted. This cannot be reversed." },
+            { x => x.ButtonText, "Rotate Key" },
+            { x => x.ButtonColor, Color.Warning }
+        };
+        var dialog = await DialogService.ShowAsync<ConfirmDialog>("Rotate Encryption Key", parameters);
+        var result = await dialog.Result;
+        if (result is null || result.Canceled) return;
+
+        _busy = true; StateHasChanged();
+        try
+        {
+            var r = await AdminClient.RotateEncryptionKeyAsync();
+            Snackbar.Add($"Key rotated: v{r.PreviousKeyVersion} -> v{r.NewKeyVersion}", Severity.Success);
+        }
+        catch (HonuaAdminApiException ex) { Snackbar.Add($"Rotation failed: {ex.Message}", Severity.Error); }
+        finally { _busy = false; StateHasChanged(); }
+    }
+}

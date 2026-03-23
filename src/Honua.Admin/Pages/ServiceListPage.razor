@@ -1,0 +1,67 @@
+@page "/services"
+@inherits AdminPageBase
+
+<PageTitle>Services — Honua Server Admin</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="mt-4">
+    <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-4">
+        <MudIcon Icon="@Icons.Material.Filled.CloudQueue" Size="Size.Large" Color="Color.Primary" />
+        <MudText Typo="Typo.h4">Services</MudText>
+        <MudSpacer />
+        <MudIconButton Icon="@Icons.Material.Filled.Refresh" OnClick="LoadAsync" Disabled="IsLoading" />
+    </MudStack>
+
+    <ErrorBanner Message="@ErrorMessage" />
+    <LoadingOverlay Visible="IsLoading" />
+
+    @if (!IsLoading && _services is not null)
+    {
+        @if (_services.Count == 0)
+        {
+            <EmptyState Icon="@Icons.Material.Filled.CloudOff"
+                        Title="No services found"
+                        Description="No services have been registered yet." />
+        }
+        else
+        {
+            <MudDataGrid T="ServiceSummary" Items="_services" Hover="true" Dense="true"
+                         RowClick="@(args => Navigation.NavigateTo($"/services/{args.Item.ServiceName}"))"
+                         RowClass="cursor-pointer">
+                <Columns>
+                    <PropertyColumn Property="x => x.ServiceName" Title="Service Name" />
+                    <PropertyColumn Property="x => x.Description" Title="Description" />
+                    <PropertyColumn Property="x => x.LayerCount" Title="Layers" />
+                    <TemplateColumn Title="Enabled Protocols">
+                        <CellTemplate>
+                            @if (context.Item.EnabledProtocols is { Length: > 0 })
+                            {
+                                @foreach (var protocol in context.Item.EnabledProtocols)
+                                {
+                                    <MudChip T="string" Size="Size.Small" Color="Color.Primary" Variant="Variant.Outlined">@protocol</MudChip>
+                                }
+                            }
+                            else
+                            {
+                                <MudText Typo="Typo.body2" Color="Color.Secondary">None</MudText>
+                            }
+                        </CellTemplate>
+                    </TemplateColumn>
+                </Columns>
+            </MudDataGrid>
+        }
+    }
+</MudContainer>
+
+@code {
+    private IReadOnlyList<ServiceSummary>? _services;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        _services = await ExecuteAsync(() => AdminClient.ListServicesAsync());
+    }
+}

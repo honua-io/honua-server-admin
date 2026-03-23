@@ -1,0 +1,342 @@
+@page "/observability"
+@inject IHonuaAdminClient AdminClient
+@inject ISnackbar Snackbar
+
+<PageTitle>Observability — Honua Server Admin</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="mt-4">
+    <MudText Typo="Typo.h4" GutterBottom="true">Observability</MudText>
+
+    <MudTabs Elevation="2" Rounded="true" ApplyEffectsToContainer="true" Class="mt-4">
+        <MudTabPanel Text="Errors" Icon="@Icons.Material.Filled.BugReport">
+            <MudCard Class="ma-4">
+                <MudCardContent>
+                    @if (_loadingErrors)
+                    {
+                        <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="200px" />
+                    }
+                    else if (_errorsError is not null)
+                    {
+                        <ErrorBanner Message="@_errorsError" />
+                    }
+                    else if (_recentErrors is not null && _recentErrors.Count > 0)
+                    {
+                        <MudDataGrid Items="_recentErrors" Dense="true" Hover="true" Filterable="true">
+                            <Columns>
+                                <TemplateColumn T="RecentError" Title="Severity" SortBy="x => x.Severity">
+                                    <CellTemplate>
+                                        <MudChip T="string" Size="Size.Small" Color="@GetSeverityColor(context.Item.Severity)">@context.Item.Severity</MudChip>
+                                    </CellTemplate>
+                                </TemplateColumn>
+                                <PropertyColumn Property="x => x.Message" Title="Message" />
+                                <PropertyColumn Property="x => x.Source" Title="Source" />
+                                <PropertyColumn Property="x => x.Count" Title="Count" />
+                                <TemplateColumn T="RecentError" Title="Occurred" SortBy="x => x.OccurredAt">
+                                    <CellTemplate>@context.Item.OccurredAt.ToString("g")</CellTemplate>
+                                </TemplateColumn>
+                            </Columns>
+                        </MudDataGrid>
+                    }
+                    else
+                    {
+                        <EmptyState Icon="@Icons.Material.Filled.CheckCircle" Title="No recent errors"
+                                    Description="No errors have been recorded recently." />
+                    }
+                </MudCardContent>
+                <MudCardActions>
+                    <MudButton Variant="Variant.Outlined" Color="Color.Primary" OnClick="LoadErrorsAsync"
+                               StartIcon="@Icons.Material.Filled.Refresh" aria-label="Refresh errors">Refresh</MudButton>
+                </MudCardActions>
+            </MudCard>
+        </MudTabPanel>
+
+        <MudTabPanel Text="Telemetry" Icon="@Icons.Material.Filled.Analytics">
+            <MudCard Class="ma-4">
+                <MudCardContent>
+                    @if (_loadingTelemetry)
+                    {
+                        <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="200px" />
+                    }
+                    else if (_telemetryError is not null)
+                    {
+                        <ErrorBanner Message="@_telemetryError" />
+                    }
+                    else if (_telemetry is not null)
+                    {
+                        <MudGrid>
+                            <MudItem xs="12" md="6">
+                                <MudField Label="Status" Variant="Variant.Outlined">
+                                    <MudChip T="string" Color="@(_telemetry.Enabled ? Color.Success : Color.Default)" Size="Size.Small">
+                                        @(_telemetry.Enabled ? "Enabled" : "Disabled")
+                                    </MudChip>
+                                </MudField>
+                            </MudItem>
+                            <MudItem xs="12" md="6">
+                                <MudField Label="Provider" Variant="Variant.Outlined">@_telemetry.Provider</MudField>
+                            </MudItem>
+                            @if (!string.IsNullOrEmpty(_telemetry.Endpoint))
+                            {
+                                <MudItem xs="12">
+                                    <MudField Label="Endpoint" Variant="Variant.Outlined">@_telemetry.Endpoint</MudField>
+                                </MudItem>
+                            }
+                            <MudItem xs="4">
+                                <MudField Label="Metrics" Variant="Variant.Outlined">
+                                    <MudIcon Icon="@(_telemetry.MetricsEnabled ? Icons.Material.Filled.Check : Icons.Material.Filled.Close)"
+                                             Color="@(_telemetry.MetricsEnabled ? Color.Success : Color.Error)" Size="Size.Small" />
+                                </MudField>
+                            </MudItem>
+                            <MudItem xs="4">
+                                <MudField Label="Traces" Variant="Variant.Outlined">
+                                    <MudIcon Icon="@(_telemetry.TracesEnabled ? Icons.Material.Filled.Check : Icons.Material.Filled.Close)"
+                                             Color="@(_telemetry.TracesEnabled ? Color.Success : Color.Error)" Size="Size.Small" />
+                                </MudField>
+                            </MudItem>
+                            <MudItem xs="4">
+                                <MudField Label="Logs" Variant="Variant.Outlined">
+                                    <MudIcon Icon="@(_telemetry.LogsEnabled ? Icons.Material.Filled.Check : Icons.Material.Filled.Close)"
+                                             Color="@(_telemetry.LogsEnabled ? Color.Success : Color.Error)" Size="Size.Small" />
+                                </MudField>
+                            </MudItem>
+                            @if (_telemetry.LastExportAt.HasValue)
+                            {
+                                <MudItem xs="12">
+                                    <MudField Label="Last Export" Variant="Variant.Outlined">@_telemetry.LastExportAt.Value.ToString("g")</MudField>
+                                </MudItem>
+                            }
+                        </MudGrid>
+                    }
+                </MudCardContent>
+                <MudCardActions>
+                    <MudButton Variant="Variant.Outlined" Color="Color.Primary" OnClick="LoadTelemetryAsync"
+                               StartIcon="@Icons.Material.Filled.Refresh" aria-label="Refresh telemetry">Refresh</MudButton>
+                </MudCardActions>
+            </MudCard>
+        </MudTabPanel>
+
+        <MudTabPanel Text="Migrations" Icon="@Icons.Material.Filled.Storage">
+            <MudCard Class="ma-4">
+                <MudCardContent>
+                    @if (_loadingMigrations)
+                    {
+                        <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="200px" />
+                    }
+                    else if (_migrationsError is not null)
+                    {
+                        <ErrorBanner Message="@_migrationsError" />
+                    }
+                    else if (_migrations is not null)
+                    {
+                        <MudGrid>
+                            <MudItem xs="12" md="4">
+                                <MudField Label="Current Version" Variant="Variant.Outlined">@_migrations.CurrentVersion</MudField>
+                            </MudItem>
+                            <MudItem xs="12" md="4">
+                                <MudField Label="Target Version" Variant="Variant.Outlined">@(_migrations.TargetVersion ?? "N/A")</MudField>
+                            </MudItem>
+                            <MudItem xs="12" md="4">
+                                <MudField Label="Status" Variant="Variant.Outlined">
+                                    <MudChip T="string" Color="@(_migrations.IsUpToDate ? Color.Success : Color.Warning)" Size="Size.Small">
+                                        @(_migrations.IsUpToDate ? "Up to Date" : $"{_migrations.PendingMigrations.Count} Pending")
+                                    </MudChip>
+                                </MudField>
+                            </MudItem>
+                        </MudGrid>
+                        @if (_migrations.PendingMigrations.Count > 0)
+                        {
+                            <MudText Typo="Typo.subtitle1" Class="mt-4 mb-2">Pending Migrations</MudText>
+                            <MudList T="string" Dense="true">
+                                @foreach (var m in _migrations.PendingMigrations)
+                                {
+                                    <MudListItem T="string" Icon="@Icons.Material.Filled.Schedule" IconColor="Color.Warning">@m</MudListItem>
+                                }
+                            </MudList>
+                        }
+                        @if (_migrations.AppliedMigrations.Count > 0)
+                        {
+                            <MudText Typo="Typo.subtitle1" Class="mt-4 mb-2">Applied Migrations</MudText>
+                            <MudDataGrid Items="_migrations.AppliedMigrations" Dense="true" Hover="true">
+                                <Columns>
+                                    <PropertyColumn Property="x => x.Version" Title="Version" />
+                                    <PropertyColumn Property="x => x.Name" Title="Name" />
+                                    <TemplateColumn T="AppliedMigration" Title="Applied At">
+                                        <CellTemplate>@context.Item.AppliedAt.ToString("g")</CellTemplate>
+                                    </TemplateColumn>
+                                </Columns>
+                            </MudDataGrid>
+                        }
+                    }
+                </MudCardContent>
+                <MudCardActions>
+                    <MudButton Variant="Variant.Outlined" Color="Color.Primary" OnClick="LoadMigrationsAsync"
+                               StartIcon="@Icons.Material.Filled.Refresh" aria-label="Refresh migrations">Refresh</MudButton>
+                </MudCardActions>
+            </MudCard>
+        </MudTabPanel>
+
+        <MudTabPanel Text="Connections" Icon="@Icons.Material.Filled.Cable">
+            <MudCard Class="ma-4">
+                <MudCardContent>
+                    @if (_loadingConnections)
+                    {
+                        <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="200px" />
+                    }
+                    else if (_connectionsError is not null)
+                    {
+                        <ErrorBanner Message="@_connectionsError" />
+                    }
+                    else if (_connections is not null)
+                    {
+                        <MudDataGrid Items="@_connections" Dense="true" Hover="true">
+                            <Columns>
+                                <PropertyColumn Property="x => x.Name" Title="Connection" />
+                                <PropertyColumn Property="x => x.Host" Title="Host" />
+                                <PropertyColumn Property="x => x.DatabaseName" Title="Database" />
+                                <TemplateColumn T="SecureConnectionSummary" Title="Health">
+                                    <CellTemplate>
+                                        <MudChip T="string" Size="Size.Small"
+                                                 Color="@(context.Item.HealthStatus == "Healthy" ? Color.Success : context.Item.HealthStatus == "Unhealthy" ? Color.Error : Color.Warning)">
+                                            @context.Item.HealthStatus
+                                        </MudChip>
+                                    </CellTemplate>
+                                </TemplateColumn>
+                                <TemplateColumn T="SecureConnectionSummary" Title="Active">
+                                    <CellTemplate>
+                                        <MudIcon Icon="@(context.Item.IsActive ? Icons.Material.Filled.CheckCircle : Icons.Material.Filled.Cancel)"
+                                                 Color="@(context.Item.IsActive ? Color.Success : Color.Default)" Size="Size.Small" />
+                                    </CellTemplate>
+                                </TemplateColumn>
+                                <TemplateColumn T="SecureConnectionSummary" Title="Last Check">
+                                    <CellTemplate>@(context.Item.LastHealthCheck?.ToString("g") ?? "Never")</CellTemplate>
+                                </TemplateColumn>
+                            </Columns>
+                        </MudDataGrid>
+                    }
+                </MudCardContent>
+                <MudCardActions>
+                    <MudButton Variant="Variant.Outlined" Color="Color.Primary" OnClick="LoadConnectionsAsync"
+                               StartIcon="@Icons.Material.Filled.Refresh" aria-label="Refresh connections">Refresh</MudButton>
+                </MudCardActions>
+            </MudCard>
+        </MudTabPanel>
+
+        <MudTabPanel Text="Encryption" Icon="@Icons.Material.Filled.Security">
+            <MudCard Class="ma-4">
+                <MudCardContent>
+                    @if (_encryptionResult is not null)
+                    {
+                        <MudGrid>
+                            <MudItem xs="12" md="6">
+                                <MudField Label="Encryption Status" Variant="Variant.Outlined">
+                                    <MudChip T="string" Color="@(_encryptionResult.IsValid ? Color.Success : Color.Error)" Size="Size.Small">
+                                        @(_encryptionResult.IsValid ? "Valid" : "Invalid")
+                                    </MudChip>
+                                </MudField>
+                            </MudItem>
+                            <MudItem xs="12" md="6">
+                                <MudField Label="Key Version" Variant="Variant.Outlined">@_encryptionResult.CurrentKeyVersion</MudField>
+                            </MudItem>
+                            <MudItem xs="12">
+                                <MudField Label="Message" Variant="Variant.Outlined">@_encryptionResult.Message</MudField>
+                            </MudItem>
+                        </MudGrid>
+                    }
+                    else
+                    {
+                        <MudText Typo="Typo.body2" Color="Color.Secondary">Click "Validate" to check encryption status.</MudText>
+                    }
+                </MudCardContent>
+                <MudCardActions>
+                    <MudButton Variant="Variant.Outlined" Color="Color.Primary" OnClick="ValidateEncryptionAsync"
+                               Disabled="_validatingEncryption" StartIcon="@Icons.Material.Filled.VerifiedUser"
+                               aria-label="Validate encryption">@(_validatingEncryption ? "Validating..." : "Validate")</MudButton>
+                </MudCardActions>
+            </MudCard>
+        </MudTabPanel>
+    </MudTabs>
+</MudContainer>
+
+@code {
+    private IReadOnlyList<RecentError>? _recentErrors;
+    private bool _loadingErrors = true;
+    private string? _errorsError;
+
+    private TelemetryStatus? _telemetry;
+    private bool _loadingTelemetry = true;
+    private string? _telemetryError;
+
+    private MigrationStatus? _migrations;
+    private bool _loadingMigrations = true;
+    private string? _migrationsError;
+
+    private IReadOnlyList<SecureConnectionSummary>? _connections;
+    private bool _loadingConnections = true;
+    private string? _connectionsError;
+
+    private EncryptionValidationResult? _encryptionResult;
+    private bool _validatingEncryption;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await Task.WhenAll(LoadErrorsAsync(), LoadTelemetryAsync(), LoadMigrationsAsync(), LoadConnectionsAsync());
+    }
+
+    private async Task LoadErrorsAsync()
+    {
+        _loadingErrors = true; _errorsError = null; StateHasChanged();
+        try { _recentErrors = await AdminClient.GetRecentErrorsAsync(limit: 50); }
+        catch (HonuaAdminApiException ex) { _errorsError = $"{(int)ex.StatusCode}: {ex.Message}"; }
+        catch (HttpRequestException ex) { _errorsError = $"Connection failed: {ex.Message}"; }
+        finally { _loadingErrors = false; StateHasChanged(); }
+    }
+
+    private async Task LoadTelemetryAsync()
+    {
+        _loadingTelemetry = true; _telemetryError = null; StateHasChanged();
+        try { _telemetry = await AdminClient.GetTelemetryStatusAsync(); }
+        catch (HonuaAdminApiException ex) { _telemetryError = $"{(int)ex.StatusCode}: {ex.Message}"; }
+        catch (HttpRequestException ex) { _telemetryError = $"Connection failed: {ex.Message}"; }
+        finally { _loadingTelemetry = false; StateHasChanged(); }
+    }
+
+    private async Task LoadMigrationsAsync()
+    {
+        _loadingMigrations = true; _migrationsError = null; StateHasChanged();
+        try { _migrations = await AdminClient.GetMigrationStatusAsync(); }
+        catch (HonuaAdminApiException ex) { _migrationsError = $"{(int)ex.StatusCode}: {ex.Message}"; }
+        catch (HttpRequestException ex) { _migrationsError = $"Connection failed: {ex.Message}"; }
+        finally { _loadingMigrations = false; StateHasChanged(); }
+    }
+
+    private async Task LoadConnectionsAsync()
+    {
+        _loadingConnections = true; _connectionsError = null; StateHasChanged();
+        try { _connections = await AdminClient.ListConnectionsAsync(); }
+        catch (HonuaAdminApiException ex) { _connectionsError = $"{(int)ex.StatusCode}: {ex.Message}"; }
+        catch (HttpRequestException ex) { _connectionsError = $"Connection failed: {ex.Message}"; }
+        finally { _loadingConnections = false; StateHasChanged(); }
+    }
+
+    private async Task ValidateEncryptionAsync()
+    {
+        _validatingEncryption = true;
+        try
+        {
+            _encryptionResult = await AdminClient.ValidateEncryptionAsync();
+            Snackbar.Add(_encryptionResult.IsValid ? "Encryption is valid" : "Encryption validation failed",
+                         _encryptionResult.IsValid ? Severity.Success : Severity.Error);
+        }
+        catch (HonuaAdminApiException ex) { Snackbar.Add($"Validation failed: {ex.Message}", Severity.Error); }
+        catch (HttpRequestException ex) { Snackbar.Add($"Connection failed: {ex.Message}", Severity.Error); }
+        finally { _validatingEncryption = false; }
+    }
+
+    private static Color GetSeverityColor(string severity) => severity.ToLowerInvariant() switch
+    {
+        "critical" or "fatal" => Color.Error,
+        "error" => Color.Error,
+        "warning" => Color.Warning,
+        "info" or "information" => Color.Info,
+        _ => Color.Default
+    };
+}

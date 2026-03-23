@@ -1,0 +1,351 @@
+@page "/server"
+@inject IHonuaAdminClient AdminClient
+@inject ISnackbar Snackbar
+
+<PageTitle>Server Info — Honua Server Admin</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="mt-4">
+    <MudText Typo="Typo.h4" GutterBottom="true">Server Information</MudText>
+
+    <ErrorBanner Message="@_errorMessage" OnDismissed="() => _errorMessage = null" />
+
+    <MudGrid>
+        @* Version Card *@
+        <MudItem xs="12" md="6">
+            <MudCard Elevation="2">
+                <MudCardHeader>
+                    <MudStack Row="true" AlignItems="AlignItems.Center">
+                        <MudIcon Icon="@Icons.Material.Filled.Info" Color="Color.Primary" />
+                        <MudText Typo="Typo.h6">Version</MudText>
+                    </MudStack>
+                </MudCardHeader>
+                <MudCardContent>
+                    @if (_loadingVersion)
+                    {
+                        <MudSkeleton Width="60%" Height="28px" Class="mb-2" />
+                        <MudSkeleton Width="80%" Height="20px" Class="mb-1" />
+                        <MudSkeleton Width="70%" Height="20px" />
+                    }
+                    else if (_version is not null)
+                    {
+                        <MudSimpleTable Dense="true" Hover="true" Bordered="false" Elevation="0">
+                            <tbody>
+                                <tr>
+                                    <td><MudText Typo="Typo.body2"><strong>Version</strong></MudText></td>
+                                    <td><MudText Typo="Typo.body2">@_version.Version</MudText></td>
+                                </tr>
+                                <tr>
+                                    <td><MudText Typo="Typo.body2"><strong>Metadata API Version</strong></MudText></td>
+                                    <td><MudText Typo="Typo.body2">@_version.MetadataApiVersion</MudText></td>
+                                </tr>
+                                <tr>
+                                    <td><MudText Typo="Typo.body2"><strong>Server Time</strong></MudText></td>
+                                    <td><MudText Typo="Typo.body2">@_version.ServerTime.ToString("u")</MudText></td>
+                                </tr>
+                            </tbody>
+                        </MudSimpleTable>
+                    }
+                </MudCardContent>
+            </MudCard>
+        </MudItem>
+
+        @* Compatibility Card *@
+        <MudItem xs="12" md="6">
+            <MudCard Elevation="2">
+                <MudCardHeader>
+                    <MudStack Row="true" AlignItems="AlignItems.Center">
+                        <MudIcon Icon="@Icons.Material.Filled.Verified" Color="Color.Primary" />
+                        <MudText Typo="Typo.h6">Compatibility</MudText>
+                    </MudStack>
+                </MudCardHeader>
+                <MudCardContent>
+                    @if (_loadingCompatibility)
+                    {
+                        <MudSkeleton Width="50%" Height="28px" Class="mb-2" />
+                        <MudSkeleton Width="70%" Height="20px" Class="mb-1" />
+                        <MudSkeleton Width="60%" Height="20px" />
+                    }
+                    else if (_compatibility is not null)
+                    {
+                        <MudAlert Severity="@(_compatibility.IsSupported ? Severity.Success : Severity.Error)" Dense="true" Class="mb-3">
+                            @(_compatibility.IsSupported ? "Server is compatible" : $"Not supported: {_compatibility.UnsupportedReason}")
+                        </MudAlert>
+                        <MudSimpleTable Dense="true" Hover="true" Bordered="false" Elevation="0">
+                            <tbody>
+                                <tr>
+                                    <td><MudText Typo="Typo.body2"><strong>Server Version</strong></MudText></td>
+                                    <td><MudText Typo="Typo.body2">@_compatibility.ServerVersion</MudText></td>
+                                </tr>
+                                <tr>
+                                    <td><MudText Typo="Typo.body2"><strong>Release Channel</strong></MudText></td>
+                                    <td><MudText Typo="Typo.body2">@_compatibility.ReleaseChannel</MudText></td>
+                                </tr>
+                            </tbody>
+                        </MudSimpleTable>
+                        <MudText Typo="Typo.subtitle2" Class="mt-3 mb-1">Features</MudText>
+                        <MudSimpleTable Dense="true" Hover="true" Bordered="false" Elevation="0">
+                            <thead>
+                                <tr>
+                                    <th>Feature</th>
+                                    <th>Supported</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><MudText Typo="Typo.body2">Metadata Resources</MudText></td>
+                                    <td>
+                                        <MudIcon Icon="@(_compatibility.Features.MetadataResources ? Icons.Material.Filled.CheckCircle : Icons.Material.Filled.Cancel)"
+                                                 Size="Size.Small"
+                                                 Color="@(_compatibility.Features.MetadataResources ? Color.Success : Color.Error)" />
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td><MudText Typo="Typo.body2">Manifest Export</MudText></td>
+                                    <td>
+                                        <MudIcon Icon="@(_compatibility.Features.ManifestExport ? Icons.Material.Filled.CheckCircle : Icons.Material.Filled.Cancel)"
+                                                 Size="Size.Small"
+                                                 Color="@(_compatibility.Features.ManifestExport ? Color.Success : Color.Error)" />
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td><MudText Typo="Typo.body2">Manifest Apply</MudText></td>
+                                    <td>
+                                        <MudIcon Icon="@(_compatibility.Features.ManifestApply ? Icons.Material.Filled.CheckCircle : Icons.Material.Filled.Cancel)"
+                                                 Size="Size.Small"
+                                                 Color="@(_compatibility.Features.ManifestApply ? Color.Success : Color.Error)" />
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td><MudText Typo="Typo.body2">Manifest Dry Run</MudText></td>
+                                    <td>
+                                        <MudIcon Icon="@(_compatibility.Features.ManifestDryRun ? Icons.Material.Filled.CheckCircle : Icons.Material.Filled.Cancel)"
+                                                 Size="Size.Small"
+                                                 Color="@(_compatibility.Features.ManifestDryRun ? Color.Success : Color.Error)" />
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td><MudText Typo="Typo.body2">Manifest Prune</MudText></td>
+                                    <td>
+                                        <MudIcon Icon="@(_compatibility.Features.ManifestPrune ? Icons.Material.Filled.CheckCircle : Icons.Material.Filled.Cancel)"
+                                                 Size="Size.Small"
+                                                 Color="@(_compatibility.Features.ManifestPrune ? Color.Success : Color.Error)" />
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </MudSimpleTable>
+                    }
+                </MudCardContent>
+            </MudCard>
+        </MudItem>
+
+        @* Capabilities Card *@
+        <MudItem xs="12">
+            <MudCard Elevation="2">
+                <MudCardHeader>
+                    <MudStack Row="true" AlignItems="AlignItems.Center">
+                        <MudIcon Icon="@Icons.Material.Filled.Extension" Color="Color.Primary" />
+                        <MudText Typo="Typo.h6">Capabilities</MudText>
+                    </MudStack>
+                </MudCardHeader>
+                <MudCardContent>
+                    @if (_loadingCapabilities)
+                    {
+                        <MudSkeleton Width="100%" Height="20px" Class="mb-1" />
+                        <MudSkeleton Width="90%" Height="20px" Class="mb-1" />
+                        <MudSkeleton Width="85%" Height="20px" />
+                    }
+                    else if (_capabilities is not null)
+                    {
+                        <MudGrid>
+                            <MudItem xs="12" sm="6" md="4">
+                                <MudText Typo="Typo.subtitle2" Class="mb-1">Metadata API Versions</MudText>
+                                <MudChipSet T="string" ReadOnly="true">
+                                    @if (_capabilities.MetadataApiVersions is not null)
+                                    {
+                                        @foreach (var v in _capabilities.MetadataApiVersions)
+                                        {
+                                            <MudChip T="string" Size="Size.Small" Color="Color.Default" Variant="Variant.Outlined">@v</MudChip>
+                                        }
+                                    }
+                                </MudChipSet>
+                            </MudItem>
+                            <MudItem xs="12" sm="6" md="4">
+                                <MudText Typo="Typo.subtitle2" Class="mb-1">Resource Kinds</MudText>
+                                <MudChipSet T="string" ReadOnly="true">
+                                    @if (_capabilities.ResourceKinds is not null)
+                                    {
+                                        @foreach (var kind in _capabilities.ResourceKinds)
+                                        {
+                                            <MudChip T="string" Size="Size.Small" Color="Color.Default" Variant="Variant.Outlined">@kind</MudChip>
+                                        }
+                                    }
+                                </MudChipSet>
+                            </MudItem>
+                            <MudItem xs="12" sm="6" md="4">
+                                <MudText Typo="Typo.subtitle2" Class="mb-1">Manifest Support</MudText>
+                                <MudStack Spacing="1">
+                                    <MudChip T="string" Size="Size.Small"
+                                             Color="@(_capabilities.ManifestSupported ? Color.Success : Color.Default)"
+                                             Variant="Variant.Filled">
+                                        Manifest: @(_capabilities.ManifestSupported ? "Yes" : "No")
+                                    </MudChip>
+                                    <MudChip T="string" Size="Size.Small"
+                                             Color="@(_capabilities.ManifestDryRunSupported ? Color.Success : Color.Default)"
+                                             Variant="Variant.Filled">
+                                        Dry Run: @(_capabilities.ManifestDryRunSupported ? "Yes" : "No")
+                                    </MudChip>
+                                    <MudChip T="string" Size="Size.Small"
+                                             Color="@(_capabilities.ManifestPruneSupported ? Color.Success : Color.Default)"
+                                             Variant="Variant.Filled">
+                                        Prune: @(_capabilities.ManifestPruneSupported ? "Yes" : "No")
+                                    </MudChip>
+                                </MudStack>
+                            </MudItem>
+                        </MudGrid>
+                    }
+                </MudCardContent>
+            </MudCard>
+        </MudItem>
+
+        @* Configuration Card *@
+        <MudItem xs="12">
+            <MudCard Elevation="2">
+                <MudCardHeader>
+                    <MudStack Row="true" AlignItems="AlignItems.Center">
+                        <MudIcon Icon="@Icons.Material.Filled.Settings" Color="Color.Primary" />
+                        <MudText Typo="Typo.h6">Configuration</MudText>
+                    </MudStack>
+                </MudCardHeader>
+                <MudCardContent>
+                    @if (_loadingConfig)
+                    {
+                        <MudSkeleton Width="100%" Height="300px" />
+                    }
+                    else
+                    {
+                        <MudTextField T="string" Value="@_configJson" ReadOnly="true"
+                                      Variant="Variant.Outlined" Lines="20"
+                                      FullWidth="true"
+                                      Style="font-family: monospace; font-size: 0.85rem;" />
+                    }
+                </MudCardContent>
+            </MudCard>
+        </MudItem>
+    </MudGrid>
+</MudContainer>
+
+@code {
+    private AdminVersionResponse? _version;
+    private AdminCapabilitiesResponse? _capabilities;
+    private ServerCompatibilityResult? _compatibility;
+    private string _configJson = string.Empty;
+    private string? _errorMessage;
+
+    private bool _loadingVersion = true;
+    private bool _loadingCapabilities = true;
+    private bool _loadingCompatibility = true;
+    private bool _loadingConfig = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var versionTask = LoadVersionAsync();
+        var capabilitiesTask = LoadCapabilitiesAsync();
+        var compatibilityTask = LoadCompatibilityAsync();
+        var configTask = LoadConfigAsync();
+
+        await Task.WhenAll(versionTask, capabilitiesTask, compatibilityTask, configTask);
+    }
+
+    private async Task LoadVersionAsync()
+    {
+        try
+        {
+            _version = await AdminClient.GetVersionAsync();
+        }
+        catch (HonuaAdminApiException ex)
+        {
+            _errorMessage = $"Failed to load version: {(int)ex.StatusCode} {ex.Message}";
+            Snackbar.Add(_errorMessage, Severity.Error);
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Failed to load version: {ex.Message}";
+            Snackbar.Add(_errorMessage, Severity.Error);
+        }
+        finally
+        {
+            _loadingVersion = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task LoadCapabilitiesAsync()
+    {
+        try
+        {
+            _capabilities = await AdminClient.GetCapabilitiesAsync();
+        }
+        catch (HonuaAdminApiException ex)
+        {
+            _errorMessage = $"Failed to load capabilities: {(int)ex.StatusCode} {ex.Message}";
+            Snackbar.Add(_errorMessage, Severity.Error);
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Failed to load capabilities: {ex.Message}";
+            Snackbar.Add(_errorMessage, Severity.Error);
+        }
+        finally
+        {
+            _loadingCapabilities = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task LoadCompatibilityAsync()
+    {
+        try
+        {
+            _compatibility = await AdminClient.CheckCompatibilityAsync();
+        }
+        catch (HonuaAdminApiException ex)
+        {
+            _errorMessage = $"Failed to check compatibility: {(int)ex.StatusCode} {ex.Message}";
+            Snackbar.Add(_errorMessage, Severity.Error);
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Failed to check compatibility: {ex.Message}";
+            Snackbar.Add(_errorMessage, Severity.Error);
+        }
+        finally
+        {
+            _loadingCompatibility = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task LoadConfigAsync()
+    {
+        try
+        {
+            var config = await AdminClient.GetConfigAsync();
+            _configJson = JsonSerializer.Serialize(config, new JsonSerializerOptions { WriteIndented = true });
+        }
+        catch (HonuaAdminApiException ex)
+        {
+            _errorMessage = $"Failed to load config: {(int)ex.StatusCode} {ex.Message}";
+            Snackbar.Add(_errorMessage, Severity.Error);
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Failed to load config: {ex.Message}";
+            Snackbar.Add(_errorMessage, Severity.Error);
+        }
+        finally
+        {
+            _loadingConfig = false;
+            StateHasChanged();
+        }
+    }
+}

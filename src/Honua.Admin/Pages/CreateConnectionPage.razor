@@ -1,0 +1,270 @@
+@page "/connections/new"
+@inject IHonuaAdminClient AdminClient
+@inject ISnackbar Snackbar
+@inject NavigationManager Navigation
+
+<PageTitle>New Connection — Honua Server Admin</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Medium" Class="mt-4">
+    <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-4">
+        <MudIconButton Icon="@Icons.Material.Filled.ArrowBack"
+                       OnClick='() => Navigation.NavigateTo("/connections")' />
+        <MudText Typo="Typo.h4">New Connection</MudText>
+    </MudStack>
+
+    <ErrorBanner Message="@_errorMessage" OnDismissed="() => _errorMessage = null" />
+
+    <MudCard Elevation="2">
+        <MudCardContent>
+            <MudForm @ref="_form">
+                <MudText Typo="Typo.h6" Class="mb-3">Connection Details</MudText>
+
+                <MudTextField @bind-Value="_name" Label="Name" Required="true"
+                              RequiredError="Name is required"
+                              Variant="Variant.Outlined" Class="mb-3" />
+
+                <MudTextField @bind-Value="_description" Label="Description"
+                              Variant="Variant.Outlined" Lines="2" Class="mb-3" />
+
+                <MudGrid>
+                    <MudItem xs="12" sm="8">
+                        <MudTextField @bind-Value="_host" Label="Host" Required="true"
+                                      RequiredError="Host is required"
+                                      Placeholder="db.example.com"
+                                      Variant="Variant.Outlined" />
+                    </MudItem>
+                    <MudItem xs="12" sm="4">
+                        <MudNumericField @bind-Value="_port" Label="Port"
+                                         Min="1" Max="65535"
+                                         Variant="Variant.Outlined" />
+                    </MudItem>
+                </MudGrid>
+
+                <MudTextField @bind-Value="_databaseName" Label="Database Name" Required="true"
+                              RequiredError="Database name is required"
+                              Variant="Variant.Outlined" Class="mb-3 mt-3" />
+
+                <MudTextField @bind-Value="_username" Label="Username" Required="true"
+                              RequiredError="Username is required"
+                              Variant="Variant.Outlined" Class="mb-3" />
+
+                <MudDivider Class="my-4" />
+
+                <MudText Typo="Typo.h6" Class="mb-3">Credentials</MudText>
+
+                <MudToggleGroup T="string" @bind-Value="_credentialMode" Color="Color.Primary"
+                                Outlined="true" Class="mb-4">
+                    <MudToggleItem T="string" Value="@("password")" Text="Managed Password" />
+                    <MudToggleItem T="string" Value="@("secret")" Text="External Secret Reference" />
+                </MudToggleGroup>
+
+                @if (_credentialMode == "password")
+                {
+                    <MudTextField @bind-Value="_password" Label="Password" Required="true"
+                                  RequiredError="Password is required"
+                                  InputType="@(_showPassword ? InputType.Text : InputType.Password)"
+                                  Variant="Variant.Outlined"
+                                  Adornment="Adornment.End"
+                                  AdornmentIcon="@(_showPassword ? Icons.Material.Filled.VisibilityOff : Icons.Material.Filled.Visibility)"
+                                  OnAdornmentClick="() => _showPassword = !_showPassword"
+                                  Class="mb-3" />
+                }
+                else
+                {
+                    <MudTextField @bind-Value="_secretReference" Label="Secret Reference" Required="true"
+                                  RequiredError="Secret reference is required"
+                                  Placeholder="vault://secret/db-credentials"
+                                  Variant="Variant.Outlined" Class="mb-3" />
+                    <MudTextField @bind-Value="_secretType" Label="Secret Type"
+                                  Placeholder="vault, aws-ssm, azure-keyvault"
+                                  Variant="Variant.Outlined" Class="mb-3" />
+                }
+
+                <MudDivider Class="my-4" />
+
+                <MudText Typo="Typo.h6" Class="mb-3">SSL / TLS</MudText>
+
+                <MudGrid>
+                    <MudItem xs="12" sm="6">
+                        <MudSwitch @bind-Value="_sslRequired" Label="Require SSL"
+                                   Color="Color.Primary" />
+                    </MudItem>
+                    <MudItem xs="12" sm="6">
+                        <MudTextField @bind-Value="_sslMode" Label="SSL Mode"
+                                      Variant="Variant.Outlined"
+                                      HelperText="e.g. Require, VerifyCA, VerifyFull" />
+                    </MudItem>
+                </MudGrid>
+            </MudForm>
+        </MudCardContent>
+
+        <MudCardActions Class="pa-4">
+            <MudButton Variant="Variant.Outlined" Color="Color.Default"
+                       OnClick='() => Navigation.NavigateTo("/connections")'
+                       Disabled="_saving">
+                Cancel
+            </MudButton>
+            <MudSpacer />
+            <MudButton Variant="Variant.Outlined" Color="Color.Info"
+                       StartIcon="@Icons.Material.Filled.NetworkCheck"
+                       OnClick="TestDraftAsync"
+                       Disabled="_saving || _testing">
+                @if (_testing)
+                {
+                    <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                    @:Testing...
+                }
+                else
+                {
+                    @:Test Draft
+                }
+            </MudButton>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                       StartIcon="@Icons.Material.Filled.Save"
+                       OnClick="SaveAsync"
+                       Disabled="_saving || _testing"
+                       Class="ml-2">
+                @if (_saving)
+                {
+                    <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                    @:Saving...
+                }
+                else
+                {
+                    @:Save
+                }
+            </MudButton>
+        </MudCardActions>
+    </MudCard>
+
+    @if (_testResult is not null)
+    {
+        <MudAlert Severity="@(_testResult.IsHealthy ? Severity.Success : Severity.Warning)"
+                  Class="mt-4" ShowCloseIcon="true" CloseIconClicked="() => _testResult = null">
+            <MudText Typo="Typo.body2">
+                <strong>Test Result:</strong> @(_testResult.IsHealthy ? "Healthy" : "Unhealthy")
+                — @_testResult.Message
+            </MudText>
+            <MudText Typo="Typo.caption">Tested at @_testResult.TestedAt.ToString("u")</MudText>
+        </MudAlert>
+    }
+</MudContainer>
+
+@code {
+    private MudForm _form = null!;
+
+    // Mutable backing fields (init-only SDK model cannot be two-way bound)
+    private string _name = string.Empty;
+    private string? _description;
+    private string _host = string.Empty;
+    private int _port = 5432;
+    private string _databaseName = string.Empty;
+    private string _username = string.Empty;
+    private string? _password;
+    private string? _secretReference;
+    private string? _secretType;
+    private bool _sslRequired = true;
+    private string _sslMode = "Require";
+
+    private string _credentialMode = "password";
+    private bool _showPassword;
+    private bool _testing;
+    private bool _saving;
+    private string? _errorMessage;
+    private ConnectionTestResult? _testResult;
+
+    private CreateSecureConnectionRequest BuildRequest()
+    {
+        return new CreateSecureConnectionRequest
+        {
+            Name = _name,
+            Description = _description,
+            Host = _host,
+            Port = _port,
+            DatabaseName = _databaseName,
+            Username = _username,
+            Password = _credentialMode == "password" ? _password : null,
+            SecretReference = _credentialMode == "secret" ? _secretReference : null,
+            SecretType = _credentialMode == "secret" ? _secretType : null,
+            SslRequired = _sslRequired,
+            SslMode = _sslMode
+        };
+    }
+
+    private async Task TestDraftAsync()
+    {
+        await _form.Validate();
+        if (!_form.IsValid)
+        {
+            Snackbar.Add("Please fill in all required fields.", Severity.Warning);
+            return;
+        }
+
+        _testing = true;
+        _testResult = null;
+        _errorMessage = null;
+
+        try
+        {
+            var request = BuildRequest();
+            _testResult = await AdminClient.TestDraftConnectionAsync(request);
+            if (_testResult.IsHealthy)
+            {
+                Snackbar.Add("Draft connection test passed.", Severity.Success);
+            }
+            else
+            {
+                Snackbar.Add($"Draft connection test failed: {_testResult.Message}", Severity.Warning);
+            }
+        }
+        catch (HonuaAdminApiException ex)
+        {
+            _errorMessage = $"Test failed: {(int)ex.StatusCode} {ex.Message}";
+            Snackbar.Add(_errorMessage, Severity.Error);
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Test failed: {ex.Message}";
+            Snackbar.Add(_errorMessage, Severity.Error);
+        }
+        finally
+        {
+            _testing = false;
+        }
+    }
+
+    private async Task SaveAsync()
+    {
+        await _form.Validate();
+        if (!_form.IsValid)
+        {
+            Snackbar.Add("Please fill in all required fields.", Severity.Warning);
+            return;
+        }
+
+        _saving = true;
+        _errorMessage = null;
+
+        try
+        {
+            var request = BuildRequest();
+            var created = await AdminClient.CreateConnectionAsync(request);
+            Snackbar.Add($"Connection '{_name}' created.", Severity.Success);
+            Navigation.NavigateTo($"/connections/{created.ConnectionId}");
+        }
+        catch (HonuaAdminApiException ex)
+        {
+            _errorMessage = $"Save failed: {(int)ex.StatusCode} {ex.Message}";
+            Snackbar.Add(_errorMessage, Severity.Error);
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Save failed: {ex.Message}";
+            Snackbar.Add(_errorMessage, Severity.Error);
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+}

@@ -1,0 +1,215 @@
+@page "/services/{ServiceName}"
+@inject IHonuaAdminClient AdminClient
+@inject ISnackbar Snackbar
+@inject NavigationManager Navigation
+
+<PageTitle>@ServiceName — Service Settings — Honua Server Admin</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="mt-4">
+    <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-4">
+        <MudIconButton Icon="@Icons.Material.Filled.ArrowBack" OnClick='() => Navigation.NavigateTo("/services")' />
+        <MudIcon Icon="@Icons.Material.Filled.CloudQueue" Size="Size.Large" Color="Color.Primary" />
+        <MudText Typo="Typo.h4">@ServiceName</MudText>
+        <MudSpacer />
+        <MudIconButton Icon="@Icons.Material.Filled.Refresh" OnClick="LoadAsync" Disabled="_loading" />
+    </MudStack>
+
+    @if (!string.IsNullOrEmpty(_errorMessage))
+    {
+        <ErrorBanner Message="@_errorMessage" />
+    }
+
+    @if (_loading)
+    {
+        <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="400px" />
+    }
+    else if (_settings is not null)
+    {
+        <MudTabs Elevation="2" Rounded="true" ApplyEffectsToContainer="true" PanelClass="pa-6">
+            <MudTabPanel Text="Protocols" Icon="@Icons.Material.Filled.SettingsEthernet">
+                <MudText Typo="Typo.subtitle1" Class="mb-4">Select which protocols to enable.</MudText>
+                @foreach (var protocol in _settings.AvailableProtocols)
+                {
+                    <MudCheckBox T="bool" Value="_enabledProtocols.Contains(protocol)"
+                                 ValueChanged="@(v => ToggleProtocol(protocol, v))" Label="@protocol" />
+                }
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" Class="mt-4"
+                           OnClick="SaveProtocolsAsync" Disabled="_saving" StartIcon="@Icons.Material.Filled.Save">
+                    @(_saving ? "Saving..." : "Save Protocols")
+                </MudButton>
+            </MudTabPanel>
+
+            <MudTabPanel Text="MapServer" Icon="@Icons.Material.Filled.Map">
+                <MudGrid>
+                    <MudItem xs="12" sm="6">
+                        <MudNumericField T="int" @bind-Value="_maxImageWidth" Label="Max Image Width" Variant="Variant.Outlined" />
+                    </MudItem>
+                    <MudItem xs="12" sm="6">
+                        <MudNumericField T="int" @bind-Value="_maxImageHeight" Label="Max Image Height" Variant="Variant.Outlined" />
+                    </MudItem>
+                    <MudItem xs="12" sm="6">
+                        <MudNumericField T="int" @bind-Value="_defaultImageWidth" Label="Default Width" Variant="Variant.Outlined" />
+                    </MudItem>
+                    <MudItem xs="12" sm="6">
+                        <MudNumericField T="int" @bind-Value="_defaultImageHeight" Label="Default Height" Variant="Variant.Outlined" />
+                    </MudItem>
+                    <MudItem xs="12" sm="6">
+                        <MudNumericField T="int" @bind-Value="_defaultDpi" Label="Default DPI" Variant="Variant.Outlined" />
+                    </MudItem>
+                    <MudItem xs="12" sm="6">
+                        <MudTextField @bind-Value="_defaultFormat" Label="Default Format" Variant="Variant.Outlined" />
+                    </MudItem>
+                    <MudItem xs="12" sm="6">
+                        <MudCheckBox T="bool" @bind-Value="_defaultTransparent" Label="Default Transparent" />
+                    </MudItem>
+                    <MudItem xs="12" sm="6">
+                        <MudNumericField T="int" @bind-Value="_maxFeaturesPerLayer" Label="Max Features/Layer" Variant="Variant.Outlined" />
+                    </MudItem>
+                </MudGrid>
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" Class="mt-4"
+                           OnClick="SaveMapServerAsync" Disabled="_saving" StartIcon="@Icons.Material.Filled.Save">
+                    @(_saving ? "Saving..." : "Save MapServer Settings")
+                </MudButton>
+            </MudTabPanel>
+
+            <MudTabPanel Text="Access Policy" Icon="@Icons.Material.Filled.Security">
+                <MudCheckBox T="bool" @bind-Value="_allowAnonymous" Label="Allow Anonymous Access" Class="mb-2" />
+                <MudCheckBox T="bool" @bind-Value="_allowAnonymousWrite" Label="Allow Anonymous Write" Class="mb-4" />
+                <MudTextField @bind-Value="_allowedRoles" Label="Allowed Roles" HelperText="Comma-separated" Variant="Variant.Outlined" Class="mb-4" />
+                <MudTextField @bind-Value="_allowedWriteRoles" Label="Allowed Write Roles" HelperText="Comma-separated" Variant="Variant.Outlined" Class="mb-4" />
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="SaveAccessPolicyAsync" Disabled="_saving"
+                           StartIcon="@Icons.Material.Filled.Save">@(_saving ? "Saving..." : "Save Access Policy")</MudButton>
+            </MudTabPanel>
+
+            <MudTabPanel Text="Time Info" Icon="@Icons.Material.Filled.Schedule">
+                <MudTextField @bind-Value="_startTimeField" Label="Start Time Field" Variant="Variant.Outlined" Class="mb-4" />
+                <MudTextField @bind-Value="_endTimeField" Label="End Time Field" Variant="Variant.Outlined" Class="mb-4" />
+                <MudTextField @bind-Value="_trackIdField" Label="Track ID Field" Variant="Variant.Outlined" Class="mb-4" />
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="SaveTimeInfoAsync" Disabled="_saving"
+                           StartIcon="@Icons.Material.Filled.Save">@(_saving ? "Saving..." : "Save Time Info")</MudButton>
+            </MudTabPanel>
+
+            <MudTabPanel Text="Layer Metadata" Icon="@Icons.Material.Filled.Layers">
+                <MudAlert Severity="Severity.Info" Variant="Variant.Outlined">
+                    Per-layer metadata is managed from the connection detail page.
+                </MudAlert>
+            </MudTabPanel>
+        </MudTabs>
+    }
+</MudContainer>
+
+@code {
+    [Parameter] public string ServiceName { get; set; } = string.Empty;
+
+    private ServiceSettingsResponse? _settings;
+    private bool _loading;
+    private bool _saving;
+    private string? _errorMessage;
+
+    private HashSet<string> _enabledProtocols = new();
+    private int _maxImageWidth, _maxImageHeight, _defaultImageWidth, _defaultImageHeight;
+    private int _defaultDpi, _maxFeaturesPerLayer;
+    private string _defaultFormat = string.Empty;
+    private bool _defaultTransparent;
+    private bool _allowAnonymous, _allowAnonymousWrite;
+    private string _allowedRoles = string.Empty, _allowedWriteRoles = string.Empty;
+    private string _startTimeField = string.Empty, _endTimeField = string.Empty, _trackIdField = string.Empty;
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        _errorMessage = null;
+        StateHasChanged();
+        try
+        {
+            _settings = await AdminClient.GetServiceSettingsAsync(ServiceName);
+            PopulateFields(_settings);
+        }
+        catch (HonuaAdminApiException ex) { _errorMessage = $"{(int)ex.StatusCode}: {ex.Message}"; }
+        catch (HttpRequestException ex) { _errorMessage = $"Connection failed: {ex.Message}"; }
+        finally { _loading = false; StateHasChanged(); }
+    }
+
+    private void PopulateFields(ServiceSettingsResponse s)
+    {
+        _enabledProtocols = new HashSet<string>(s.EnabledProtocols);
+        _maxImageWidth = s.MapServer.MaxImageWidth;
+        _maxImageHeight = s.MapServer.MaxImageHeight;
+        _defaultImageWidth = s.MapServer.DefaultImageWidth;
+        _defaultImageHeight = s.MapServer.DefaultImageHeight;
+        _defaultDpi = s.MapServer.DefaultDpi;
+        _defaultFormat = s.MapServer.DefaultFormat;
+        _defaultTransparent = s.MapServer.DefaultTransparent;
+        _maxFeaturesPerLayer = s.MapServer.MaxFeaturesPerLayer;
+        _allowAnonymous = s.AccessPolicy?.AllowAnonymous ?? false;
+        _allowAnonymousWrite = s.AccessPolicy?.AllowAnonymousWrite ?? false;
+        _allowedRoles = s.AccessPolicy?.AllowedRoles is not null ? string.Join(", ", s.AccessPolicy.AllowedRoles) : string.Empty;
+        _allowedWriteRoles = s.AccessPolicy?.AllowedWriteRoles is not null ? string.Join(", ", s.AccessPolicy.AllowedWriteRoles) : string.Empty;
+        _startTimeField = s.TimeInfo?.StartTimeField ?? string.Empty;
+        _endTimeField = s.TimeInfo?.EndTimeField ?? string.Empty;
+        _trackIdField = s.TimeInfo?.TrackIdField ?? string.Empty;
+    }
+
+    private void ToggleProtocol(string protocol, bool enabled)
+    {
+        if (enabled) _enabledProtocols.Add(protocol); else _enabledProtocols.Remove(protocol);
+    }
+
+    private async Task SaveProtocolsAsync() => await SaveAsync(async () =>
+    {
+        var result = await AdminClient.UpdateProtocolsAsync(ServiceName, _enabledProtocols.ToList());
+        _settings = result; PopulateFields(result);
+        Snackbar.Add("Protocols updated.", Severity.Success);
+    });
+
+    private async Task SaveMapServerAsync() => await SaveAsync(async () =>
+    {
+        var request = new UpdateMapServerSettingsRequest
+        {
+            MaxImageWidth = _maxImageWidth, MaxImageHeight = _maxImageHeight,
+            DefaultImageWidth = _defaultImageWidth, DefaultImageHeight = _defaultImageHeight,
+            DefaultDpi = _defaultDpi, DefaultFormat = _defaultFormat,
+            DefaultTransparent = _defaultTransparent, MaxFeaturesPerLayer = _maxFeaturesPerLayer
+        };
+        var result = await AdminClient.UpdateMapServerSettingsAsync(ServiceName, request);
+        _settings = result; PopulateFields(result);
+        Snackbar.Add("MapServer settings updated.", Severity.Success);
+    });
+
+    private async Task SaveAccessPolicyAsync() => await SaveAsync(async () =>
+    {
+        var request = new UpdateAccessPolicyRequest
+        {
+            AllowAnonymous = _allowAnonymous, AllowAnonymousWrite = _allowAnonymousWrite,
+            AllowedRoles = ParseRoles(_allowedRoles), AllowedWriteRoles = ParseRoles(_allowedWriteRoles)
+        };
+        var result = await AdminClient.UpdateAccessPolicyAsync(ServiceName, request);
+        _settings = result; PopulateFields(result);
+        Snackbar.Add("Access policy updated.", Severity.Success);
+    });
+
+    private async Task SaveTimeInfoAsync() => await SaveAsync(async () =>
+    {
+        var request = new UpdateTimeInfoRequest
+        {
+            StartTimeField = _startTimeField, EndTimeField = _endTimeField, TrackIdField = _trackIdField
+        };
+        var result = await AdminClient.UpdateTimeInfoAsync(ServiceName, request);
+        _settings = result; PopulateFields(result);
+        Snackbar.Add("Time info updated.", Severity.Success);
+    });
+
+    private async Task SaveAsync(Func<Task> action)
+    {
+        _saving = true; StateHasChanged();
+        try { await action(); }
+        catch (HonuaAdminApiException ex) { Snackbar.Add($"{(int)ex.StatusCode}: {ex.Message}", Severity.Error); }
+        catch (HttpRequestException ex) { Snackbar.Add($"Connection failed: {ex.Message}", Severity.Error); }
+        finally { _saving = false; StateHasChanged(); }
+    }
+
+    private static string[]? ParseRoles(string input) =>
+        string.IsNullOrWhiteSpace(input) ? null : input.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+}

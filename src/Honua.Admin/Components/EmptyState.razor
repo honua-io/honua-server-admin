@@ -1,0 +1,19 @@
+<MudStack AlignItems="AlignItems.Center" Justify="Justify.Center" Class="pa-8">
+    <MudIcon Icon="@Icon" Size="Size.Large" Color="Color.Default" />
+    <MudText Typo="Typo.h6" Color="Color.Default">@Title</MudText>
+    @if (!string.IsNullOrEmpty(Description))
+    {
+        <MudText Typo="Typo.body2" Color="Color.Secondary">@Description</MudText>
+    }
+    @if (ChildContent is not null)
+    {
+        @ChildContent
+    }
+</MudStack>
+
+@code {
+    [Parameter] public string Icon { get; set; } = Icons.Material.Filled.Inbox;
+    [Parameter] public string Title { get; set; } = "No items found";
+    [Parameter] public string? Description { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+}

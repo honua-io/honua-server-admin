@@ -1,0 +1,281 @@
+@page "/manifests"
+@inherits AdminPageBase
+
+<PageTitle>Manifests — Honua Server Admin</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="mt-4">
+    <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-4">
+        <MudIcon Icon="@Icons.Material.Filled.Inventory2" Size="Size.Large" Color="Color.Primary" />
+        <MudText Typo="Typo.h4">Manifests</MudText>
+    </MudStack>
+
+    <ErrorBanner Message="@ErrorMessage" />
+    <LoadingOverlay Visible="IsLoading" />
+
+    @* ───── Export Manifest ───── *@
+    <MudPaper Elevation="2" Class="pa-6 mb-6">
+        <MudText Typo="Typo.h5" Class="mb-4">Export Manifest</MudText>
+
+        <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-4">
+            <MudTextField @bind-Value="_exportNamespace" Label="Namespace (optional)"
+                          Placeholder="Leave empty to export all namespaces"
+                          Variant="Variant.Outlined" Style="max-width: 400px;" />
+            <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                       OnClick="ExportManifestAsync" Disabled="_exporting"
+                       StartIcon="@Icons.Material.Filled.Download">
+                @if (_exporting)
+                {
+                    <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                    @:Exporting...
+                }
+                else
+                {
+                    @:Export Manifest
+                }
+            </MudButton>
+        </MudStack>
+
+        @if (_manifest is not null)
+        {
+            <MudGrid Class="mb-4">
+                <MudItem xs="12" sm="3">
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">API Version</MudText>
+                    <MudText Typo="Typo.body2">@_manifest.ApiVersion</MudText>
+                </MudItem>
+                <MudItem xs="12" sm="3">
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">Generated At</MudText>
+                    <MudText Typo="Typo.body2">@_manifest.GeneratedAt.LocalDateTime.ToString("F")</MudText>
+                </MudItem>
+                <MudItem xs="12" sm="3">
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">Resources</MudText>
+                    <MudText Typo="Typo.body2">@_manifest.Resources.Count</MudText>
+                </MudItem>
+                <MudItem xs="12" sm="3">
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">Manifest Hash</MudText>
+                    <MudText Typo="Typo.body2" Style="word-break: break-all;">@(_manifest.ManifestHash ?? "—")</MudText>
+                </MudItem>
+            </MudGrid>
+
+            @if (_manifest.DriftedResources.Count > 0)
+            {
+                <MudAlert Severity="Severity.Warning" Class="mb-4">
+                    <MudText Typo="Typo.subtitle2">@_manifest.DriftedResources.Count Drifted Resource(s)</MudText>
+                    @foreach (var drifted in _manifest.DriftedResources)
+                    {
+                        <MudText Typo="Typo.body2">@drifted.Kind / @drifted.Namespace / @drifted.Name</MudText>
+                    }
+                </MudAlert>
+            }
+
+            <MudTextField Value="@_exportedJson" Lines="15" Variant="Variant.Outlined" ReadOnly="true"
+                          Style="font-family: monospace;" Label="Manifest JSON" />
+        }
+    </MudPaper>
+
+    @* ───── Apply Manifest ───── *@
+    <MudPaper Elevation="2" Class="pa-6 mb-6">
+        <MudText Typo="Typo.h5" Class="mb-4">Apply Manifest</MudText>
+
+        <MudTextField @bind-Value="_applyJson" Lines="15" Variant="Variant.Outlined"
+                      Placeholder="Paste manifest JSON here..."
+                      Style="font-family: monospace;" Label="Manifest JSON" Class="mb-4" />
+
+        @if (!string.IsNullOrEmpty(_applyJsonError))
+        {
+            <MudAlert Severity="Severity.Warning" Class="mb-4">@_applyJsonError</MudAlert>
+        }
+
+        <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-4">
+            <MudCheckBox T="bool" @bind-Value="_dryRun" Label="Dry Run" Color="Color.Primary" />
+            <MudCheckBox T="bool" @bind-Value="_prune" Label="Prune (remove resources not in manifest)" Color="Color.Warning" />
+            <MudSpacer />
+            <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                       OnClick="ApplyManifestAsync" Disabled="_applying"
+                       StartIcon="@Icons.Material.Filled.PlayArrow">
+                @if (_applying)
+                {
+                    <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                    @:Applying...
+                }
+                else
+                {
+                    @:Apply Manifest
+                }
+            </MudButton>
+        </MudStack>
+
+        @if (_applyResult is not null)
+        {
+            <MudDivider Class="mb-4" />
+
+            @if (_applyResult.DryRun)
+            {
+                <MudAlert Severity="Severity.Info" Class="mb-4">This was a dry run. No changes were persisted.</MudAlert>
+            }
+
+            <MudText Typo="Typo.h6" Class="mb-3">Apply Result</MudText>
+
+            <MudGrid Class="mb-4">
+                <MudItem xs="6" sm="3">
+                    <MudStack AlignItems="AlignItems.Center">
+                        <MudChip T="string" Color="Color.Success" Size="Size.Large">@_applyResult.Summary.Created</MudChip>
+                        <MudText Typo="Typo.caption">Created</MudText>
+                    </MudStack>
+                </MudItem>
+                <MudItem xs="6" sm="3">
+                    <MudStack AlignItems="AlignItems.Center">
+                        <MudChip T="string" Color="Color.Info" Size="Size.Large">@_applyResult.Summary.Updated</MudChip>
+                        <MudText Typo="Typo.caption">Updated</MudText>
+                    </MudStack>
+                </MudItem>
+                <MudItem xs="6" sm="3">
+                    <MudStack AlignItems="AlignItems.Center">
+                        <MudChip T="string" Color="Color.Error" Size="Size.Large">@_applyResult.Summary.Deleted</MudChip>
+                        <MudText Typo="Typo.caption">Deleted</MudText>
+                    </MudStack>
+                </MudItem>
+                <MudItem xs="6" sm="3">
+                    <MudStack AlignItems="AlignItems.Center">
+                        <MudChip T="string" Color="Color.Default" Size="Size.Large">@_applyResult.Summary.Skipped</MudChip>
+                        <MudText Typo="Typo.caption">Skipped</MudText>
+                    </MudStack>
+                </MudItem>
+            </MudGrid>
+
+            @if (_applyResult.Entries.Count > 0)
+            {
+                <MudDataGrid T="ManifestApplyEntry" Items="_applyResult.Entries" Dense="true" Hover="true">
+                    <Columns>
+                        <TemplateColumn Title="Action">
+                            <CellTemplate>
+                                <MudChip T="string" Size="Size.Small"
+                                         Color="@GetActionColor(context.Item.Action)"
+                                         Variant="Variant.Filled">
+                                    @context.Item.Action
+                                </MudChip>
+                            </CellTemplate>
+                        </TemplateColumn>
+                        <PropertyColumn Property="x => x.Resource.Kind" Title="Kind" />
+                        <PropertyColumn Property="x => x.Resource.Namespace" Title="Namespace" />
+                        <PropertyColumn Property="x => x.Resource.Name" Title="Name" />
+                        <PropertyColumn Property="x => x.Message" Title="Message" />
+                    </Columns>
+                </MudDataGrid>
+            }
+        }
+    </MudPaper>
+</MudContainer>
+
+@code {
+    // Export
+    private string _exportNamespace = string.Empty;
+    private bool _exporting;
+    private MetadataManifest? _manifest;
+    private string _exportedJson = string.Empty;
+
+    // Apply
+    private string _applyJson = string.Empty;
+    private string? _applyJsonError;
+    private bool _dryRun = true;
+    private bool _prune;
+    private bool _applying;
+    private ManifestApplyResult? _applyResult;
+
+    private async Task ExportManifestAsync()
+    {
+        _exporting = true;
+        StateHasChanged();
+
+        try
+        {
+            var ns = string.IsNullOrWhiteSpace(_exportNamespace) ? null : _exportNamespace.Trim();
+            _manifest = await ExecuteAsync(() => AdminClient.GetManifestAsync(ns));
+
+            if (_manifest is not null)
+            {
+                _exportedJson = JsonSerializer.Serialize(_manifest, new JsonSerializerOptions { WriteIndented = true });
+                Snackbar.Add("Manifest exported.", Severity.Success);
+            }
+        }
+        finally
+        {
+            _exporting = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task ApplyManifestAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_applyJson))
+        {
+            _applyJsonError = "Please paste manifest JSON before applying.";
+            return;
+        }
+
+        // Parse the manifest JSON to extract resources
+        _applyJsonError = null;
+        IReadOnlyList<MetadataResource> resources;
+        try
+        {
+            // Try parsing as a full manifest object first
+            var doc = JsonSerializer.Deserialize<JsonElement>(_applyJson);
+            if (doc.TryGetProperty("resources", out var resourcesElement))
+            {
+                resources = JsonSerializer.Deserialize<List<MetadataResource>>(resourcesElement.GetRawText()) ?? new List<MetadataResource>();
+            }
+            else
+            {
+                // Try as a raw array of resources
+                resources = JsonSerializer.Deserialize<List<MetadataResource>>(_applyJson) ?? new List<MetadataResource>();
+            }
+        }
+        catch (JsonException ex)
+        {
+            _applyJsonError = $"Invalid JSON: {ex.Message}";
+            return;
+        }
+
+        if (resources.Count == 0)
+        {
+            _applyJsonError = "No resources found in the manifest JSON.";
+            return;
+        }
+
+        _applying = true;
+        _applyResult = null;
+        StateHasChanged();
+
+        try
+        {
+            var request = new ManifestApplyRequest
+            {
+                Resources = resources,
+                DryRun = _dryRun,
+                Prune = _prune
+            };
+
+            _applyResult = await ExecuteAsync(() => AdminClient.ApplyManifestAsync(request));
+
+            if (_applyResult is not null)
+            {
+                var mode = _applyResult.DryRun ? "Dry run" : "Apply";
+                Snackbar.Add($"{mode} completed: {_applyResult.Summary.Created} created, {_applyResult.Summary.Updated} updated, {_applyResult.Summary.Deleted} deleted, {_applyResult.Summary.Skipped} skipped.",
+                    Severity.Success);
+            }
+        }
+        finally
+        {
+            _applying = false;
+            StateHasChanged();
+        }
+    }
+
+    private static Color GetActionColor(string action) => action.ToLowerInvariant() switch
+    {
+        "create" => Color.Success,
+        "update" => Color.Info,
+        "delete" => Color.Error,
+        "skip" => Color.Default,
+        _ => Color.Default
+    };
+}
