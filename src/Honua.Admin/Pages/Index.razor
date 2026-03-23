@@ -1,88 +1,227 @@
 @page "/"
+@inject IHonuaAdminClient AdminClient
+@inject NavigationManager Navigation
 
 <PageTitle>Dashboard — Honua Server Admin</PageTitle>
 
 <MudContainer MaxWidth="MaxWidth.Large" Class="mt-4">
     <MudText Typo="Typo.h4" GutterBottom="true">Dashboard</MudText>
-    <MudText Typo="Typo.body1" Color="Color.Secondary" Class="mb-6">
-        Welcome to the Honua Server admin interface.
-    </MudText>
 
+    @* ── Server Health Row ── *@
+    <MudGrid Class="mb-6">
+        <MudItem xs="12" md="4">
+            <MudCard Elevation="2">
+                <MudCardContent>
+                    <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-2">
+                        <MudIcon Icon="@Icons.Material.Filled.Dns" Color="Color.Primary" />
+                        <MudText Typo="Typo.subtitle1">Server</MudText>
+                    </MudStack>
+                    @if (_loadingHealth)
+                    {
+                        <MudSkeleton Width="60%" />
+                        <MudSkeleton Width="40%" />
+                    }
+                    else if (_version is not null)
+                    {
+                        <MudText Typo="Typo.h5">@_version.Version</MudText>
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">@_version.ServerTime.ToString("u")</MudText>
+                    }
+                    else
+                    {
+                        <MudText Typo="Typo.body2" Color="Color.Error">Unable to reach server</MudText>
+                    }
+                </MudCardContent>
+                <MudCardActions>
+                    <MudButton Variant="Variant.Text" Color="Color.Primary" Href="/server" Size="Size.Small">Details</MudButton>
+                </MudCardActions>
+            </MudCard>
+        </MudItem>
+
+        <MudItem xs="12" md="4">
+            <MudCard Elevation="2">
+                <MudCardContent>
+                    <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-2">
+                        <MudIcon Icon="@Icons.Material.Filled.Cable" Color="Color.Primary" />
+                        <MudText Typo="Typo.subtitle1">Connections</MudText>
+                    </MudStack>
+                    @if (_loadingConnections)
+                    {
+                        <MudSkeleton Width="40%" />
+                        <MudSkeleton Width="60%" />
+                    }
+                    else if (_connections is not null)
+                    {
+                        var healthy = _connections.Count(c => c.HealthStatus == "Healthy");
+                        <MudText Typo="Typo.h5">@_connections.Count</MudText>
+                        <MudStack Row="true" Spacing="2">
+                            <MudChip T="string" Size="Size.Small" Color="Color.Success" Variant="Variant.Outlined">@healthy healthy</MudChip>
+                            @if (_connections.Count - healthy > 0)
+                            {
+                                <MudChip T="string" Size="Size.Small" Color="Color.Error" Variant="Variant.Outlined">@(_connections.Count - healthy) unhealthy</MudChip>
+                            }
+                        </MudStack>
+                    }
+                </MudCardContent>
+                <MudCardActions>
+                    <MudButton Variant="Variant.Text" Color="Color.Primary" Href="/connections" Size="Size.Small">Manage</MudButton>
+                </MudCardActions>
+            </MudCard>
+        </MudItem>
+
+        <MudItem xs="12" md="4">
+            <MudCard Elevation="2">
+                <MudCardContent>
+                    <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-2">
+                        <MudIcon Icon="@Icons.Material.Filled.CloudQueue" Color="Color.Primary" />
+                        <MudText Typo="Typo.subtitle1">Services</MudText>
+                    </MudStack>
+                    @if (_loadingServices)
+                    {
+                        <MudSkeleton Width="40%" />
+                        <MudSkeleton Width="60%" />
+                    }
+                    else if (_services is not null)
+                    {
+                        var totalLayers = _services.Sum(s => s.LayerCount);
+                        <MudText Typo="Typo.h5">@_services.Count</MudText>
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">@totalLayers total layers</MudText>
+                    }
+                </MudCardContent>
+                <MudCardActions>
+                    <MudButton Variant="Variant.Text" Color="Color.Primary" Href="/services" Size="Size.Small">Manage</MudButton>
+                </MudCardActions>
+            </MudCard>
+        </MudItem>
+    </MudGrid>
+
+    @* ── Observability Row ── *@
+    <MudGrid Class="mb-6">
+        <MudItem xs="12" md="6">
+            <MudCard Elevation="2">
+                <MudCardContent>
+                    <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-3">
+                        <MudIcon Icon="@Icons.Material.Filled.BugReport" Color="Color.Error" />
+                        <MudText Typo="Typo.subtitle1">Recent Errors</MudText>
+                    </MudStack>
+                    @if (_loadingErrors)
+                    {
+                        <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="80px" />
+                    }
+                    else if (_recentErrors is not null && _recentErrors.Count > 0)
+                    {
+                        @foreach (var err in _recentErrors.Take(5))
+                        {
+                            <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-1">
+                                <MudChip T="string" Size="Size.Small" Color="@(err.Severity == "Error" || err.Severity == "Critical" ? Color.Error : Color.Warning)"
+                                         Variant="Variant.Outlined">@err.Severity</MudChip>
+                                <MudText Typo="Typo.body2" Class="text-truncate" Style="max-width: 300px;">@err.Message</MudText>
+                                <MudSpacer />
+                                <MudText Typo="Typo.caption" Color="Color.Secondary">@err.OccurredAt.ToString("g")</MudText>
+                            </MudStack>
+                        }
+                    }
+                    else
+                    {
+                        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                            <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Color="Color.Success" />
+                            <MudText Typo="Typo.body2" Color="Color.Secondary">No recent errors</MudText>
+                        </MudStack>
+                    }
+                </MudCardContent>
+                <MudCardActions>
+                    <MudButton Variant="Variant.Text" Color="Color.Primary" Href="/observability" Size="Size.Small">View All</MudButton>
+                </MudCardActions>
+            </MudCard>
+        </MudItem>
+
+        <MudItem xs="12" md="6">
+            <MudCard Elevation="2">
+                <MudCardContent>
+                    <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-3">
+                        <MudIcon Icon="@Icons.Material.Filled.Storage" Color="Color.Info" />
+                        <MudText Typo="Typo.subtitle1">Migrations</MudText>
+                    </MudStack>
+                    @if (_loadingMigrations)
+                    {
+                        <MudSkeleton Width="60%" />
+                        <MudSkeleton Width="40%" />
+                    }
+                    else if (_migrations is not null)
+                    {
+                        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                            <MudChip T="string" Size="Size.Small" Color="@(_migrations.IsUpToDate ? Color.Success : Color.Warning)">
+                                @(_migrations.IsUpToDate ? "Up to Date" : $"{_migrations.PendingMigrations.Count} Pending")
+                            </MudChip>
+                            <MudText Typo="Typo.body2">Version @_migrations.CurrentVersion</MudText>
+                        </MudStack>
+                    }
+                </MudCardContent>
+                <MudCardActions>
+                    <MudButton Variant="Variant.Text" Color="Color.Primary" Href="/observability" Size="Size.Small">Details</MudButton>
+                </MudCardActions>
+            </MudCard>
+        </MudItem>
+    </MudGrid>
+
+    @* ── Quick Actions ── *@
+    <MudText Typo="Typo.h6" Class="mb-3">Quick Actions</MudText>
     <MudGrid>
-        <MudItem xs="12" sm="6" md="4">
-            <MudCard Elevation="2" Class="cursor-pointer" @onclick='() => Navigation.NavigateTo("/server")'>
-                <MudCardContent>
-                    <MudStack Row="true" AlignItems="AlignItems.Center">
-                        <MudIcon Icon="@Icons.Material.Filled.Dns" Size="Size.Large" Color="Color.Primary" />
-                        <MudText Typo="Typo.h6">Server Info</MudText>
-                    </MudStack>
-                    <MudText Typo="Typo.body2" Class="mt-2">View version, capabilities, and configuration.</MudText>
-                </MudCardContent>
-            </MudCard>
+        <MudItem xs="12" sm="6" md="3">
+            <MudButton Variant="Variant.Outlined" Color="Color.Primary" FullWidth="true"
+                       Href="/connections/new" StartIcon="@Icons.Material.Filled.Add">
+                New Connection
+            </MudButton>
         </MudItem>
-
-        <MudItem xs="12" sm="6" md="4">
-            <MudCard Elevation="2" Class="cursor-pointer" @onclick='() => Navigation.NavigateTo("/connections")'>
-                <MudCardContent>
-                    <MudStack Row="true" AlignItems="AlignItems.Center">
-                        <MudIcon Icon="@Icons.Material.Filled.Cable" Size="Size.Large" Color="Color.Primary" />
-                        <MudText Typo="Typo.h6">Connections</MudText>
-                    </MudStack>
-                    <MudText Typo="Typo.body2" Class="mt-2">Manage database connections and encryption.</MudText>
-                </MudCardContent>
-            </MudCard>
+        <MudItem xs="12" sm="6" md="3">
+            <MudButton Variant="Variant.Outlined" Color="Color.Primary" FullWidth="true"
+                       Href="/metadata/new" StartIcon="@Icons.Material.Filled.NoteAdd">
+                New Resource
+            </MudButton>
         </MudItem>
-
-        <MudItem xs="12" sm="6" md="4">
-            <MudCard Elevation="2" Class="cursor-pointer" @onclick='() => Navigation.NavigateTo("/layers")'>
-                <MudCardContent>
-                    <MudStack Row="true" AlignItems="AlignItems.Center">
-                        <MudIcon Icon="@Icons.Material.Filled.Layers" Size="Size.Large" Color="Color.Primary" />
-                        <MudText Typo="Typo.h6">Layers</MudText>
-                    </MudStack>
-                    <MudText Typo="Typo.body2" Class="mt-2">Publish and manage feature layers.</MudText>
-                </MudCardContent>
-            </MudCard>
+        <MudItem xs="12" sm="6" md="3">
+            <MudButton Variant="Variant.Outlined" Color="Color.Primary" FullWidth="true"
+                       Href="/manifests" StartIcon="@Icons.Material.Filled.CompareArrows">
+                Manifests
+            </MudButton>
         </MudItem>
-
-        <MudItem xs="12" sm="6" md="4">
-            <MudCard Elevation="2" Class="cursor-pointer" @onclick='() => Navigation.NavigateTo("/services")'>
-                <MudCardContent>
-                    <MudStack Row="true" AlignItems="AlignItems.Center">
-                        <MudIcon Icon="@Icons.Material.Filled.CloudQueue" Size="Size.Large" Color="Color.Primary" />
-                        <MudText Typo="Typo.h6">Services</MudText>
-                    </MudStack>
-                    <MudText Typo="Typo.body2" Class="mt-2">Configure protocols, rendering, and access.</MudText>
-                </MudCardContent>
-            </MudCard>
-        </MudItem>
-
-        <MudItem xs="12" sm="6" md="4">
-            <MudCard Elevation="2" Class="cursor-pointer" @onclick='() => Navigation.NavigateTo("/metadata")'>
-                <MudCardContent>
-                    <MudStack Row="true" AlignItems="AlignItems.Center">
-                        <MudIcon Icon="@Icons.Material.Filled.Description" Size="Size.Large" Color="Color.Primary" />
-                        <MudText Typo="Typo.h6">Metadata</MudText>
-                    </MudStack>
-                    <MudText Typo="Typo.body2" Class="mt-2">Manage metadata resources and manifests.</MudText>
-                </MudCardContent>
-            </MudCard>
-        </MudItem>
-
-        <MudItem xs="12" sm="6" md="4">
-            <MudCard Elevation="2" Class="cursor-pointer" @onclick='() => Navigation.NavigateTo("/observability")'>
-                <MudCardContent>
-                    <MudStack Row="true" AlignItems="AlignItems.Center">
-                        <MudIcon Icon="@Icons.Material.Filled.MonitorHeart" Size="Size.Large" Color="Color.Primary" />
-                        <MudText Typo="Typo.h6">Operations</MudText>
-                    </MudStack>
-                    <MudText Typo="Typo.body2" Class="mt-2">Monitor errors, telemetry, and deployments.</MudText>
-                </MudCardContent>
-            </MudCard>
+        <MudItem xs="12" sm="6" md="3">
+            <MudButton Variant="Variant.Outlined" Color="Color.Primary" FullWidth="true"
+                       Href="/deploy" StartIcon="@Icons.Material.Filled.RocketLaunch">
+                Deploy
+            </MudButton>
         </MudItem>
     </MudGrid>
 </MudContainer>
 
 @code {
-    [Inject] private NavigationManager Navigation { get; set; } = null!;
+    private AdminVersionResponse? _version;
+    private IReadOnlyList<SecureConnectionSummary>? _connections;
+    private IReadOnlyList<ServiceSummary>? _services;
+    private IReadOnlyList<RecentError>? _recentErrors;
+    private MigrationStatus? _migrations;
+
+    private bool _loadingHealth = true;
+    private bool _loadingConnections = true;
+    private bool _loadingServices = true;
+    private bool _loadingErrors = true;
+    private bool _loadingMigrations = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await Task.WhenAll(
+            LoadAsync(async () => { _version = await AdminClient.GetVersionAsync(); }, () => _loadingHealth = false),
+            LoadAsync(async () => { _connections = await AdminClient.ListConnectionsAsync(); }, () => _loadingConnections = false),
+            LoadAsync(async () => { _services = await AdminClient.ListServicesAsync(); }, () => _loadingServices = false),
+            LoadAsync(async () => { _recentErrors = await AdminClient.GetRecentErrorsAsync(limit: 5); }, () => _loadingErrors = false),
+            LoadAsync(async () => { _migrations = await AdminClient.GetMigrationStatusAsync(); }, () => _loadingMigrations = false)
+        );
+        StateHasChanged();
+    }
+
+    private async Task LoadAsync(Func<Task> action, Action setDone)
+    {
+        try { await action(); }
+        catch { /* Dashboard is best-effort — individual cards handle missing data gracefully */ }
+        finally { setDone(); }
+    }
 }
