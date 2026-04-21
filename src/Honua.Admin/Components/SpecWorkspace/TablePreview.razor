@@ -1,0 +1,78 @@
+@* Sortable table renderer for analysis outputs. Column-header click inserts
+   <c>@source.column</c> into the DSL cursor via the state store. *@
+@using Honua.Admin.Models.SpecWorkspace
+@inject SpecWorkspaceState State
+
+<div class="spec-table" data-testid="table-preview">
+    @if (Columns.Count == 0)
+    {
+        <MudAlert Severity="Severity.Info" Dense="true" Variant="Variant.Text">
+            Apply has not produced analysis rows yet.
+        </MudAlert>
+    }
+    else
+    {
+        <MudTable Items="@_sortedRows" Hover="true" Dense="true" Striped="true">
+            <HeaderContent>
+                @foreach (var col in Columns)
+                {
+                    <MudTh>
+                        <MudStack Row AlignItems="AlignItems.Center" Spacing="1">
+                            <MudButton Variant="Variant.Text"
+                                       Size="Size.Small"
+                                       OnClick="@(() => InsertColumnAsync(col))"
+                                       data-testid="@($"table-column-insert-{col}")">
+                                @col @(SortColumn == col ? (Ascending ? "▲" : "▼") : string.Empty)
+                            </MudButton>
+                            <MudIconButton Icon="@Icons.Material.Filled.Link"
+                                           Size="Size.Small"
+                                           OnClick="@(() => Sort(col))"
+                                           data-testid="@($"table-column-sort-{col}")"
+                                           title="@SortButtonTitle(col)" />
+                        </MudStack>
+                    </MudTh>
+                }
+            </HeaderContent>
+            <RowTemplate>
+                @foreach (var col in Columns)
+                {
+                    <MudTd>@(context.TryGetValue(col, out var v) ? v : string.Empty)</MudTd>
+                }
+            </RowTemplate>
+        </MudTable>
+    }
+</div>
+
+@code {
+    [Parameter] public IReadOnlyList<string> Columns { get; set; } = System.Array.Empty<string>();
+    [Parameter] public IReadOnlyList<IReadOnlyDictionary<string, string>> Rows { get; set; } = System.Array.Empty<IReadOnlyDictionary<string, string>>();
+
+    private string? SortColumn;
+    private bool Ascending = true;
+    private IReadOnlyList<IReadOnlyDictionary<string, string>> _sortedRows = System.Array.Empty<IReadOnlyDictionary<string, string>>();
+
+    protected override void OnParametersSet() => _sortedRows = Rows;
+
+    private void Sort(string column)
+    {
+        if (SortColumn == column)
+        {
+            Ascending = !Ascending;
+        }
+        else
+        {
+            SortColumn = column;
+            Ascending = true;
+        }
+        var ordered = Rows.OrderBy(r => r.TryGetValue(column, out var v) ? v : string.Empty, StringComparer.Ordinal);
+        _sortedRows = Ascending ? ordered.ToArray() : ordered.Reverse().ToArray();
+    }
+
+    private async Task InsertColumnAsync(string column)
+    {
+        var source = State.Spec.Sources.FirstOrDefault()?.Id ?? "source";
+        await State.InsertDslTokenAsync($"@{source}.{column}");
+    }
+
+    private static string SortButtonTitle(string column) => $"Sort by {column}";
+}

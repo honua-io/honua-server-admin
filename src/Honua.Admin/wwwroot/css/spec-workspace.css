@@ -1,0 +1,161 @@
+.spec-workspace-root {
+    display: grid;
+    grid-template-rows: 100%;
+    height: calc(100vh - 128px);
+    min-height: 480px;
+    gap: 0;
+}
+
+.spec-workspace-cell {
+    min-width: 0;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+.spec-workspace-splitter {
+    cursor: col-resize;
+    background: var(--mud-palette-divider, #e0e0e0);
+    width: 6px;
+    touch-action: none;
+    user-select: none;
+}
+
+.spec-pane {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+}
+
+.spec-pane pre {
+    background: #f7f7f9;
+    padding: 8px;
+    border-radius: 4px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 12px;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+.spec-diff-before {
+    border-left: 3px solid #e57373;
+}
+
+.spec-diff-after {
+    border-left: 3px solid #66bb6a;
+}
+
+.spec-nl-history {
+    max-height: 100%;
+}
+
+.spec-intellisense-popover {
+    max-height: 200px;
+    overflow-y: auto;
+    border: 1px solid var(--mud-palette-divider, #e0e0e0);
+    border-radius: 4px;
+    margin-top: 4px;
+    background: #ffffff;
+}
+
+.spec-section-editor {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.spec-editor-shell {
+    position: relative;
+    min-height: 144px;
+    border: 1px solid var(--mud-palette-divider, #d7dbe0);
+    border-radius: 8px;
+    background: #fbfcfd;
+}
+
+.spec-editor-underlay,
+.spec-editor-input {
+    margin: 0;
+    padding: 12px 14px;
+    min-height: 144px;
+    width: 100%;
+    box-sizing: border-box;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 13px;
+    line-height: 1.55;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+.spec-editor-underlay {
+    background: transparent;
+    border-radius: 8px;
+    color: #1a2730;
+}
+
+.spec-editor-input {
+    position: absolute;
+    inset: 0;
+    border: 0;
+    resize: vertical;
+    outline: none;
+    background: transparent;
+    color: transparent;
+    caret-color: #0d1b2a;
+}
+
+.spec-editor-input::selection {
+    background: rgba(0, 109, 119, 0.18);
+}
+
+.spec-editor-mark-red {
+    border-bottom: 2px wavy #d32f2f;
+}
+
+.spec-editor-mark-yellow {
+    border-bottom: 2px wavy #f9a825;
+}
+
+.spec-map-root {
+    display: grid;
+    grid-template-columns: 1fr 180px;
+    gap: 8px;
+    flex: 1 1 auto;
+    min-height: 240px;
+}
+
+.spec-map-canvas {
+    background: #eceff1;
+    border-radius: 4px;
+    min-height: 240px;
+    position: relative;
+    overflow: hidden;
+}
+
+.spec-map-fallback-list {
+    list-style: none;
+    padding: 8px;
+    margin: 0;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 12px;
+}
+
+.spec-map-fallback-list li {
+    cursor: pointer;
+    padding: 2px 4px;
+    border-bottom: 1px dashed #c5cae9;
+}
+
+.spec-map-fallback-list li:hover {
+    background: #c5cae9;
+}
+
+.spec-clarification {
+    background: rgba(63, 81, 181, 0.06);
+    border-left: 3px solid var(--mud-palette-info, #3f51b5);
+}
+
+.spec-map-legend {
+    background: rgba(255, 255, 255, 0.86);
+    border-radius: 6px;
+}

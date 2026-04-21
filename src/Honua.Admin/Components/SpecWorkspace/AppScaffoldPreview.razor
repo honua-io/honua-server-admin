@@ -1,0 +1,34 @@
+@* App scaffold renderer: preview of an AppPackage shell — parameters + layout. *@
+@using Honua.Admin.Models.SpecWorkspace
+
+<div class="spec-appscaffold" data-testid="app-scaffold-preview">
+    @if (Scaffold is null)
+    {
+        <MudAlert Severity="Severity.Info" Dense="true" Variant="Variant.Text">
+            Apply has not produced an app scaffold yet.
+        </MudAlert>
+    }
+    else
+    {
+        <MudCard Elevation="0">
+            <MudCardContent>
+                <MudText Typo="Typo.h6">@Scaffold.Title</MudText>
+                <MudText Typo="Typo.caption" Color="Color.Secondary">layout: @Scaffold.Layout</MudText>
+                <MudDivider Class="my-2" />
+                <MudStack Spacing="1">
+                    @foreach (var param in Scaffold.Parameters)
+                    {
+                        <MudStack Row AlignItems="AlignItems.Center" Spacing="2" data-testid="@($"scaffold-param-{param.Name}")">
+                            <MudChip T="string" Size="Size.Small" Color="Color.Primary" Variant="Variant.Outlined">@param.Kind</MudChip>
+                            <MudText Typo="Typo.body2"><strong>@param.Name</strong> = @(param.Default ?? "(unset)")</MudText>
+                        </MudStack>
+                    }
+                </MudStack>
+            </MudCardContent>
+        </MudCard>
+    }
+</div>
+
+@code {
+    [Parameter] public AppScaffold? Scaffold { get; set; }
+}

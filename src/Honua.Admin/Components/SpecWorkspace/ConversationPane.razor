@@ -1,0 +1,180 @@
+@* NL pane: conversation history + prompt input. Each turn shows the operator's
+   NL text, the grounding response kind, and a collapsible mutation diff or a
+   structured clarification picker. *@
+@using Honua.Admin.Components.SpecWorkspace.ClarificationPickers
+@using Honua.Admin.Models.SpecWorkspace
+@using System.Threading
+@inject SpecWorkspaceState State
+@implements IDisposable
+
+<MudPaper Class="spec-pane spec-pane-nl pa-3 h-100" Elevation="0" data-testid="spec-nl-pane">
+    <MudStack Class="h-100" Justify="Justify.SpaceBetween">
+        <MudStack Spacing="2" Class="spec-nl-history flex-grow-1 overflow-auto" data-testid="nl-history">
+            @if (State.Conversation.Count == 0)
+            {
+                <MudAlert Severity="Severity.Info" Variant="Variant.Text" Dense="true">
+                    Describe an intent like <code>aggregate count of @@parcels by county</code> to get started.
+                </MudAlert>
+            }
+            else
+            {
+                @foreach (var turn in State.Conversation)
+                {
+                    <MudCard Class="spec-nl-turn" Elevation="0" data-testid="@($"turn-{turn.Id}")">
+                        <MudCardContent>
+                            <MudStack Spacing="1">
+                                <MudStack Row AlignItems="AlignItems.Center" Spacing="2">
+                                    <MudText Typo="Typo.subtitle2" Class="spec-nl-prompt">@turn.Prompt</MudText>
+                                    <MudSpacer />
+                                    <MudChip T="string" Size="Size.Small" Color="@KindColor(turn.Response.Kind)" Variant="Variant.Text">@turn.Response.Kind.ToString().ToLowerInvariant()</MudChip>
+                                </MudStack>
+
+                                @if (!string.IsNullOrEmpty(turn.Response.Message))
+                                {
+                                    <MudText Typo="Typo.body2" Color="Color.Secondary">@turn.Response.Message</MudText>
+                                }
+
+                                @if (turn.Response.Kind == IntentResponseKind.Mutation)
+                                {
+                                    <MutationDiffView Mutation="turn.Response.Mutation" />
+                                }
+                                else if (turn.Response.Kind == IntentResponseKind.Clarification)
+                                {
+                                    <ClarificationPicker Request="turn.Response.Clarification" OnAnswer="HandleClarification" />
+                                }
+                            </MudStack>
+                        </MudCardContent>
+                    </MudCard>
+                }
+            }
+        </MudStack>
+
+        <MudStack Spacing="1" Class="spec-nl-prompt-dock">
+            <MudTextField T="string"
+                          Value="_draft"
+                          ValueChanged="HandleDraftChanged"
+                          Lines="3"
+                          Variant="Variant.Outlined"
+                          Placeholder="Describe what you want — Enter to send, Shift+Enter for newline"
+                          OnKeyDown="HandleKeyDown"
+                          data-testid="nl-prompt-input" />
+            <MudStack Row AlignItems="AlignItems.Center" Spacing="2">
+                <MudButton Color="Color.Primary"
+                           Variant="Variant.Filled"
+                           StartIcon="@Icons.Material.Filled.Send"
+                           OnClick="SubmitAsync"
+                           Disabled="_submitting"
+                           data-testid="nl-submit">Send</MudButton>
+                <MudButton Color="Color.Default"
+                           Variant="Variant.Text"
+                           StartIcon="@Icons.Material.Filled.Delete"
+                           OnClick="ClearPromptAsync"
+                           Disabled="_submitting"
+                           data-testid="nl-clear-prompt">Clear prompt</MudButton>
+                <MudButton Color="Color.Error"
+                           Variant="Variant.Text"
+                           StartIcon="@Icons.Material.Filled.RestartAlt"
+                           OnClick="ResetWorkspaceAsync"
+                           Disabled="_submitting"
+                           data-testid="nl-reset-workspace">Reset workspace</MudButton>
+                @if (_submitting)
+                {
+                    <MudProgressCircular Indeterminate="true" Size="Size.Small" />
+                }
+            </MudStack>
+        </MudStack>
+    </MudStack>
+</MudPaper>
+
+@code {
+    private string _draft = string.Empty;
+    private bool _submitting;
+
+    protected override void OnInitialized()
+    {
+        State.OnChanged += StateChanged;
+        _draft = State.PromptDraft;
+    }
+
+    public void Dispose()
+    {
+        State.OnChanged -= StateChanged;
+    }
+
+    private void StateChanged()
+    {
+        if (!string.Equals(_draft, State.PromptDraft, StringComparison.Ordinal))
+        {
+            _draft = State.PromptDraft;
+        }
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void HandleDraftChanged(string? value)
+    {
+        _draft = value ?? string.Empty;
+        State.SetPromptDraft(_draft);
+    }
+
+    private async Task HandleKeyDown(KeyboardEventArgs args)
+    {
+        if (args.Key == "Enter" && !args.ShiftKey)
+        {
+            await SubmitAsync();
+        }
+    }
+
+    private async Task SubmitAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_draft) || _submitting)
+        {
+            return;
+        }
+        _submitting = true;
+        try
+        {
+            await State.SubmitPromptAsync(_draft, CancellationToken.None);
+            _draft = string.Empty;
+            State.SetPromptDraft(string.Empty);
+        }
+        finally
+        {
+            _submitting = false;
+        }
+    }
+
+    private async Task HandleClarification((string Kind, string Value) answer)
+    {
+        _submitting = true;
+        try
+        {
+            await State.AnswerClarificationAsync(answer.Kind, answer.Value, CancellationToken.None);
+        }
+        finally
+        {
+            _submitting = false;
+        }
+    }
+
+    private Task ClearPromptAsync()
+    {
+        _draft = string.Empty;
+        State.SetPromptDraft(string.Empty);
+        return Task.CompletedTask;
+    }
+
+    private async Task ResetWorkspaceAsync()
+    {
+        _draft = string.Empty;
+        await State.ClearDraftAsync(CancellationToken.None);
+    }
+
+    private static Color KindColor(IntentResponseKind kind) => kind switch
+    {
+        IntentResponseKind.Mutation => Color.Success,
+        IntentResponseKind.Clarification => Color.Info,
+        IntentResponseKind.Unsupported => Color.Warning,
+        IntentResponseKind.Error => Color.Error,
+        _ => Color.Default
+    };
+}

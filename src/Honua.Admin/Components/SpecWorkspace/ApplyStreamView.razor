@@ -1,0 +1,90 @@
+@* Per-node streaming apply status strip. Cache-hit nodes are visually
+   distinguished from nodes that ran. *@
+@using Honua.Admin.Models.SpecWorkspace
+
+<MudStack Spacing="1" data-testid="apply-stream">
+    @if (Events.Count == 0)
+    {
+        <MudAlert Severity="Severity.Info" Dense="true" Variant="Variant.Text">
+            Apply has not run yet.
+        </MudAlert>
+    }
+    else
+    {
+        @foreach (var entry in GroupByNode(Events))
+        {
+            <MudPaper Class="pa-2" Elevation="0" data-testid="@($"apply-node-{entry.Node}")">
+                <MudStack Row AlignItems="AlignItems.Center" Spacing="2">
+                    <MudIcon Icon="@StatusIcon(entry.Latest.Status)" Color="@StatusColor(entry.Latest.Status)" Size="Size.Small" />
+                    <MudStack Spacing="0">
+                        <MudText Typo="Typo.body2"><strong>@entry.Node</strong> — @entry.Latest.NodeOp</MudText>
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">@entry.Latest.Status</MudText>
+                    </MudStack>
+                    <MudSpacer />
+                    @if (entry.Latest.Status == ApplyNodeStatus.CacheHit)
+                    {
+                        <MudChip T="string" Size="Size.Small" Color="Color.Secondary" Variant="Variant.Outlined" data-testid="apply-cache-chip">cache hit</MudChip>
+                    }
+                </MudStack>
+            </MudPaper>
+        }
+        @if (TerminalEvent is not null)
+        {
+            <MudAlert Severity="@(TerminalEvent.Kind == ApplyEventKind.Completed ? Severity.Success : TerminalEvent.Kind == ApplyEventKind.Cancelled ? Severity.Warning : Severity.Error)"
+                      Dense="true" Variant="Variant.Text" data-testid="apply-terminal">
+                @TerminalEvent.Kind @(TerminalEvent.Message is null ? string.Empty : $"— {TerminalEvent.Message}")
+            </MudAlert>
+        }
+    }
+</MudStack>
+
+@code {
+    [Parameter] public IReadOnlyList<ApplyEvent> Events { get; set; } = System.Array.Empty<ApplyEvent>();
+
+    private ApplyEvent? TerminalEvent => Events.LastOrDefault(e =>
+        e.Kind is ApplyEventKind.Completed or ApplyEventKind.Failed or ApplyEventKind.Cancelled);
+
+    private sealed record ApplyNodeGroup(string Node, ApplyEvent Latest);
+
+    private static IEnumerable<ApplyNodeGroup> GroupByNode(IReadOnlyList<ApplyEvent> events)
+    {
+        var byNode = new Dictionary<string, ApplyEvent>(StringComparer.Ordinal);
+        var order = new List<string>();
+        foreach (var evt in events)
+        {
+            if (evt.NodeId is null)
+            {
+                continue;
+            }
+            if (!byNode.ContainsKey(evt.NodeId))
+            {
+                order.Add(evt.NodeId);
+            }
+            byNode[evt.NodeId] = evt;
+        }
+        foreach (var id in order)
+        {
+            yield return new ApplyNodeGroup(id, byNode[id]);
+        }
+    }
+
+    private static string StatusIcon(ApplyNodeStatus? status) => status switch
+    {
+        ApplyNodeStatus.Running => Icons.Material.Filled.HourglassTop,
+        ApplyNodeStatus.Completed => Icons.Material.Filled.CheckCircle,
+        ApplyNodeStatus.CacheHit => Icons.Material.Filled.Cached,
+        ApplyNodeStatus.Cancelled => Icons.Material.Filled.DoNotDisturb,
+        ApplyNodeStatus.Failed => Icons.Material.Filled.Error,
+        _ => Icons.Material.Filled.Circle
+    };
+
+    private static Color StatusColor(ApplyNodeStatus? status) => status switch
+    {
+        ApplyNodeStatus.Running => Color.Warning,
+        ApplyNodeStatus.Completed => Color.Success,
+        ApplyNodeStatus.CacheHit => Color.Secondary,
+        ApplyNodeStatus.Cancelled => Color.Warning,
+        ApplyNodeStatus.Failed => Color.Error,
+        _ => Color.Default
+    };
+}

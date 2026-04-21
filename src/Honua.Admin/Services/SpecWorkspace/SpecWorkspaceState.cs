@@ -1,0 +1,580 @@
+using System;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.Linq;
+using System.Text.Json;
+using System.Threading;
+using System.Threading.Tasks;
+using Honua.Admin.Models.SpecWorkspace;
+
+namespace Honua.Admin.Services.SpecWorkspace;
+
+public enum WorkspaceStatus
+{
+    Idle,
+    Planning,
+    Applying,
+    Cancelling,
+    Error
+}
+
+/// <summary>
+/// Scoped observable store that backs the three panes. All mutations funnel through
+/// explicit methods so persistence, telemetry, and preview updates stay single-origin.
+/// </summary>
+public sealed class SpecWorkspaceState : IAsyncDisposable
+{
+    private const string StorageKeyPrefix = "spec-workspace:";
+
+    private readonly ISpecWorkspaceClient _client;
+    private readonly IBrowserStorageService _storage;
+    private readonly ISpecWorkspaceTelemetry _telemetry;
+    private readonly CatalogCache _catalog;
+
+    private readonly List<ConversationTurn> _conversation = new();
+    private readonly List<ApplyEvent> _applyEvents = new();
+    private readonly Dictionary<string, string> _sectionSummaries = new(StringComparer.Ordinal);
+    private readonly Dictionary<SpecSectionId, string> _sectionTexts = new();
+    private readonly Dictionary<SpecSectionId, TextSelectionState> _dslSelections = new();
+    private readonly Dictionary<SpecSectionId, IReadOnlyList<ValidationDiagnostic>> _editorDiagnosticsBySection = new();
+    private readonly List<ValidationDiagnostic> _diagnostics = new();
+
+    private CancellationTokenSource? _applyCts;
+    private string? _activeJobId;
+    private bool _disposed;
+    private bool _rehydrated;
+
+    public SpecWorkspaceState(
+        ISpecWorkspaceClient client,
+        IBrowserStorageService storage,
+        ISpecWorkspaceTelemetry telemetry,
+        CatalogCache catalog)
+    {
+        _client = client;
+        _storage = storage;
+        _telemetry = telemetry;
+        _catalog = catalog;
+        SyncSectionTextsFromSpec();
+    }
+
+    public string PrincipalId { get; private set; } = "operator";
+
+    public SpecDocument Spec { get; private set; } = SpecDocument.Empty;
+
+    public string TextView { get; private set; } = string.Empty;
+
+    public IReadOnlyList<ConversationTurn> Conversation => _conversation;
+
+    public PlanResult? PlanResult { get; private set; }
+
+    public IReadOnlyList<ApplyEvent> ApplyEvents => _applyEvents;
+
+    public WorkspaceStatus Status { get; private set; } = WorkspaceStatus.Idle;
+
+    public LayoutWidths Layout { get; private set; } = LayoutWidths.Default;
+
+    public bool IsJsonView { get; private set; }
+
+    public SpecGrammar? Grammar { get; private set; }
+
+    public string PromptDraft { get; private set; } = string.Empty;
+
+    public string? ActiveJobId => _activeJobId;
+
+    public SpecSectionId ActiveDslSection { get; private set; } = SpecSectionId.Compute;
+
+    public IReadOnlyList<ValidationDiagnostic> Diagnostics => _diagnostics;
+
+    public event Action? OnChanged;
+
+    public string GetSectionSummary(SpecSectionId section) =>
+        _sectionSummaries.TryGetValue(section.ToString(), out var summary) ? summary : string.Empty;
+
+    public IReadOnlyList<ValidationDiagnostic> GetDiagnostics(SpecSectionId section) =>
+        _diagnostics.Where(d => d.Section == section).ToArray();
+
+    public string GetSectionText(SpecSectionId section) =>
+        _sectionTexts.TryGetValue(section, out var value) ? value : string.Empty;
+
+    public async Task InitializeAsync(string principalId, CancellationToken cancellationToken = default)
+    {
+        PrincipalId = principalId;
+        _catalog.SetPrincipal(principalId);
+        Grammar = await _client.LoadGrammarAsync(cancellationToken).ConfigureAwait(false);
+
+        if (!_rehydrated)
+        {
+            await RehydrateFromStorageAsync(cancellationToken).ConfigureAwait(false);
+            _rehydrated = true;
+        }
+
+        if (_sectionTexts.Count == 0)
+        {
+            SyncSectionTextsFromSpec();
+        }
+
+        await RefreshSectionSummariesAsync(cancellationToken).ConfigureAwait(false);
+        RefreshTextView();
+        RefreshDiagnostics();
+        Notify();
+    }
+
+    public void SetPromptDraft(string? value)
+    {
+        PromptDraft = value ?? string.Empty;
+        _ = PersistAsync(CancellationToken.None);
+        Notify();
+    }
+
+    public void SetActiveDslSection(SpecSectionId section)
+    {
+        ActiveDslSection = section;
+    }
+
+    public void SetDslSelection(SpecSectionId section, int start, int end)
+    {
+        ActiveDslSection = section;
+        _dslSelections[section] = new TextSelectionState(start, end);
+    }
+
+    public async Task UpdateSectionTextAsync(SpecSectionId section, string? text, CancellationToken cancellationToken = default)
+    {
+        ActiveDslSection = section;
+        _sectionTexts[section] = text ?? string.Empty;
+
+        var parse = SpecSectionTextTranslator.ParseSection(Spec, section, _sectionTexts[section]);
+        Spec = parse.Document;
+        _editorDiagnosticsBySection[section] = parse.Diagnostics;
+
+        RefreshTextView();
+        RefreshDiagnostics();
+        await RefreshSectionSummaryAsync(section, cancellationToken).ConfigureAwait(false);
+        await PersistAsync(cancellationToken).ConfigureAwait(false);
+        Notify();
+    }
+
+    public async Task InsertDslTokenAsync(string token, CancellationToken cancellationToken = default)
+    {
+        var section = ActiveDslSection;
+        var current = GetSectionText(section);
+        var selection = _dslSelections.TryGetValue(section, out var range)
+            ? range
+            : new TextSelectionState(current.Length, current.Length);
+
+        var start = Math.Clamp(selection.Start, 0, current.Length);
+        var end = Math.Clamp(selection.End, start, current.Length);
+        var updated = current[..start] + token + current[end..];
+
+        _dslSelections[section] = new TextSelectionState(start + token.Length, start + token.Length);
+        await UpdateSectionTextAsync(section, updated, cancellationToken).ConfigureAwait(false);
+    }
+
+    public async Task<IntentOutcome> SubmitPromptAsync(string prompt, CancellationToken cancellationToken = default)
+    {
+        var request = new IntentRequest
+        {
+            Prompt = prompt,
+            CurrentSpec = Spec
+        };
+
+        _telemetry.Record("spec_prompt_submitted", new Dictionary<string, object?>
+        {
+            ["prompt_length"] = prompt.Length
+        });
+
+        var outcome = await _client.SubmitIntentAsync(request, cancellationToken).ConfigureAwait(false);
+        await RecordTurnAsync(prompt, outcome, cancellationToken).ConfigureAwait(false);
+        return outcome;
+    }
+
+    public async Task<IntentOutcome> AnswerClarificationAsync(string clarificationId, string value, CancellationToken cancellationToken = default)
+    {
+        var request = new IntentRequest
+        {
+            Prompt = $"clarification:{clarificationId}={value}",
+            CurrentSpec = Spec,
+            ClarificationId = clarificationId,
+            ClarificationValue = value
+        };
+
+        var outcome = await _client.SubmitIntentAsync(request, cancellationToken).ConfigureAwait(false);
+        await RecordTurnAsync(request.Prompt, outcome, cancellationToken).ConfigureAwait(false);
+        return outcome;
+    }
+
+    public async Task RunPlanAsync(CancellationToken cancellationToken = default)
+    {
+        Status = WorkspaceStatus.Planning;
+        Notify();
+
+        var watch = Stopwatch.StartNew();
+        _telemetry.Record("spec_plan_started");
+        var result = await _client.PlanAsync(Spec, cancellationToken).ConfigureAwait(false);
+        watch.Stop();
+
+        PlanResult = result;
+        Status = result.Failed ? WorkspaceStatus.Error : WorkspaceStatus.Idle;
+        _applyEvents.Clear();
+        _telemetry.RecordLatency("spec_plan_completed", watch.ElapsedMilliseconds, new Dictionary<string, object?>
+        {
+            ["node_count"] = result.Nodes.Count,
+            ["failed"] = result.Failed
+        });
+        Notify();
+    }
+
+    public async Task RunApplyAsync(CancellationToken externalCancellation = default)
+    {
+        if (PlanResult is null)
+        {
+            await RunPlanAsync(externalCancellation).ConfigureAwait(false);
+            if (PlanResult is null || PlanResult.Failed)
+            {
+                return;
+            }
+        }
+
+        _applyCts?.Dispose();
+        _applyCts = CancellationTokenSource.CreateLinkedTokenSource(externalCancellation);
+        _applyEvents.Clear();
+        Status = WorkspaceStatus.Applying;
+        _activeJobId = Guid.NewGuid().ToString("n");
+
+        _telemetry.Record("spec_apply_started", new Dictionary<string, object?>
+        {
+            ["job_id"] = _activeJobId
+        });
+        Notify();
+
+        try
+        {
+            await foreach (var evt in _client.ApplyAsync(Spec, _activeJobId, _applyCts.Token).ConfigureAwait(false))
+            {
+                _applyEvents.Add(evt);
+                _telemetry.Record("spec_apply_node_event", new Dictionary<string, object?>
+                {
+                    ["node_id"] = evt.NodeId,
+                    ["status"] = evt.Status?.ToString()
+                });
+
+                switch (evt.Kind)
+                {
+                    case ApplyEventKind.Completed:
+                        Status = WorkspaceStatus.Idle;
+                        _telemetry.Record("spec_apply_completed");
+                        break;
+
+                    case ApplyEventKind.Cancelled:
+                        Status = WorkspaceStatus.Idle;
+                        _telemetry.Record("spec_apply_cancelled");
+                        break;
+
+                    case ApplyEventKind.Failed:
+                        Status = WorkspaceStatus.Error;
+                        _telemetry.Record("spec_apply_failed", new Dictionary<string, object?>
+                        {
+                            ["message"] = evt.Message
+                        });
+                        break;
+                }
+
+                Notify();
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            Status = WorkspaceStatus.Idle;
+            _applyEvents.Add(new ApplyEvent
+            {
+                Kind = ApplyEventKind.Cancelled,
+                JobId = _activeJobId ?? string.Empty,
+                Message = "cancelled"
+            });
+            _telemetry.Record("spec_apply_cancelled");
+            Notify();
+        }
+    }
+
+    public async Task CancelApplyAsync(CancellationToken cancellationToken = default)
+    {
+        if (_activeJobId is null || _applyCts is null)
+        {
+            return;
+        }
+
+        Status = WorkspaceStatus.Cancelling;
+        Notify();
+        await _client.CancelAsync(_activeJobId, cancellationToken).ConfigureAwait(false);
+        _applyCts.Cancel();
+    }
+
+    public async Task<CatalogResolution> ResolveCatalogAsync(ResolveQuery query, CancellationToken cancellationToken = default)
+    {
+        var stopwatch = Stopwatch.StartNew();
+        var resolution = await _catalog.GetOrResolveAsync(_client, query, cancellationToken).ConfigureAwait(false);
+        stopwatch.Stop();
+
+        var elapsed = resolution.Cached ? resolution.ElapsedMillis : stopwatch.ElapsedMilliseconds;
+        _telemetry.RecordLatency("spec_completion_latency_ms", elapsed, new Dictionary<string, object?>
+        {
+            ["trigger"] = query.Trigger.ToString(),
+            ["cached"] = resolution.Cached,
+            ["candidates"] = resolution.Candidates.Count
+        });
+
+        return resolution with { ElapsedMillis = elapsed };
+    }
+
+    public void InsertPromptToken(string token)
+    {
+        PromptDraft = string.Concat(PromptDraft, token);
+        _ = PersistAsync(CancellationToken.None);
+        Notify();
+    }
+
+    public void ToggleJsonView()
+    {
+        IsJsonView = !IsJsonView;
+        _ = PersistAsync(CancellationToken.None);
+        Notify();
+    }
+
+    public void SetLayout(LayoutWidths widths)
+    {
+        Layout = widths;
+        _telemetry.Record("spec_layout_changed", new Dictionary<string, object?>
+        {
+            ["nl"] = widths.Nl,
+            ["dsl"] = widths.Dsl,
+            ["preview"] = widths.Preview
+        });
+        _ = PersistAsync(CancellationToken.None);
+        Notify();
+    }
+
+    public async Task ClearDraftAsync(CancellationToken cancellationToken = default)
+    {
+        Spec = SpecDocument.Empty;
+        _conversation.Clear();
+        _applyEvents.Clear();
+        _sectionSummaries.Clear();
+        _editorDiagnosticsBySection.Clear();
+        PlanResult = null;
+        Status = WorkspaceStatus.Idle;
+        PromptDraft = string.Empty;
+        IsJsonView = false;
+        SyncSectionTextsFromSpec();
+        RefreshTextView();
+        RefreshDiagnostics();
+        await _storage.RemoveAsync(StorageKeyFor(PrincipalId), cancellationToken).ConfigureAwait(false);
+        _telemetry.Record("spec_draft_cleared");
+        Notify();
+    }
+
+    public void ReplaceSpec(SpecDocument document)
+    {
+        Spec = document;
+        SyncSectionTextsFromSpec();
+        _editorDiagnosticsBySection.Clear();
+        RefreshTextView();
+        RefreshDiagnostics();
+        _ = RefreshSectionSummariesAsync(CancellationToken.None);
+        _ = PersistAsync(CancellationToken.None);
+        Notify();
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_disposed)
+        {
+            return;
+        }
+
+        _disposed = true;
+        _applyCts?.Cancel();
+        _applyCts?.Dispose();
+
+        try
+        {
+            await PersistAsync(CancellationToken.None).ConfigureAwait(false);
+        }
+        catch
+        {
+            // Browser storage is best-effort during teardown.
+        }
+    }
+
+    internal async Task RehydrateFromStorageAsync(CancellationToken cancellationToken)
+    {
+        string? payload;
+        try
+        {
+            payload = await _storage.GetAsync(StorageKeyFor(PrincipalId), cancellationToken).ConfigureAwait(false);
+        }
+        catch
+        {
+            payload = null;
+        }
+
+        if (string.IsNullOrWhiteSpace(payload))
+        {
+            SyncSectionTextsFromSpec();
+            return;
+        }
+
+        try
+        {
+            var snapshot = JsonSerializer.Deserialize(payload, SpecWorkspaceJsonContext.Default.WorkspaceSnapshot);
+            if (snapshot is null)
+            {
+                SyncSectionTextsFromSpec();
+                return;
+            }
+
+            Spec = snapshot.Spec;
+            Layout = snapshot.Layout;
+            PromptDraft = snapshot.PromptDraft;
+            IsJsonView = snapshot.IsJsonView;
+
+            _conversation.Clear();
+            _conversation.AddRange(snapshot.Conversation);
+
+            _sectionTexts.Clear();
+            foreach (var (key, value) in snapshot.SectionTexts)
+            {
+                if (Enum.TryParse<SpecSectionId>(key, true, out var section))
+                {
+                    _sectionTexts[section] = value;
+                }
+            }
+
+            _editorDiagnosticsBySection.Clear();
+
+            if (_sectionTexts.Count == 0)
+            {
+                SyncSectionTextsFromSpec();
+            }
+
+            _telemetry.Record("spec_draft_rehydrated", new Dictionary<string, object?>
+            {
+                ["conversation_turns"] = _conversation.Count
+            });
+        }
+        catch (JsonException)
+        {
+            await _storage.RemoveAsync(StorageKeyFor(PrincipalId), cancellationToken).ConfigureAwait(false);
+            SyncSectionTextsFromSpec();
+        }
+    }
+
+    internal async Task PersistAsync(CancellationToken cancellationToken)
+    {
+        var snapshot = new WorkspaceSnapshot
+        {
+            PrincipalId = PrincipalId,
+            Spec = Spec,
+            Conversation = _conversation.ToArray(),
+            Layout = Layout,
+            PromptDraft = PromptDraft,
+            IsJsonView = IsJsonView,
+            SectionTexts = _sectionTexts.ToDictionary(kv => kv.Key.ToString(), kv => kv.Value, StringComparer.Ordinal)
+        };
+
+        var json = JsonSerializer.Serialize(snapshot, SpecWorkspaceJsonContext.Default.WorkspaceSnapshot);
+
+        try
+        {
+            await _storage.SetAsync(StorageKeyFor(PrincipalId), json, cancellationToken).ConfigureAwait(false);
+        }
+        catch
+        {
+            // Storage is best-effort in tests and pre-render.
+        }
+    }
+
+    private async Task RecordTurnAsync(string prompt, IntentOutcome outcome, CancellationToken cancellationToken)
+    {
+        _conversation.Add(new ConversationTurn
+        {
+            Id = Guid.NewGuid().ToString("n"),
+            Prompt = prompt,
+            Response = outcome
+        });
+
+        if (outcome.Kind == IntentResponseKind.Mutation && outcome.Mutation?.NextDocument is { } nextDocument)
+        {
+            Spec = nextDocument;
+            SyncSectionTextsFromSpec();
+            _editorDiagnosticsBySection.Clear();
+            RefreshTextView();
+            RefreshDiagnostics();
+            await RefreshSectionSummariesAsync(cancellationToken).ConfigureAwait(false);
+
+            _telemetry.Record("spec_mutation_applied", new Dictionary<string, object?>
+            {
+                ["section"] = outcome.Mutation.Section.ToString(),
+                ["summary"] = outcome.Mutation.Summary
+            });
+        }
+
+        await PersistAsync(cancellationToken).ConfigureAwait(false);
+        Notify();
+    }
+
+    private async Task RefreshSectionSummariesAsync(CancellationToken cancellationToken)
+    {
+        foreach (var section in Enum.GetValues<SpecSectionId>())
+        {
+            await RefreshSectionSummaryAsync(section, cancellationToken).ConfigureAwait(false);
+        }
+    }
+
+    private async Task RefreshSectionSummaryAsync(SpecSectionId section, CancellationToken cancellationToken)
+    {
+        var summary = await _client.SummarizeSectionAsync(Spec, section, cancellationToken).ConfigureAwait(false);
+        _sectionSummaries[section.ToString()] = summary;
+    }
+
+    private void SyncSectionTextsFromSpec()
+    {
+        _sectionTexts.Clear();
+        foreach (var (section, text) in SpecSectionTextTranslator.Serialize(Spec))
+        {
+            _sectionTexts[section] = text;
+        }
+    }
+
+    private void RefreshTextView()
+    {
+        var options = new JsonSerializerOptions
+        {
+            WriteIndented = true,
+            DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull
+        };
+
+        TextView = JsonSerializer.Serialize(Spec, options);
+    }
+
+    private void RefreshDiagnostics()
+    {
+        var next = new List<ValidationDiagnostic>();
+        foreach (var diagnostics in _editorDiagnosticsBySection.Values)
+        {
+            next.AddRange(diagnostics);
+        }
+
+        next.AddRange(_client.Validate(Spec));
+
+        _diagnostics.Clear();
+        _diagnostics.AddRange(next
+            .DistinctBy(d => $"{d.Section}:{d.Code}:{d.Identifier}:{d.Message}")
+            .OrderBy(d => d.Section)
+            .ThenBy(d => d.Severity));
+    }
+
+    private static string StorageKeyFor(string principalId) => $"{StorageKeyPrefix}draft:{principalId}";
+
+    private void Notify() => OnChanged?.Invoke();
+
+    private sealed record TextSelectionState(int Start, int End);
+}

@@ -10,6 +10,7 @@ This is the official admin UI for managing Honua Server instances:
 - **Layer Management**: Configure feature layers and spatial schemas
 - **Service Administration**: Manage map services and API endpoints
 - **Analytics Dashboard**: Monitor usage and performance
+- **Operator Spec Workspace**: Stub-backed three-pane NL + DSL + preview workspace for walking the spec workflow end to end
 
 ## Architecture
 
@@ -52,6 +53,18 @@ Configure server connection in `src/Honua.Admin/appsettings.json`:
   }
 }
 ```
+
+### Operator Spec Workspace
+
+The S1 operator workspace lives at `/operator/spec`. It is stub-backed inside
+`honua-server-admin` so the admin UI can demo the end-to-end spec authoring
+flow before the real grounding, catalog, and apply services are wired in.
+
+The route includes:
+
+- A conversation pane with deterministic clarification pickers and mutation diffs
+- A sectioned DSL editor with cached `@` / `@dataset.` completion and inline validation
+- A preview pane with plan DAGs, streaming apply status, sortable table output, and a local MapLibre preview
 
 ## Features
 

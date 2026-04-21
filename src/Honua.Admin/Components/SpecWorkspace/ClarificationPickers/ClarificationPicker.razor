@@ -1,0 +1,72 @@
+@* Structured inline picker card rendered in place of a prompt response when the
+   grounding service asks for more information. Dispatches to typed pickers per
+   clarification kind (pick-dataset, pick-column, pick-value, specify-unit,
+   specify-crs, choose-op). *@
+@using Honua.Admin.Models.SpecWorkspace
+
+@if (Request is not null)
+{
+    var kindLabel = Request.Kind switch
+    {
+        ClarificationKind.PickDataset => "pick-dataset",
+        ClarificationKind.PickColumn => "pick-column",
+        ClarificationKind.PickValue => "pick-value",
+        ClarificationKind.SpecifyUnit => "specify-unit",
+        ClarificationKind.SpecifyCrs => "specify-crs",
+        ClarificationKind.ChooseOp => "choose-op",
+        _ => "clarification"
+    };
+
+    <MudPaper Class="pa-3 spec-clarification" Elevation="0" data-testid="clarification-card">
+        <MudStack Spacing="2">
+            <MudStack Row AlignItems="AlignItems.Center" Spacing="2">
+                <MudIcon Icon="@Icons.Material.Filled.QuestionMark" Size="Size.Small" />
+                <MudText Typo="Typo.subtitle2">@Request.Question</MudText>
+                <MudSpacer />
+                <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined">@kindLabel</MudChip>
+            </MudStack>
+
+            @if (Request.Kind is ClarificationKind.PickDataset or ClarificationKind.ChooseOp or ClarificationKind.SpecifyUnit or ClarificationKind.SpecifyCrs or ClarificationKind.PickColumn)
+            {
+                <MudStack Row Wrap="Wrap.Wrap" Spacing="1">
+                    @foreach (var option in Request.Options)
+                    {
+                        <MudButton Variant="Variant.Outlined"
+                                   Size="Size.Small"
+                                   OnClick="@(() => InvokeAnswerAsync(Request.Id, option.Value))"
+                                   data-testid="@($"clarification-{option.Value}")">
+                            @option.Label
+                        </MudButton>
+                    }
+                </MudStack>
+            }
+            else if (Request.Kind is ClarificationKind.PickValue)
+            {
+                <MudTextField T="string"
+                              Variant="Variant.Outlined"
+                              Margin="Margin.Dense"
+                              Value="@_inputValue"
+                              ValueChanged="@(v => _inputValue = v ?? string.Empty)" />
+                <MudButton Color="Color.Primary"
+                           Variant="Variant.Filled"
+                           OnClick="@(() => InvokeAnswerAsync(Request.Id, _inputValue))"
+                           StartIcon="@Icons.Material.Filled.Check">Submit</MudButton>
+            }
+        </MudStack>
+    </MudPaper>
+}
+
+@code {
+    [Parameter] public ClarificationRequest? Request { get; set; }
+    [Parameter] public EventCallback<(string Kind, string Value)> OnAnswer { get; set; }
+
+    private string _inputValue = string.Empty;
+
+    private async Task InvokeAnswerAsync(string kindId, string value)
+    {
+        if (OnAnswer.HasDelegate)
+        {
+            await OnAnswer.InvokeAsync((kindId, value));
+        }
+    }
+}

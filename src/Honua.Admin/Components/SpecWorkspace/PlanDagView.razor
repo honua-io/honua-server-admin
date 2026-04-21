@@ -1,0 +1,81 @@
+@* DAG view laid out by topological depth — no physics engine required. Expand
+   a row to see operator, inputs, estimated cost, and per-node warnings. *@
+@using Honua.Admin.Models.SpecWorkspace
+
+<MudStack Spacing="2" data-testid="plan-dag">
+    @if (Plan is null)
+    {
+        <MudAlert Severity="Severity.Info" Dense="true" Variant="Variant.Text">
+            Press Plan to compute the DAG and per-node cost estimate.
+        </MudAlert>
+    }
+    else if (Plan.Failed)
+    {
+        <MudAlert Severity="Severity.Error" Dense="true" Variant="Variant.Filled" data-testid="plan-failed">
+            Plan failed: @Plan.FailureMessage
+        </MudAlert>
+    }
+    else
+    {
+        <MudStack Row Wrap="Wrap.Wrap" Spacing="1">
+            @foreach (var w in Plan.Warnings)
+            {
+                <MudChip T="string" Size="Size.Small" Color="@(w.Severity == PlanWarningSeverity.Red ? Color.Error : Color.Warning)" Variant="Variant.Text">
+                    @w.Message
+                </MudChip>
+            }
+        </MudStack>
+
+        <MudExpansionPanels MultiExpansion="true" Dense="true">
+            @foreach (var group in Plan.Nodes.GroupBy(n => n.Depth).OrderBy(g => g.Key))
+            {
+                <MudExpansionPanel data-testid="@($"dag-depth-{group.Key}")">
+                    <TitleContent>
+                        <MudStack Row AlignItems="AlignItems.Center" Spacing="2">
+                            <MudChip T="string" Size="Size.Small" Color="Color.Primary">depth @group.Key</MudChip>
+                            <MudText Typo="Typo.body2">@string.Join(", ", group.Select(n => n.Op))</MudText>
+                        </MudStack>
+                    </TitleContent>
+                    <ChildContent>
+                        <MudList T="string" Dense="true">
+                            @foreach (var node in group)
+                            {
+                                <MudListItem T="string" Icon="@IconFor(node.Op)" data-testid="@($"dag-node-{node.Id}")">
+                                    <MudStack Spacing="0">
+                                        <MudText Typo="Typo.body2"><strong>@node.Id</strong> — @node.Op</MudText>
+                                        <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                            rows≈@node.EstimatedRows  |  bytes≈@node.EstimatedBytes  |  dur≈@node.EstimatedMillis ms
+                                        </MudText>
+                                        @if (node.Inputs.Count > 0)
+                                        {
+                                            <MudText Typo="Typo.caption" Color="Color.Tertiary">inputs: @string.Join(", ", node.Inputs)</MudText>
+                                        }
+                                        @foreach (var warning in node.Warnings)
+                                        {
+                                            <MudText Typo="Typo.caption" Color="Color.Warning">⚠ @warning</MudText>
+                                        }
+                                    </MudStack>
+                                </MudListItem>
+                            }
+                        </MudList>
+                    </ChildContent>
+                </MudExpansionPanel>
+            }
+        </MudExpansionPanels>
+    }
+</MudStack>
+
+@code {
+    [Parameter] public PlanResult? Plan { get; set; }
+
+    private static string IconFor(string op) => op switch
+    {
+        "source" => Icons.Material.Filled.Storage,
+        "aggregate" => Icons.Material.Filled.Functions,
+        "filter" => Icons.Material.Filled.FilterAlt,
+        "buffer" => Icons.Material.Filled.BlurCircular,
+        "join" => Icons.Material.Filled.Merge,
+        "map" => Icons.Material.Filled.Map,
+        _ => Icons.Material.Filled.Code
+    };
+}

@@ -1,0 +1,47 @@
+{
+  "version": "v1",
+  "sections": [
+    { "id": "sources", "title": "Sources", "order": 0 },
+    { "id": "scope", "title": "Scope", "order": 1 },
+    { "id": "compute", "title": "Compute", "order": 2 },
+    { "id": "map", "title": "Map", "order": 3 },
+    { "id": "output", "title": "Output", "order": 4 }
+  ],
+  "operators": [
+    {
+      "name": "filter",
+      "section": "compute",
+      "params": [
+        { "name": "where", "type": "expression", "required": true, "doc": "Boolean expression; references @source.column" }
+      ]
+    },
+    {
+      "name": "aggregate",
+      "section": "compute",
+      "params": [
+        { "name": "by", "type": "column[]", "required": true, "doc": "Group-by columns" },
+        { "name": "metric", "type": "op", "required": true, "doc": "count|sum|avg|min|max" }
+      ]
+    },
+    {
+      "name": "join",
+      "section": "compute",
+      "params": [
+        { "name": "right", "type": "source", "required": true, "doc": "Right-hand dataset" },
+        { "name": "on", "type": "expression", "required": true, "doc": "Join predicate" },
+        { "name": "how", "type": "enum", "required": false, "default": "inner", "doc": "inner|left|right|outer" }
+      ]
+    },
+    {
+      "name": "buffer",
+      "section": "compute",
+      "params": [
+        { "name": "distance", "type": "quantity", "required": true, "doc": "Radius with unit (m|km|mi)" }
+      ]
+    }
+  ],
+  "symbology": {
+    "ramps": ["viridis", "plasma", "magma", "blues", "reds"],
+    "classifiers": ["quantile", "equal-interval", "natural-breaks"]
+  }
+}
