@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("Honua.Admin")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+79773b195092c95dd84080b44f43660590a20c13")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+b8c03dd7cbe65d66848b0eea97bd2650843091bb")]
 [assembly: System.Reflection.AssemblyProductAttribute("Honua.Admin")]
 [assembly: System.Reflection.AssemblyTitleAttribute("Honua.Admin")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

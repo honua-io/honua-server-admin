@@ -5,7 +5,7 @@ var e=!1;const t=async()=>WebAssembly.validate(new Uint8Array([0,97,115,109,1,0,
   "mainAssemblyName": "Honua.Admin",
   "applicationEnvironment": "Development",
   "resources": {
-    "hash": "sha256-34IOKsUuwVmoXOmu0n7++Mx/dQz087icTuxAk3rTboc=",
+    "hash": "sha256-qBhvhxvcxPRhYLCuEDcpbSExftsWTN4+fjqaLxssjB8=",
     "jsModuleNative": [
       {
         "name": "dotnet.native.69poregybn.js"
@@ -1290,16 +1290,16 @@ var e=!1;const t=async()=>WebAssembly.validate(new Uint8Array([0,97,115,109,1,0,
       },
       {
         "virtualPath": "Honua.Admin.wasm",
-        "name": "Honua.Admin.w20h0607xt.wasm",
-        "integrity": "sha256-WE07VjN7jTPf/1dn7u75pc94Uci1Z780k9xLlxRCZY0=",
+        "name": "Honua.Admin.d7w3a557iw.wasm",
+        "integrity": "sha256-yVP5+iQiCLUkLTEPBFeiqznkvX/kQAsc6iEuF0e+Nog=",
         "cache": "force-cache"
       }
     ],
     "pdb": [
       {
         "virtualPath": "Honua.Admin.pdb",
-        "name": "Honua.Admin.askxlz1e8w.pdb",
-        "integrity": "sha256-hucayqN+CDLXDdPRupYWzqMWh6nbpnkE4qwIwHn4B7s=",
+        "name": "Honua.Admin.l8d2ffcpq3.pdb",
+        "integrity": "sha256-e0Vf1taOrtGiz4acwskK6r1dYwDypSfTE+eE4wp0X7k=",
         "cache": "force-cache"
       }
     ],
