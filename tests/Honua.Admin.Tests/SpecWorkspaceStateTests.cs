@@ -31,6 +31,63 @@ public sealed class SpecWorkspaceStateTests
     }
 
     [Fact]
+    public async Task Compute_section_round_trips_filter_values_containing_whitespace()
+    {
+        var storage = new MemoryBrowserStorageService();
+        var state = new SpecWorkspaceState(
+            new StubSpecWorkspaceClient(),
+            storage,
+            new NullSpecWorkspaceTelemetry(),
+            new CatalogCache());
+
+        await state.InitializeAsync("operator");
+
+        var outcome = await state.AnswerClarificationAsync(
+            "pick-value:filter:parcels:county",
+            "Big Island");
+
+        Assert.Equal(IntentResponseKind.Mutation, outcome.Kind);
+        Assert.Single(state.Spec.Compute);
+        Assert.Equal("@parcels.county=Big Island", state.Spec.Compute[0].Args["where"]);
+
+        var serialized = state.GetSectionText(SpecSectionId.Compute);
+        await state.UpdateSectionTextAsync(SpecSectionId.Compute, serialized);
+
+        Assert.Single(state.Spec.Compute);
+        Assert.Equal("@parcels.county=Big Island", state.Spec.Compute[0].Args["where"]);
+        Assert.DoesNotContain(state.Diagnostics, d => d.Code == "invalid-compute-token");
+    }
+
+    [Fact]
+    public async Task ClearDraftAsync_cancels_in_flight_apply_and_leaves_idle_empty_state()
+    {
+        var storage = new MemoryBrowserStorageService();
+        var client = new BlockingApplyClient();
+        var state = new SpecWorkspaceState(
+            client,
+            storage,
+            new NullSpecWorkspaceTelemetry(),
+            new CatalogCache());
+
+        await state.InitializeAsync("operator");
+        await state.SubmitPromptAsync("aggregate count of @parcels by county");
+        await state.RunPlanAsync();
+
+        var applyTask = state.RunApplyAsync();
+        await client.FirstEventEmitted.Task;
+
+        Assert.Equal(WorkspaceStatus.Applying, state.Status);
+
+        await state.ClearDraftAsync();
+        await applyTask;
+
+        Assert.Equal(WorkspaceStatus.Idle, state.Status);
+        Assert.Empty(state.ApplyEvents);
+        Assert.Null(state.ActiveJobId);
+        Assert.Equal(SpecDocument.Empty, state.Spec);
+    }
+
+    [Fact]
     public async Task InitializeAsync_rehydrates_persisted_workspace_snapshot()
     {
         var storage = new MemoryBrowserStorageService();
@@ -57,6 +114,61 @@ public sealed class SpecWorkspaceStateTests
         Assert.Equal(new LayoutWidths(30, 35, 35), second.Layout);
         Assert.Single(second.Conversation);
         Assert.Contains("@parcels = parcels", second.GetSectionText(SpecSectionId.Sources), StringComparison.Ordinal);
+    }
+
+    private sealed class BlockingApplyClient : ISpecWorkspaceClient
+    {
+        private readonly StubSpecWorkspaceClient _inner = new();
+        public TaskCompletionSource FirstEventEmitted { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public Task<IntentOutcome> SubmitIntentAsync(IntentRequest request, CancellationToken cancellationToken) =>
+            _inner.SubmitIntentAsync(request, cancellationToken);
+
+        public Task<IReadOnlyList<CatalogCandidate>> ResolveCatalogAsync(ResolveQuery query, CancellationToken cancellationToken) =>
+            _inner.ResolveCatalogAsync(query, cancellationToken);
+
+        public Task<PlanResult> PlanAsync(SpecDocument document, CancellationToken cancellationToken) =>
+            _inner.PlanAsync(document, cancellationToken);
+
+        public async IAsyncEnumerable<ApplyEvent> ApplyAsync(
+            SpecDocument document,
+            string jobId,
+            [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken)
+        {
+            yield return new ApplyEvent { Kind = ApplyEventKind.Started, JobId = jobId };
+            FirstEventEmitted.TrySetResult();
+
+            var cancelled = false;
+            try
+            {
+                await Task.Delay(Timeout.Infinite, cancellationToken).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException)
+            {
+                cancelled = true;
+            }
+
+            if (cancelled)
+            {
+                yield return new ApplyEvent
+                {
+                    Kind = ApplyEventKind.Cancelled,
+                    JobId = jobId,
+                    Message = "cancelled"
+                };
+            }
+        }
+
+        public Task CancelAsync(string jobId, CancellationToken cancellationToken) =>
+            _inner.CancelAsync(jobId, cancellationToken);
+
+        public Task<string> SummarizeSectionAsync(SpecDocument document, SpecSectionId section, CancellationToken cancellationToken) =>
+            _inner.SummarizeSectionAsync(document, section, cancellationToken);
+
+        public Task<SpecGrammar> LoadGrammarAsync(CancellationToken cancellationToken) =>
+            _inner.LoadGrammarAsync(cancellationToken);
+
+        public IReadOnlyList<ValidationDiagnostic> Validate(SpecDocument document) => _inner.Validate(document);
     }
 
     private sealed class MemoryBrowserStorageService : IBrowserStorageService

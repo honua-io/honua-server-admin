@@ -923,7 +923,8 @@ public sealed partial class StubSpecWorkspaceClient : ISpecWorkspaceClient
             var features = new List<MapFeature>();
             foreach (var layer in document.Map.Layers)
             {
-                if (!_datasets.TryGetValue(layer.Source.ToLowerInvariant(), out var ds))
+                var datasetId = ResolveDatasetId(document, layer.Source);
+                if (datasetId is null || !_datasets.TryGetValue(datasetId, out var ds))
                 {
                     continue;
                 }
@@ -1010,6 +1011,13 @@ public sealed partial class StubSpecWorkspaceClient : ISpecWorkspaceClient
     }
 
     private bool IsCancelled(string jobId) => _cancelledJobs.Contains(jobId);
+
+    private string? ResolveDatasetId(SpecDocument document, string layerSource)
+    {
+        var source = document.Sources.FirstOrDefault(s => string.Equals(s.Id, layerSource, StringComparison.OrdinalIgnoreCase));
+        var candidate = source?.Dataset ?? layerSource;
+        return string.IsNullOrWhiteSpace(candidate) ? null : candidate.ToLowerInvariant();
+    }
 
     private static Dictionary<string, CatalogDataset> BuildSeedCatalog()
     {

@@ -165,8 +165,8 @@ internal static class SpecSectionTextTranslator
         foreach (var line in EnumerateLines(text))
         {
             var trimmed = line.Trim();
-            var tokens = trimmed.Split(' ', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
-            if (tokens.Length == 0)
+            var tokens = TokenizeComputeLine(trimmed);
+            if (tokens.Count == 0)
             {
                 continue;
             }
@@ -215,6 +215,59 @@ internal static class SpecSectionTextTranslator
         }
 
         return steps;
+    }
+
+    private static IReadOnlyList<string> TokenizeComputeLine(string line)
+    {
+        var tokens = new List<string>();
+        if (string.IsNullOrEmpty(line))
+        {
+            return tokens;
+        }
+
+        var builder = new StringBuilder();
+        var inQuotes = false;
+        var escape = false;
+        foreach (var ch in line)
+        {
+            if (escape)
+            {
+                builder.Append(ch);
+                escape = false;
+                continue;
+            }
+
+            if (inQuotes && ch == '\\')
+            {
+                escape = true;
+                continue;
+            }
+
+            if (ch == '"')
+            {
+                inQuotes = !inQuotes;
+                continue;
+            }
+
+            if (!inQuotes && char.IsWhiteSpace(ch))
+            {
+                if (builder.Length > 0)
+                {
+                    tokens.Add(builder.ToString());
+                    builder.Clear();
+                }
+                continue;
+            }
+
+            builder.Append(ch);
+        }
+
+        if (builder.Length > 0)
+        {
+            tokens.Add(builder.ToString());
+        }
+
+        return tokens;
     }
 
     private static SpecMap ParseMap(string text, List<ValidationDiagnostic> diagnostics)
@@ -375,9 +428,36 @@ internal static class SpecSectionTextTranslator
                     tokens.Add("inputs=" + string.Join(",", step.Inputs.Select(i => $"@{i}")));
                 }
 
-                tokens.AddRange(step.Args.Select(kv => $"{kv.Key}={kv.Value}"));
+                tokens.AddRange(step.Args.Select(kv => $"{kv.Key}={QuoteComputeValue(kv.Value)}"));
                 return string.Join(" ", tokens);
             }));
+    }
+
+    private static string QuoteComputeValue(string? value)
+    {
+        if (string.IsNullOrEmpty(value))
+        {
+            return value ?? string.Empty;
+        }
+
+        var needsQuoting = false;
+        foreach (var ch in value)
+        {
+            if (char.IsWhiteSpace(ch) || ch == '"' || ch == '\\')
+            {
+                needsQuoting = true;
+                break;
+            }
+        }
+
+        if (!needsQuoting)
+        {
+            return value;
+        }
+
+        var escaped = value.Replace("\\", "\\\\", StringComparison.Ordinal)
+            .Replace("\"", "\\\"", StringComparison.Ordinal);
+        return $"\"{escaped}\"";
     }
 
     private static string SerializeMap(SpecDocument document)

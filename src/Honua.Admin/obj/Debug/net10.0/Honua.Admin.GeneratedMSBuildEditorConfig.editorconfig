@@ -1,0 +1,104 @@
+is_global = true
+build_property.EnableAotAnalyzer = 
+build_property.EnableSingleFileAnalyzer = 
+build_property.EnableTrimAnalyzer = false
+build_property.IncludeAllContentForSelfExtract = 
+build_property.VerifyReferenceTrimCompatibility = 
+build_property.VerifyReferenceAotCompatibility = 
+build_property.MudDebugAnalyzer = 
+build_property.MudAllowedAttributePattern = 
+build_property.MudAllowedAttributeList = 
+build_property.TargetFramework = net10.0
+build_property.TargetFrameworkIdentifier = .NETCoreApp
+build_property.TargetFrameworkVersion = v10.0
+build_property.TargetPlatformMinVersion = 
+build_property.UsingMicrosoftNETSdkWeb = 
+build_property.ProjectTypeGuids = 
+build_property.InvariantGlobalization = false
+build_property.PlatformNeutralAssembly = 
+build_property.EnforceExtendedAnalyzerRules = 
+build_property._SupportedPlatformList = browser
+build_property.RootNamespace = Honua.Admin
+build_property.RootNamespace = Honua.Admin
+build_property.ProjectDir = /home/makani/worktrees/honua-server-admin/26/src/Honua.Admin/
+build_property.EnableComHosting = 
+build_property.EnableGeneratedComInterfaceComImportInterop = false
+build_property.RazorLangVersion = 9.0
+build_property.SupportLocalizedComponentNames = 
+build_property.GenerateRazorMetadataSourceChecksumAttributes = 
+build_property.MSBuildProjectDirectory = /home/makani/worktrees/honua-server-admin/26/src/Honua.Admin
+build_property._RazorSourceGeneratorDebug = 
+build_property.EffectiveAnalysisLevelStyle = 10.0
+build_property.EnableCodeStyleSeverity = 
+
+[/home/makani/worktrees/honua-server-admin/26/src/Honua.Admin/App.razor]
+build_metadata.AdditionalFiles.TargetPath = QXBwLnJhem9y
+build_metadata.AdditionalFiles.CssScope = 
+
+[/home/makani/worktrees/honua-server-admin/26/src/Honua.Admin/Components/SpecWorkspace/ApplyStreamView.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50cy9TcGVjV29ya3NwYWNlL0FwcGx5U3RyZWFtVmlldy5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = 
+
+[/home/makani/worktrees/honua-server-admin/26/src/Honua.Admin/Components/SpecWorkspace/AppScaffoldPreview.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50cy9TcGVjV29ya3NwYWNlL0FwcFNjYWZmb2xkUHJldmlldy5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = 
+
+[/home/makani/worktrees/honua-server-admin/26/src/Honua.Admin/Components/SpecWorkspace/ClarificationPickers/ClarificationPicker.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50cy9TcGVjV29ya3NwYWNlL0NsYXJpZmljYXRpb25QaWNrZXJzL0NsYXJpZmljYXRpb25QaWNrZXIucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = 
+
+[/home/makani/worktrees/honua-server-admin/26/src/Honua.Admin/Components/SpecWorkspace/ConversationPane.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50cy9TcGVjV29ya3NwYWNlL0NvbnZlcnNhdGlvblBhbmUucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = 
+
+[/home/makani/worktrees/honua-server-admin/26/src/Honua.Admin/Components/SpecWorkspace/DslPane.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50cy9TcGVjV29ya3NwYWNlL0RzbFBhbmUucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = 
+
+[/home/makani/worktrees/honua-server-admin/26/src/Honua.Admin/Components/SpecWorkspace/DslSectionEditor.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50cy9TcGVjV29ya3NwYWNlL0RzbFNlY3Rpb25FZGl0b3IucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = 
+
+[/home/makani/worktrees/honua-server-admin/26/src/Honua.Admin/Components/SpecWorkspace/MapPreview.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50cy9TcGVjV29ya3NwYWNlL01hcFByZXZpZXcucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = 
+
+[/home/makani/worktrees/honua-server-admin/26/src/Honua.Admin/Components/SpecWorkspace/MutationDiffView.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50cy9TcGVjV29ya3NwYWNlL011dGF0aW9uRGlmZlZpZXcucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = 
+
+[/home/makani/worktrees/honua-server-admin/26/src/Honua.Admin/Components/SpecWorkspace/PlanDagView.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50cy9TcGVjV29ya3NwYWNlL1BsYW5EYWdWaWV3LnJhem9y
+build_metadata.AdditionalFiles.CssScope = 
+
+[/home/makani/worktrees/honua-server-admin/26/src/Honua.Admin/Components/SpecWorkspace/PreviewPane.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50cy9TcGVjV29ya3NwYWNlL1ByZXZpZXdQYW5lLnJhem9y
+build_metadata.AdditionalFiles.CssScope = 
+
+[/home/makani/worktrees/honua-server-admin/26/src/Honua.Admin/Components/SpecWorkspace/SpecWorkspaceBody.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50cy9TcGVjV29ya3NwYWNlL1NwZWNXb3Jrc3BhY2VCb2R5LnJhem9y
+build_metadata.AdditionalFiles.CssScope = 
+
+[/home/makani/worktrees/honua-server-admin/26/src/Honua.Admin/Components/SpecWorkspace/TablePreview.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50cy9TcGVjV29ya3NwYWNlL1RhYmxlUHJldmlldy5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = 
+
+[/home/makani/worktrees/honua-server-admin/26/src/Honua.Admin/Pages/Index.razor]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXMvSW5kZXgucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = 
+
+[/home/makani/worktrees/honua-server-admin/26/src/Honua.Admin/Pages/Operator/SpecWorkspace.razor]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXMvT3BlcmF0b3IvU3BlY1dvcmtzcGFjZS5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = 
+
+[/home/makani/worktrees/honua-server-admin/26/src/Honua.Admin/Shared/MainLayout.razor]
+build_metadata.AdditionalFiles.TargetPath = U2hhcmVkL01haW5MYXlvdXQucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = 
+
+[/home/makani/worktrees/honua-server-admin/26/src/Honua.Admin/Shared/NavMenu.razor]
+build_metadata.AdditionalFiles.TargetPath = U2hhcmVkL05hdk1lbnUucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = 
+
+[/home/makani/worktrees/honua-server-admin/26/src/Honua.Admin/_Imports.razor]
+build_metadata.AdditionalFiles.TargetPath = X0ltcG9ydHMucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = 

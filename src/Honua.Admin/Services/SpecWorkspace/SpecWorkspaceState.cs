@@ -41,6 +41,7 @@ public sealed class SpecWorkspaceState : IAsyncDisposable
 
     private CancellationTokenSource? _applyCts;
     private string? _activeJobId;
+    private Task? _applyTask;
     private bool _disposed;
     private bool _rehydrated;
 
@@ -235,20 +236,48 @@ public sealed class SpecWorkspaceState : IAsyncDisposable
         }
 
         _applyCts?.Dispose();
-        _applyCts = CancellationTokenSource.CreateLinkedTokenSource(externalCancellation);
+        var cts = CancellationTokenSource.CreateLinkedTokenSource(externalCancellation);
+        _applyCts = cts;
         _applyEvents.Clear();
         Status = WorkspaceStatus.Applying;
-        _activeJobId = Guid.NewGuid().ToString("n");
+        var jobId = Guid.NewGuid().ToString("n");
+        _activeJobId = jobId;
 
         _telemetry.Record("spec_apply_started", new Dictionary<string, object?>
         {
-            ["job_id"] = _activeJobId
+            ["job_id"] = jobId
         });
         Notify();
 
+        var task = DriveApplyAsync(jobId, cts);
+        _applyTask = task;
         try
         {
-            await foreach (var evt in _client.ApplyAsync(Spec, _activeJobId, _applyCts.Token).ConfigureAwait(false))
+            await task.ConfigureAwait(false);
+        }
+        finally
+        {
+            if (ReferenceEquals(_applyTask, task))
+            {
+                _applyTask = null;
+            }
+            if (ReferenceEquals(_applyCts, cts))
+            {
+                _applyCts.Dispose();
+                _applyCts = null;
+            }
+            if (string.Equals(_activeJobId, jobId, StringComparison.Ordinal))
+            {
+                _activeJobId = null;
+            }
+        }
+    }
+
+    private async Task DriveApplyAsync(string jobId, CancellationTokenSource cts)
+    {
+        try
+        {
+            await foreach (var evt in _client.ApplyAsync(Spec, jobId, cts.Token).ConfigureAwait(false))
             {
                 _applyEvents.Add(evt);
                 _telemetry.Record("spec_apply_node_event", new Dictionary<string, object?>
@@ -287,7 +316,7 @@ public sealed class SpecWorkspaceState : IAsyncDisposable
             _applyEvents.Add(new ApplyEvent
             {
                 Kind = ApplyEventKind.Cancelled,
-                JobId = _activeJobId ?? string.Empty,
+                JobId = jobId,
                 Message = "cancelled"
             });
             _telemetry.Record("spec_apply_cancelled");
@@ -297,15 +326,24 @@ public sealed class SpecWorkspaceState : IAsyncDisposable
 
     public async Task CancelApplyAsync(CancellationToken cancellationToken = default)
     {
-        if (_activeJobId is null || _applyCts is null)
+        var jobId = _activeJobId;
+        var cts = _applyCts;
+        if (jobId is null || cts is null)
         {
             return;
         }
 
         Status = WorkspaceStatus.Cancelling;
         Notify();
-        await _client.CancelAsync(_activeJobId, cancellationToken).ConfigureAwait(false);
-        _applyCts.Cancel();
+        await _client.CancelAsync(jobId, cancellationToken).ConfigureAwait(false);
+        try
+        {
+            cts.Cancel();
+        }
+        catch (ObjectDisposedException)
+        {
+            // Apply already terminated and disposed its CTS; nothing to cancel.
+        }
     }
 
     public async Task<CatalogResolution> ResolveCatalogAsync(ResolveQuery query, CancellationToken cancellationToken = default)
@@ -354,6 +392,8 @@ public sealed class SpecWorkspaceState : IAsyncDisposable
 
     public async Task ClearDraftAsync(CancellationToken cancellationToken = default)
     {
+        await StopActiveApplyAsync(cancellationToken).ConfigureAwait(false);
+
         Spec = SpecDocument.Empty;
         _conversation.Clear();
         _applyEvents.Clear();
@@ -369,6 +409,26 @@ public sealed class SpecWorkspaceState : IAsyncDisposable
         await _storage.RemoveAsync(StorageKeyFor(PrincipalId), cancellationToken).ConfigureAwait(false);
         _telemetry.Record("spec_draft_cleared");
         Notify();
+    }
+
+    private async Task StopActiveApplyAsync(CancellationToken cancellationToken)
+    {
+        var task = _applyTask;
+        if (task is null)
+        {
+            return;
+        }
+
+        await CancelApplyAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            await task.ConfigureAwait(false);
+        }
+        catch
+        {
+            // The apply loop owns its own exception handling; swallow anything leaking
+            // out so the reset can proceed to a clean slate.
+        }
     }
 
     public void ReplaceSpec(SpecDocument document)
@@ -391,7 +451,14 @@ public sealed class SpecWorkspaceState : IAsyncDisposable
         }
 
         _disposed = true;
-        _applyCts?.Cancel();
+        try
+        {
+            _applyCts?.Cancel();
+        }
+        catch (ObjectDisposedException)
+        {
+            // CTS already disposed by the terminal-state cleanup in RunApplyAsync.
+        }
         _applyCts?.Dispose();
 
         try

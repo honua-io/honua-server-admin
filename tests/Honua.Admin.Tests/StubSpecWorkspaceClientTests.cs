@@ -30,6 +30,27 @@ public sealed class StubSpecWorkspaceClientTests
     }
 
     [Fact]
+    public async Task ApplyAsync_resolves_map_layer_features_through_aliased_sources()
+    {
+        var document = new SpecDocument
+        {
+            Sources = new[] { new SpecSourceEntry("study", "parcels") },
+            Map = new SpecMap
+            {
+                Layers = new[] { new SpecMapLayer("study", "viridis") }
+            },
+            Output = new SpecOutput { Kind = SpecOutputKind.Map, Target = "preview" }
+        };
+
+        var payload = await CollectCompletedPayloadAsync(document);
+
+        Assert.NotNull(payload);
+        Assert.Equal(SpecOutputKind.Map, payload!.Kind);
+        Assert.NotEmpty(payload.MapFeatures);
+        Assert.All(payload.MapFeatures, feature => Assert.Equal("study", feature.Source));
+    }
+
+    [Fact]
     public async Task Clarification_answers_apply_follow_up_mutations()
     {
         var outcome = await _client.SubmitIntentAsync(new IntentRequest
@@ -44,5 +65,19 @@ public sealed class StubSpecWorkspaceClientTests
         Assert.NotNull(outcome.Mutation?.NextDocument);
         Assert.Single(outcome.Mutation!.NextDocument!.Compute);
         Assert.Equal("@parcels.county", outcome.Mutation.NextDocument.Compute[0].Args["by"]);
+    }
+
+    private async Task<ApplyPayload?> CollectCompletedPayloadAsync(SpecDocument document)
+    {
+        var jobId = Guid.NewGuid().ToString("n");
+        await foreach (var evt in _client.ApplyAsync(document, jobId, CancellationToken.None))
+        {
+            if (evt.Kind == ApplyEventKind.Completed)
+            {
+                return evt.Payload;
+            }
+        }
+
+        return null;
     }
 }
