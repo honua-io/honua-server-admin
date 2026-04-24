@@ -50,6 +50,25 @@ public sealed class StubSpecWorkspaceClientTests
         Assert.All(payload.MapFeatures, feature => Assert.Equal("study", feature.Source));
     }
 
+    [Theory]
+    [InlineData("buffer @parcels by 100mi", "100mi")]
+    [InlineData("buffer @parcels by 100km", "100km")]
+    [InlineData("buffer @parcels by 100m", "100m")]
+    [InlineData("buffer @parcels by 2.5mi", "2.5mi")]
+    public async Task SubmitIntentAsync_parses_buffer_unit_longest_first(string prompt, string expectedDistance)
+    {
+        var outcome = await _client.SubmitIntentAsync(new IntentRequest
+        {
+            Prompt = prompt,
+            CurrentSpec = SpecDocument.Empty
+        }, CancellationToken.None);
+
+        Assert.Equal(IntentResponseKind.Mutation, outcome.Kind);
+        var buffer = Assert.Single(outcome.Mutation!.NextDocument!.Compute);
+        Assert.Equal("buffer", buffer.Op);
+        Assert.Equal(expectedDistance, buffer.Args["distance"]);
+    }
+
     [Fact]
     public async Task Clarification_answers_apply_follow_up_mutations()
     {

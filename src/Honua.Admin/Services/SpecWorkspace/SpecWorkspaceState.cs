@@ -173,6 +173,24 @@ public sealed class SpecWorkspaceState : IAsyncDisposable
         await UpdateSectionTextAsync(section, updated, cancellationToken).ConfigureAwait(false);
     }
 
+    public Task InsertColumnTokenAsync(string column, CancellationToken cancellationToken = default) =>
+        InsertDslTokenAsync(QualifyColumnToken(column, Spec), cancellationToken);
+
+    internal static string QualifyColumnToken(string column, SpecDocument spec)
+    {
+        // Aggregate payloads surface the group-by column as a fully qualified
+        // token (e.g. `@parcels.county`). Inserting `@{source}.{column}` on top
+        // of that would produce `@parcels.@parcels.county`, so pass an already
+        // qualified token through as-is and only prefix bare column names.
+        if (column.StartsWith('@'))
+        {
+            return column;
+        }
+
+        var sourceId = spec.Sources.FirstOrDefault()?.Id ?? "source";
+        return $"@{sourceId}.{column}";
+    }
+
     public async Task<IntentOutcome> SubmitPromptAsync(string prompt, CancellationToken cancellationToken = default)
     {
         var request = new IntentRequest

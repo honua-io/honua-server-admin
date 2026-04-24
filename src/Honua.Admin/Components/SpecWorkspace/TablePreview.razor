@@ -68,11 +68,7 @@
         _sortedRows = Ascending ? ordered.ToArray() : ordered.Reverse().ToArray();
     }
 
-    private async Task InsertColumnAsync(string column)
-    {
-        var source = State.Spec.Sources.FirstOrDefault()?.Id ?? "source";
-        await State.InsertDslTokenAsync($"@{source}.{column}");
-    }
+    private Task InsertColumnAsync(string column) => State.InsertColumnTokenAsync(column);
 
     private static string SortButtonTitle(string column) => $"Sort by {column}";
 }

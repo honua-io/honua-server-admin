@@ -185,6 +185,30 @@ public sealed class SpecWorkspaceStateTests
         Assert.Empty(state.Conversation);
     }
 
+    [Theory]
+    [InlineData("county", "@parcels.county")]
+    [InlineData("@parcels.county", "@parcels.county")]
+    public async Task InsertColumnTokenAsync_prefixes_bare_columns_and_leaves_qualified_tokens_alone(string column, string expectedToken)
+    {
+        var storage = new MemoryBrowserStorageService();
+        var state = new SpecWorkspaceState(
+            new StubSpecWorkspaceClient(),
+            storage,
+            new NullSpecWorkspaceTelemetry(),
+            new CatalogCache());
+
+        await state.InitializeAsync("operator");
+        await state.SubmitPromptAsync("aggregate count of @parcels by county");
+        await state.UpdateSectionTextAsync(SpecSectionId.Compute, string.Empty);
+
+        state.SetActiveDslSection(SpecSectionId.Compute);
+        state.SetDslSelection(SpecSectionId.Compute, 0, 0);
+
+        await state.InsertColumnTokenAsync(column);
+
+        Assert.Equal(expectedToken, state.GetSectionText(SpecSectionId.Compute));
+    }
+
     [Fact]
     public async Task Spec_mutation_via_text_edit_invalidates_prior_plan_and_apply_results()
     {

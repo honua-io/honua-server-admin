@@ -1094,7 +1094,7 @@ public sealed partial class StubSpecWorkspaceClient : ISpecWorkspaceClient
     [GeneratedRegex("\\b(map|render|show|plot)\\b", RegexOptions.IgnoreCase | RegexOptions.Compiled)]
     private static partial Regex MapRgx();
 
-    [GeneratedRegex("buffer\\s+(?:@[\\w]+\\s+)?(?:by\\s+)?(\\d+(?:\\.\\d+)?)\\s*(m|km|mi)?", RegexOptions.IgnoreCase | RegexOptions.Compiled)]
+    [GeneratedRegex("buffer\\s+(?:@[\\w]+\\s+)?(?:by\\s+)?(\\d+(?:\\.\\d+)?)\\s*(?:(km|mi|m)\\b)?", RegexOptions.IgnoreCase | RegexOptions.Compiled)]
     private static partial Regex BufRegex();
 
     [GeneratedRegex("\\b(compute|do something|analyse|analyze)\\b", RegexOptions.IgnoreCase | RegexOptions.Compiled)]
