@@ -44,6 +44,7 @@ public sealed class SpecWorkspaceState : IAsyncDisposable
     private string? _activeJobId;
     private Task? _applyTask;
     private Task? _planTask;
+    private int _specRevision;
     private bool _disposed;
     private bool _rehydrated;
 
@@ -264,9 +265,23 @@ public sealed class SpecWorkspaceState : IAsyncDisposable
         Notify();
 
         var watch = Stopwatch.StartNew();
+        var startRevision = _specRevision;
         _telemetry.Record("spec_plan_started");
         var result = await _client.PlanAsync(Spec, cancellationToken).ConfigureAwait(false);
         watch.Stop();
+
+        if (startRevision != _specRevision)
+        {
+            // Spec changed while the plan was running — the result targets a superseded
+            // spec, so drop it. Flip the status back to Idle so the user can re-plan.
+            if (Status == WorkspaceStatus.Planning)
+            {
+                Status = WorkspaceStatus.Idle;
+                Notify();
+            }
+            _telemetry.Record("spec_plan_superseded");
+            return;
+        }
 
         PlanResult = result;
         Status = result.Failed ? WorkspaceStatus.Error : WorkspaceStatus.Idle;
@@ -362,10 +377,26 @@ public sealed class SpecWorkspaceState : IAsyncDisposable
 
     private async Task DriveApplyAsync(string jobId, CancellationTokenSource cts)
     {
+        var startRevision = _specRevision;
         try
         {
             await foreach (var evt in _client.ApplyAsync(Spec, jobId, cts.Token).ConfigureAwait(false))
             {
+                if (startRevision != _specRevision)
+                {
+                    // Spec changed mid-stream — the producer is running against a
+                    // superseded snapshot. Cancel it and drop any further events.
+                    try
+                    {
+                        cts.Cancel();
+                    }
+                    catch (ObjectDisposedException)
+                    {
+                    }
+                    _telemetry.Record("spec_apply_superseded");
+                    return;
+                }
+
                 if (!string.Equals(evt.JobId, jobId, StringComparison.Ordinal) || !IsCurrentApply(jobId))
                 {
                     continue;
@@ -402,7 +433,7 @@ public sealed class SpecWorkspaceState : IAsyncDisposable
                 Notify();
             }
         }
-        catch (OperationCanceledException) when (IsCurrentApply(jobId))
+        catch (OperationCanceledException) when (IsCurrentApply(jobId) && startRevision == _specRevision)
         {
             Status = WorkspaceStatus.Idle;
             _applyEvents.Add(new ApplyEvent
@@ -761,6 +792,9 @@ public sealed class SpecWorkspaceState : IAsyncDisposable
         // Any mutation of Spec orphans the previous plan/apply artifacts: they were
         // computed against a spec that no longer matches. Clear them so Preview stops
         // rendering stale payloads and RunApplyAsync re-plans before the next apply.
+        // Also bump the revision so in-flight plan/apply tasks can detect that their
+        // terminal results are for a superseded spec and discard them.
+        _specRevision++;
         PlanResult = null;
         _applyEvents.Clear();
     }

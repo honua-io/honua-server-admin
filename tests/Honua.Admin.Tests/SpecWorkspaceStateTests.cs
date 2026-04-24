@@ -156,6 +156,69 @@ public sealed class SpecWorkspaceStateTests
     }
 
     [Fact]
+    public async Task Spec_edit_during_in_flight_plan_discards_stale_plan_result()
+    {
+        var storage = new MemoryBrowserStorageService();
+        var client = new BlockingPlanClient();
+        var state = new SpecWorkspaceState(
+            client,
+            storage,
+            new NullSpecWorkspaceTelemetry(),
+            new CatalogCache());
+
+        await state.InitializeAsync("operator");
+        await state.SubmitPromptAsync("aggregate count of @parcels by county");
+
+        var planTask = state.RunPlanAsync();
+        await client.PlanEntered.Task;
+
+        Assert.Equal(WorkspaceStatus.Planning, state.Status);
+
+        // Mutate the spec while the plan client is still blocked — any result it
+        // returns is for the superseded spec and must be discarded.
+        await state.UpdateSectionTextAsync(SpecSectionId.Sources, "@parcels = parcels pin=v2");
+
+        client.ReleasePlan();
+        await planTask;
+
+        Assert.Null(state.PlanResult);
+        Assert.Equal(WorkspaceStatus.Idle, state.Status);
+    }
+
+    [Fact]
+    public async Task Spec_edit_during_in_flight_apply_supersedes_apply_and_returns_to_idle()
+    {
+        var storage = new MemoryBrowserStorageService();
+        var client = new BlockingApplyClient();
+        var state = new SpecWorkspaceState(
+            client,
+            storage,
+            new NullSpecWorkspaceTelemetry(),
+            new CatalogCache());
+
+        await state.InitializeAsync("operator");
+        await state.SubmitPromptAsync("aggregate count of @parcels by county");
+        await state.RunPlanAsync();
+
+        var applyTask = state.RunApplyAsync();
+        await client.FirstEventEmitted.Task;
+        Assert.Equal(WorkspaceStatus.Applying, state.Status);
+
+        // Mutate the spec mid-stream — subsequent events from the still-running
+        // apply are for the superseded spec and should not land.
+        await state.UpdateSectionTextAsync(SpecSectionId.Sources, "@parcels = parcels pin=v2");
+
+        // Releasing the apply lets it produce a Completed event; the revision check
+        // in DriveApplyAsync must cancel the producer before that lands.
+        client.ReleaseApplies();
+        await applyTask;
+
+        Assert.Equal(WorkspaceStatus.Idle, state.Status);
+        Assert.Null(state.ActiveJobId);
+        Assert.Empty(state.ApplyEvents);
+    }
+
+    [Fact]
     public async Task ClearDraftAsync_waits_for_in_flight_plan_and_leaves_idle_empty_state()
     {
         var storage = new MemoryBrowserStorageService();
@@ -207,6 +270,27 @@ public sealed class SpecWorkspaceStateTests
         await state.InsertColumnTokenAsync(column);
 
         Assert.Equal(expectedToken, state.GetSectionText(SpecSectionId.Compute));
+    }
+
+    [Fact]
+    public async Task Map_section_with_duplicate_field_emits_diagnostic_without_throwing()
+    {
+        var storage = new MemoryBrowserStorageService();
+        var state = new SpecWorkspaceState(
+            new StubSpecWorkspaceClient(),
+            storage,
+            new NullSpecWorkspaceTelemetry(),
+            new CatalogCache());
+
+        await state.InitializeAsync("operator");
+        await state.UpdateSectionTextAsync(SpecSectionId.Sources, "@parcels = parcels");
+
+        // Repeated `source=` used to crash ParseMap via ToDictionary; the editor
+        // must stay alive and surface a red diagnostic instead.
+        await state.UpdateSectionTextAsync(SpecSectionId.Map, "layer source=@parcels source=@wells symbology=viridis");
+
+        Assert.Contains(state.GetDiagnostics(SpecSectionId.Map), d =>
+            d.Code == "duplicate-map-field" && d.Severity == ValidationSeverity.Red);
     }
 
     [Fact]

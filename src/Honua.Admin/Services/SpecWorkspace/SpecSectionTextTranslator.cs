@@ -292,11 +292,28 @@ internal static class SpecSectionTextTranslator
                 continue;
             }
 
-            var fields = trimmed.Split(' ', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)
-                .Skip(1)
-                .Select(token => token.Split('=', 2, StringSplitOptions.TrimEntries))
-                .Where(parts => parts.Length == 2)
-                .ToDictionary(parts => parts[0], parts => parts[1], StringComparer.OrdinalIgnoreCase);
+            var fields = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var token in trimmed.Split(' ', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries).Skip(1))
+            {
+                var parts = token.Split('=', 2, StringSplitOptions.TrimEntries);
+                if (parts.Length != 2)
+                {
+                    continue;
+                }
+
+                if (!fields.TryAdd(parts[0], parts[1]))
+                {
+                    // Duplicate fields used to throw from ToDictionary and crash the
+                    // editor; emit a red diagnostic instead and keep the first value so
+                    // downstream parsing can still surface other issues.
+                    diagnostics.Add(new ValidationDiagnostic(
+                        SpecSectionId.Map,
+                        ValidationSeverity.Red,
+                        "duplicate-map-field",
+                        $"Map layer field `{parts[0]}` is specified more than once in `{line}`.",
+                        parts[0]));
+                }
+            }
 
             if (!fields.TryGetValue("source", out var source))
             {
