@@ -75,7 +75,7 @@
                            Variant="Variant.Text"
                            StartIcon="@Icons.Material.Filled.RestartAlt"
                            OnClick="ResetWorkspaceAsync"
-                           Disabled="_submitting || State.Status is WorkspaceStatus.Applying or WorkspaceStatus.Cancelling"
+                           Disabled="_submitting || State.Status is WorkspaceStatus.Planning or WorkspaceStatus.Applying or WorkspaceStatus.Cancelling"
                            data-testid="nl-reset-workspace">Reset workspace</MudButton>
                 @if (_submitting)
                 {

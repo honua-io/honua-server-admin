@@ -88,6 +88,36 @@ public sealed class SpecWorkspaceStateTests
     }
 
     [Fact]
+    public async Task ClearDraftAsync_waits_for_in_flight_plan_and_leaves_idle_empty_state()
+    {
+        var storage = new MemoryBrowserStorageService();
+        var client = new BlockingPlanClient();
+        var state = new SpecWorkspaceState(
+            client,
+            storage,
+            new NullSpecWorkspaceTelemetry(),
+            new CatalogCache());
+
+        await state.InitializeAsync("operator");
+        await state.SubmitPromptAsync("aggregate count of @parcels by county");
+
+        var planTask = state.RunPlanAsync();
+        await client.PlanEntered.Task;
+
+        Assert.Equal(WorkspaceStatus.Planning, state.Status);
+
+        var clearTask = state.ClearDraftAsync();
+        client.ReleasePlan();
+        await planTask;
+        await clearTask;
+
+        Assert.Null(state.PlanResult);
+        Assert.Equal(WorkspaceStatus.Idle, state.Status);
+        Assert.Equal(SpecDocument.Empty, state.Spec);
+        Assert.Empty(state.Conversation);
+    }
+
+    [Fact]
     public async Task InitializeAsync_rehydrates_persisted_workspace_snapshot()
     {
         var storage = new MemoryBrowserStorageService();
@@ -158,6 +188,43 @@ public sealed class SpecWorkspaceStateTests
                 };
             }
         }
+
+        public Task CancelAsync(string jobId, CancellationToken cancellationToken) =>
+            _inner.CancelAsync(jobId, cancellationToken);
+
+        public Task<string> SummarizeSectionAsync(SpecDocument document, SpecSectionId section, CancellationToken cancellationToken) =>
+            _inner.SummarizeSectionAsync(document, section, cancellationToken);
+
+        public Task<SpecGrammar> LoadGrammarAsync(CancellationToken cancellationToken) =>
+            _inner.LoadGrammarAsync(cancellationToken);
+
+        public IReadOnlyList<ValidationDiagnostic> Validate(SpecDocument document) => _inner.Validate(document);
+    }
+
+    private sealed class BlockingPlanClient : ISpecWorkspaceClient
+    {
+        private readonly StubSpecWorkspaceClient _inner = new();
+        private readonly TaskCompletionSource _release = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public TaskCompletionSource PlanEntered { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public void ReleasePlan() => _release.TrySetResult();
+
+        public Task<IntentOutcome> SubmitIntentAsync(IntentRequest request, CancellationToken cancellationToken) =>
+            _inner.SubmitIntentAsync(request, cancellationToken);
+
+        public Task<IReadOnlyList<CatalogCandidate>> ResolveCatalogAsync(ResolveQuery query, CancellationToken cancellationToken) =>
+            _inner.ResolveCatalogAsync(query, cancellationToken);
+
+        public async Task<PlanResult> PlanAsync(SpecDocument document, CancellationToken cancellationToken)
+        {
+            PlanEntered.TrySetResult();
+            await _release.Task.ConfigureAwait(false);
+            return await _inner.PlanAsync(document, cancellationToken).ConfigureAwait(false);
+        }
+
+        public IAsyncEnumerable<ApplyEvent> ApplyAsync(SpecDocument document, string jobId, CancellationToken cancellationToken) =>
+            _inner.ApplyAsync(document, jobId, cancellationToken);
 
         public Task CancelAsync(string jobId, CancellationToken cancellationToken) =>
             _inner.CancelAsync(jobId, cancellationToken);

@@ -42,6 +42,7 @@ public sealed class SpecWorkspaceState : IAsyncDisposable
     private CancellationTokenSource? _applyCts;
     private string? _activeJobId;
     private Task? _applyTask;
+    private Task? _planTask;
     private bool _disposed;
     private bool _rehydrated;
 
@@ -204,6 +205,23 @@ public sealed class SpecWorkspaceState : IAsyncDisposable
     }
 
     public async Task RunPlanAsync(CancellationToken cancellationToken = default)
+    {
+        var task = DrivePlanAsync(cancellationToken);
+        _planTask = task;
+        try
+        {
+            await task.ConfigureAwait(false);
+        }
+        finally
+        {
+            if (ReferenceEquals(_planTask, task))
+            {
+                _planTask = null;
+            }
+        }
+    }
+
+    private async Task DrivePlanAsync(CancellationToken cancellationToken)
     {
         Status = WorkspaceStatus.Planning;
         Notify();
@@ -392,7 +410,7 @@ public sealed class SpecWorkspaceState : IAsyncDisposable
 
     public async Task ClearDraftAsync(CancellationToken cancellationToken = default)
     {
-        await StopActiveApplyAsync(cancellationToken).ConfigureAwait(false);
+        await StopActiveWorkAsync(cancellationToken).ConfigureAwait(false);
 
         Spec = SpecDocument.Empty;
         _conversation.Clear();
@@ -411,23 +429,35 @@ public sealed class SpecWorkspaceState : IAsyncDisposable
         Notify();
     }
 
-    private async Task StopActiveApplyAsync(CancellationToken cancellationToken)
+    private async Task StopActiveWorkAsync(CancellationToken cancellationToken)
     {
-        var task = _applyTask;
-        if (task is null)
+        var applyTask = _applyTask;
+        if (applyTask is not null)
         {
-            return;
+            await CancelApplyAsync(cancellationToken).ConfigureAwait(false);
+            try
+            {
+                await applyTask.ConfigureAwait(false);
+            }
+            catch
+            {
+                // The apply loop owns its own exception handling; swallow anything leaking
+                // out so the reset can proceed to a clean slate.
+            }
         }
 
-        await CancelApplyAsync(cancellationToken).ConfigureAwait(false);
-        try
+        var planTask = _planTask;
+        if (planTask is not null)
         {
-            await task.ConfigureAwait(false);
-        }
-        catch
-        {
-            // The apply loop owns its own exception handling; swallow anything leaking
-            // out so the reset can proceed to a clean slate.
+            try
+            {
+                await planTask.ConfigureAwait(false);
+            }
+            catch
+            {
+                // Plan failures surface through the returned PlanResult, not exceptions;
+                // swallow any transport errors so clear still reaches a clean slate.
+            }
         }
     }
 
