@@ -267,7 +267,54 @@ public sealed class SpecWorkspaceState : IAsyncDisposable
         var watch = Stopwatch.StartNew();
         var startRevision = _specRevision;
         _telemetry.Record("spec_plan_started");
-        var result = await _client.PlanAsync(Spec, cancellationToken).ConfigureAwait(false);
+        PlanResult result;
+        try
+        {
+            result = await _client.PlanAsync(Spec, cancellationToken).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException)
+        {
+            watch.Stop();
+            if (startRevision == _specRevision && Status == WorkspaceStatus.Planning)
+            {
+                Status = WorkspaceStatus.Idle;
+                Notify();
+            }
+            _telemetry.Record("spec_plan_cancelled");
+            throw;
+        }
+        catch (Exception ex)
+        {
+            watch.Stop();
+            if (startRevision != _specRevision)
+            {
+                // Caller already superseded the spec; swallow the failure quietly so
+                // the next plan can run without surfacing a stale error.
+                if (Status == WorkspaceStatus.Planning)
+                {
+                    Status = WorkspaceStatus.Idle;
+                    Notify();
+                }
+                _telemetry.Record("spec_plan_superseded");
+                return;
+            }
+
+            PlanResult = new PlanResult
+            {
+                JobId = Guid.NewGuid().ToString("n"),
+                Failed = true,
+                FailureMessage = ex.Message
+            };
+            Status = WorkspaceStatus.Error;
+            _applyEvents.Clear();
+            _telemetry.Record("spec_plan_failed", new Dictionary<string, object?>
+            {
+                ["message"] = ex.Message,
+                ["exception_type"] = ex.GetType().Name
+            });
+            Notify();
+            return;
+        }
         watch.Stop();
 
         if (startRevision != _specRevision)
@@ -448,6 +495,30 @@ public sealed class SpecWorkspaceState : IAsyncDisposable
         catch (OperationCanceledException)
         {
         }
+        catch (Exception ex) when (IsCurrentApply(jobId) && startRevision == _specRevision)
+        {
+            // Non-cancel stream failure: surface a Failed event so the preview pane
+            // and the overall status reflect the error instead of leaving the UI
+            // stuck in Applying.
+            Status = WorkspaceStatus.Error;
+            _applyEvents.Add(new ApplyEvent
+            {
+                Kind = ApplyEventKind.Failed,
+                JobId = jobId,
+                Message = ex.Message
+            });
+            _telemetry.Record("spec_apply_failed", new Dictionary<string, object?>
+            {
+                ["message"] = ex.Message,
+                ["exception_type"] = ex.GetType().Name
+            });
+            Notify();
+        }
+        catch (Exception)
+        {
+            // Stale or superseded apply threw after the spec moved on; swallow so the
+            // new workspace state is not polluted with a stale error.
+        }
     }
 
     public async Task CancelApplyAsync(CancellationToken cancellationToken = default)
@@ -461,7 +532,28 @@ public sealed class SpecWorkspaceState : IAsyncDisposable
 
         Status = WorkspaceStatus.Cancelling;
         Notify();
-        await _client.CancelAsync(jobId, cancellationToken).ConfigureAwait(false);
+
+        try
+        {
+            await _client.CancelAsync(jobId, cancellationToken).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException)
+        {
+            // Outer caller requested cancellation; still cancel the local apply below
+            // so the stream does not leak.
+        }
+        catch (Exception ex)
+        {
+            // Remote cancel failed; we still have to terminate the local stream so the
+            // UI can leave Cancelling. Surface the failure via telemetry.
+            _telemetry.Record("spec_cancel_rpc_failed", new Dictionary<string, object?>
+            {
+                ["job_id"] = jobId,
+                ["message"] = ex.Message,
+                ["exception_type"] = ex.GetType().Name
+            });
+        }
+
         try
         {
             cts.Cancel();

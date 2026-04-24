@@ -156,6 +156,83 @@ public sealed class SpecWorkspaceStateTests
     }
 
     [Fact]
+    public async Task RunPlanAsync_surfaces_client_failure_and_returns_to_error_state()
+    {
+        var storage = new MemoryBrowserStorageService();
+        var client = new ThrowingClient { PlanFailure = new InvalidOperationException("plan rpc down") };
+        var state = new SpecWorkspaceState(
+            client,
+            storage,
+            new NullSpecWorkspaceTelemetry(),
+            new CatalogCache());
+
+        await state.InitializeAsync("operator");
+        await state.SubmitPromptAsync("aggregate count of @parcels by county");
+
+        await state.RunPlanAsync();
+
+        Assert.Equal(WorkspaceStatus.Error, state.Status);
+        Assert.NotNull(state.PlanResult);
+        Assert.True(state.PlanResult!.Failed);
+        Assert.Equal("plan rpc down", state.PlanResult.FailureMessage);
+
+        // A subsequent plan must not be blocked by the stuck status.
+        client.PlanFailure = null;
+        await state.RunPlanAsync();
+        Assert.Equal(WorkspaceStatus.Idle, state.Status);
+        Assert.False(state.PlanResult!.Failed);
+    }
+
+    [Fact]
+    public async Task RunApplyAsync_surfaces_stream_failure_as_failed_event_and_error_status()
+    {
+        var storage = new MemoryBrowserStorageService();
+        var client = new ThrowingClient { ApplyStreamFailure = new InvalidOperationException("apply stream blew up") };
+        var state = new SpecWorkspaceState(
+            client,
+            storage,
+            new NullSpecWorkspaceTelemetry(),
+            new CatalogCache());
+
+        await state.InitializeAsync("operator");
+        await state.SubmitPromptAsync("aggregate count of @parcels by county");
+        await state.RunPlanAsync();
+
+        await state.RunApplyAsync();
+
+        Assert.Equal(WorkspaceStatus.Error, state.Status);
+        Assert.Contains(state.ApplyEvents, e => e.Kind == ApplyEventKind.Failed && e.Message == "apply stream blew up");
+        Assert.Null(state.ActiveJobId);
+    }
+
+    [Fact]
+    public async Task CancelApplyAsync_terminates_local_stream_even_when_remote_cancel_throws()
+    {
+        var storage = new MemoryBrowserStorageService();
+        var client = new BlockingApplyClient { CancelFailure = new InvalidOperationException("cancel rpc down") };
+        var state = new SpecWorkspaceState(
+            client,
+            storage,
+            new NullSpecWorkspaceTelemetry(),
+            new CatalogCache());
+
+        await state.InitializeAsync("operator");
+        await state.SubmitPromptAsync("aggregate count of @parcels by county");
+        await state.RunPlanAsync();
+
+        var applyTask = state.RunApplyAsync();
+        await client.FirstEventEmitted.Task;
+        Assert.Equal(WorkspaceStatus.Applying, state.Status);
+
+        await state.CancelApplyAsync();
+        await applyTask;
+
+        Assert.Equal(WorkspaceStatus.Idle, state.Status);
+        Assert.Null(state.ActiveJobId);
+        Assert.Contains(state.ApplyEvents, e => e.Kind == ApplyEventKind.Cancelled);
+    }
+
+    [Fact]
     public async Task Spec_edit_during_in_flight_plan_discards_stale_plan_result()
     {
         var storage = new MemoryBrowserStorageService();
@@ -458,6 +535,69 @@ public sealed class SpecWorkspaceStateTests
                     Kind = ApplyEventKind.Completed,
                     JobId = jobId
                 };
+            }
+        }
+
+        public Exception? CancelFailure { get; set; }
+
+        public Task CancelAsync(string jobId, CancellationToken cancellationToken)
+        {
+            if (CancelFailure is not null)
+            {
+                return Task.FromException(CancelFailure);
+            }
+
+            return _inner.CancelAsync(jobId, cancellationToken);
+        }
+
+        public Task<string> SummarizeSectionAsync(SpecDocument document, SpecSectionId section, CancellationToken cancellationToken) =>
+            _inner.SummarizeSectionAsync(document, section, cancellationToken);
+
+        public Task<SpecGrammar> LoadGrammarAsync(CancellationToken cancellationToken) =>
+            _inner.LoadGrammarAsync(cancellationToken);
+
+        public IReadOnlyList<ValidationDiagnostic> Validate(SpecDocument document) => _inner.Validate(document);
+    }
+
+    private sealed class ThrowingClient : ISpecWorkspaceClient
+    {
+        private readonly StubSpecWorkspaceClient _inner = new();
+
+        public Exception? PlanFailure { get; set; }
+
+        public Exception? ApplyStreamFailure { get; set; }
+
+        public Task<IntentOutcome> SubmitIntentAsync(IntentRequest request, CancellationToken cancellationToken) =>
+            _inner.SubmitIntentAsync(request, cancellationToken);
+
+        public Task<IReadOnlyList<CatalogCandidate>> ResolveCatalogAsync(ResolveQuery query, CancellationToken cancellationToken) =>
+            _inner.ResolveCatalogAsync(query, cancellationToken);
+
+        public Task<PlanResult> PlanAsync(SpecDocument document, CancellationToken cancellationToken)
+        {
+            if (PlanFailure is not null)
+            {
+                return Task.FromException<PlanResult>(PlanFailure);
+            }
+
+            return _inner.PlanAsync(document, cancellationToken);
+        }
+
+        public async IAsyncEnumerable<ApplyEvent> ApplyAsync(
+            SpecDocument document,
+            string jobId,
+            [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken)
+        {
+            yield return new ApplyEvent { Kind = ApplyEventKind.Started, JobId = jobId };
+
+            if (ApplyStreamFailure is not null)
+            {
+                throw ApplyStreamFailure;
+            }
+
+            await foreach (var evt in _inner.ApplyAsync(document, jobId, cancellationToken).ConfigureAwait(false))
+            {
+                yield return evt;
             }
         }
 
