@@ -15,7 +15,7 @@ This is the official admin UI for managing Honua Server instances:
 ## Architecture
 
 - **Frontend**: Blazor WebAssembly with MudBlazor components
-- **Backend Communication**: Uses [honua-sdk-dotnet](https://github.com/honua-io/honua-sdk-dotnet) for gRPC client
+- **Backend Communication**: Operator S1 uses the in-repo `ISpecWorkspaceClient` stub; the [honua-sdk-dotnet](https://github.com/honua-io/honua-sdk-dotnet) gRPC client swap is a follow-on
 - **Deployment**: Static web app (can be hosted on CDN)
 
 ## Development

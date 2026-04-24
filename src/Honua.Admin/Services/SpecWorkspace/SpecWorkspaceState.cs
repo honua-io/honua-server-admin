@@ -38,6 +38,7 @@ public sealed class SpecWorkspaceState : IAsyncDisposable
     private readonly Dictionary<SpecSectionId, TextSelectionState> _dslSelections = new();
     private readonly Dictionary<SpecSectionId, IReadOnlyList<ValidationDiagnostic>> _editorDiagnosticsBySection = new();
     private readonly List<ValidationDiagnostic> _diagnostics = new();
+    private readonly SemaphoreSlim _workGate = new(1, 1);
 
     private CancellationTokenSource? _applyCts;
     private string? _activeJobId;
@@ -206,6 +207,23 @@ public sealed class SpecWorkspaceState : IAsyncDisposable
 
     public async Task RunPlanAsync(CancellationToken cancellationToken = default)
     {
+        if (!await TryEnterActiveWorkAsync(cancellationToken).ConfigureAwait(false))
+        {
+            return;
+        }
+
+        try
+        {
+            await RunPlanCoreAsync(cancellationToken).ConfigureAwait(false);
+        }
+        finally
+        {
+            _workGate.Release();
+        }
+    }
+
+    private async Task RunPlanCoreAsync(CancellationToken cancellationToken)
+    {
         var task = DrivePlanAsync(cancellationToken);
         _planTask = task;
         try
@@ -244,9 +262,35 @@ public sealed class SpecWorkspaceState : IAsyncDisposable
 
     public async Task RunApplyAsync(CancellationToken externalCancellation = default)
     {
+        if (!await TryEnterActiveWorkAsync(externalCancellation).ConfigureAwait(false))
+        {
+            return;
+        }
+
+        try
+        {
+            if (PlanResult is null)
+            {
+                await RunPlanCoreAsync(externalCancellation).ConfigureAwait(false);
+                if (PlanResult is null || PlanResult.Failed)
+                {
+                    return;
+                }
+            }
+
+            await RunApplyCoreAsync(externalCancellation).ConfigureAwait(false);
+        }
+        finally
+        {
+            _workGate.Release();
+        }
+    }
+
+    private async Task RunApplyCoreAsync(CancellationToken externalCancellation)
+    {
         if (PlanResult is null)
         {
-            await RunPlanAsync(externalCancellation).ConfigureAwait(false);
+            await RunPlanCoreAsync(externalCancellation).ConfigureAwait(false);
             if (PlanResult is null || PlanResult.Failed)
             {
                 return;
@@ -275,6 +319,7 @@ public sealed class SpecWorkspaceState : IAsyncDisposable
         }
         finally
         {
+            var ownsActiveJob = string.Equals(_activeJobId, jobId, StringComparison.Ordinal);
             if (ReferenceEquals(_applyTask, task))
             {
                 _applyTask = null;
@@ -284,9 +329,14 @@ public sealed class SpecWorkspaceState : IAsyncDisposable
                 _applyCts.Dispose();
                 _applyCts = null;
             }
-            if (string.Equals(_activeJobId, jobId, StringComparison.Ordinal))
+            if (ownsActiveJob)
             {
                 _activeJobId = null;
+                if (Status is WorkspaceStatus.Applying or WorkspaceStatus.Cancelling)
+                {
+                    Status = WorkspaceStatus.Idle;
+                    Notify();
+                }
             }
         }
     }
@@ -297,6 +347,11 @@ public sealed class SpecWorkspaceState : IAsyncDisposable
         {
             await foreach (var evt in _client.ApplyAsync(Spec, jobId, cts.Token).ConfigureAwait(false))
             {
+                if (!string.Equals(evt.JobId, jobId, StringComparison.Ordinal) || !IsCurrentApply(jobId))
+                {
+                    continue;
+                }
+
                 _applyEvents.Add(evt);
                 _telemetry.Record("spec_apply_node_event", new Dictionary<string, object?>
                 {
@@ -328,7 +383,7 @@ public sealed class SpecWorkspaceState : IAsyncDisposable
                 Notify();
             }
         }
-        catch (OperationCanceledException)
+        catch (OperationCanceledException) when (IsCurrentApply(jobId))
         {
             Status = WorkspaceStatus.Idle;
             _applyEvents.Add(new ApplyEvent
@@ -339,6 +394,9 @@ public sealed class SpecWorkspaceState : IAsyncDisposable
             });
             _telemetry.Record("spec_apply_cancelled");
             Notify();
+        }
+        catch (OperationCanceledException)
+        {
         }
     }
 
@@ -412,21 +470,29 @@ public sealed class SpecWorkspaceState : IAsyncDisposable
     {
         await StopActiveWorkAsync(cancellationToken).ConfigureAwait(false);
 
-        Spec = SpecDocument.Empty;
-        _conversation.Clear();
-        _applyEvents.Clear();
-        _sectionSummaries.Clear();
-        _editorDiagnosticsBySection.Clear();
-        PlanResult = null;
-        Status = WorkspaceStatus.Idle;
-        PromptDraft = string.Empty;
-        IsJsonView = false;
-        SyncSectionTextsFromSpec();
-        RefreshTextView();
-        RefreshDiagnostics();
-        await _storage.RemoveAsync(StorageKeyFor(PrincipalId), cancellationToken).ConfigureAwait(false);
-        _telemetry.Record("spec_draft_cleared");
-        Notify();
+        await _workGate.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            Spec = SpecDocument.Empty;
+            _conversation.Clear();
+            _applyEvents.Clear();
+            _sectionSummaries.Clear();
+            _editorDiagnosticsBySection.Clear();
+            PlanResult = null;
+            Status = WorkspaceStatus.Idle;
+            PromptDraft = string.Empty;
+            IsJsonView = false;
+            SyncSectionTextsFromSpec();
+            RefreshTextView();
+            RefreshDiagnostics();
+            await _storage.RemoveAsync(StorageKeyFor(PrincipalId), cancellationToken).ConfigureAwait(false);
+            _telemetry.Record("spec_draft_cleared");
+            Notify();
+        }
+        finally
+        {
+            _workGate.Release();
+        }
     }
 
     private async Task StopActiveWorkAsync(CancellationToken cancellationToken)
@@ -670,6 +736,30 @@ public sealed class SpecWorkspaceState : IAsyncDisposable
     }
 
     private static string StorageKeyFor(string principalId) => $"{StorageKeyPrefix}draft:{principalId}";
+
+    private async Task<bool> TryEnterActiveWorkAsync(CancellationToken cancellationToken)
+    {
+        if (Status is WorkspaceStatus.Planning or WorkspaceStatus.Applying or WorkspaceStatus.Cancelling)
+        {
+            return false;
+        }
+
+        if (!await _workGate.WaitAsync(0, cancellationToken).ConfigureAwait(false))
+        {
+            return false;
+        }
+
+        if (Status is WorkspaceStatus.Planning or WorkspaceStatus.Applying or WorkspaceStatus.Cancelling)
+        {
+            _workGate.Release();
+            return false;
+        }
+
+        return true;
+    }
+
+    private bool IsCurrentApply(string jobId) =>
+        string.Equals(_activeJobId, jobId, StringComparison.Ordinal);
 
     private void Notify() => OnChanged?.Invoke();
 

@@ -18,13 +18,13 @@
                        Variant="Variant.Outlined"
                        StartIcon="@Icons.Material.Filled.PlayArrow"
                        OnClick="RunPlanAsync"
-                       Disabled="_busy"
+                       Disabled="_busy || ActiveWork"
                        data-testid="dsl-plan">Plan</MudButton>
             <MudButton Color="Color.Success"
                        Variant="Variant.Filled"
                        StartIcon="@Icons.Material.Filled.RocketLaunch"
                        OnClick="RunApplyAsync"
-                       Disabled="_busy"
+                       Disabled="_busy || ActiveWork"
                        data-testid="dsl-apply">Apply</MudButton>
             <MudButton Color="Color.Error"
                        Variant="Variant.Text"
@@ -66,6 +66,7 @@
 
 @code {
     private bool _busy;
+    private bool ActiveWork => State.Status is WorkspaceStatus.Planning or WorkspaceStatus.Applying or WorkspaceStatus.Cancelling;
 
     protected override void OnInitialized()
     {

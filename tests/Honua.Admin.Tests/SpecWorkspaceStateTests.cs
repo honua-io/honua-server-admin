@@ -88,6 +88,74 @@ public sealed class SpecWorkspaceStateTests
     }
 
     [Fact]
+    public async Task RunApplyAsync_ignores_second_start_while_apply_is_active()
+    {
+        var storage = new MemoryBrowserStorageService();
+        var client = new BlockingApplyClient();
+        var state = new SpecWorkspaceState(
+            client,
+            storage,
+            new NullSpecWorkspaceTelemetry(),
+            new CatalogCache());
+
+        await state.InitializeAsync("operator");
+        await state.SubmitPromptAsync("aggregate count of @parcels by county");
+        await state.RunPlanAsync();
+
+        var firstApplyTask = state.RunApplyAsync();
+        await client.FirstEventEmitted.Task;
+
+        var secondApplyTask = state.RunApplyAsync();
+        var secondReturned = await Task.WhenAny(secondApplyTask, Task.Delay(250)) == secondApplyTask;
+
+        try
+        {
+            Assert.True(secondReturned);
+            Assert.Equal(1, client.ApplyStartCount);
+            Assert.Equal(WorkspaceStatus.Applying, state.Status);
+            Assert.Single(state.ApplyEvents, e => e.Kind == ApplyEventKind.Started);
+        }
+        finally
+        {
+            client.ReleaseApplies();
+            await Task.WhenAll(firstApplyTask, secondApplyTask);
+        }
+    }
+
+    [Fact]
+    public async Task RunPlanAsync_ignores_plan_start_while_apply_is_active()
+    {
+        var storage = new MemoryBrowserStorageService();
+        var client = new BlockingApplyClient();
+        var state = new SpecWorkspaceState(
+            client,
+            storage,
+            new NullSpecWorkspaceTelemetry(),
+            new CatalogCache());
+
+        await state.InitializeAsync("operator");
+        await state.SubmitPromptAsync("aggregate count of @parcels by county");
+        await state.RunPlanAsync();
+
+        var planCallsBeforeApply = client.PlanCallCount;
+        var applyTask = state.RunApplyAsync();
+        await client.FirstEventEmitted.Task;
+
+        try
+        {
+            await state.RunPlanAsync();
+
+            Assert.Equal(planCallsBeforeApply, client.PlanCallCount);
+            Assert.Equal(WorkspaceStatus.Applying, state.Status);
+        }
+        finally
+        {
+            client.ReleaseApplies();
+            await applyTask;
+        }
+    }
+
+    [Fact]
     public async Task ClearDraftAsync_waits_for_in_flight_plan_and_leaves_idle_empty_state()
     {
         var storage = new MemoryBrowserStorageService();
@@ -149,7 +217,17 @@ public sealed class SpecWorkspaceStateTests
     private sealed class BlockingApplyClient : ISpecWorkspaceClient
     {
         private readonly StubSpecWorkspaceClient _inner = new();
+        private readonly TaskCompletionSource _releaseApplies = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        private int _applyStartCount;
+        private int _planCallCount;
+
         public TaskCompletionSource FirstEventEmitted { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public int ApplyStartCount => _applyStartCount;
+
+        public int PlanCallCount => _planCallCount;
+
+        public void ReleaseApplies() => _releaseApplies.TrySetResult();
 
         public Task<IntentOutcome> SubmitIntentAsync(IntentRequest request, CancellationToken cancellationToken) =>
             _inner.SubmitIntentAsync(request, cancellationToken);
@@ -157,21 +235,25 @@ public sealed class SpecWorkspaceStateTests
         public Task<IReadOnlyList<CatalogCandidate>> ResolveCatalogAsync(ResolveQuery query, CancellationToken cancellationToken) =>
             _inner.ResolveCatalogAsync(query, cancellationToken);
 
-        public Task<PlanResult> PlanAsync(SpecDocument document, CancellationToken cancellationToken) =>
-            _inner.PlanAsync(document, cancellationToken);
+        public Task<PlanResult> PlanAsync(SpecDocument document, CancellationToken cancellationToken)
+        {
+            Interlocked.Increment(ref _planCallCount);
+            return _inner.PlanAsync(document, cancellationToken);
+        }
 
         public async IAsyncEnumerable<ApplyEvent> ApplyAsync(
             SpecDocument document,
             string jobId,
             [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken)
         {
+            Interlocked.Increment(ref _applyStartCount);
             yield return new ApplyEvent { Kind = ApplyEventKind.Started, JobId = jobId };
             FirstEventEmitted.TrySetResult();
 
             var cancelled = false;
             try
             {
-                await Task.Delay(Timeout.Infinite, cancellationToken).ConfigureAwait(false);
+                await _releaseApplies.Task.WaitAsync(cancellationToken).ConfigureAwait(false);
             }
             catch (OperationCanceledException)
             {
@@ -185,6 +267,14 @@ public sealed class SpecWorkspaceStateTests
                     Kind = ApplyEventKind.Cancelled,
                     JobId = jobId,
                     Message = "cancelled"
+                };
+            }
+            else
+            {
+                yield return new ApplyEvent
+                {
+                    Kind = ApplyEventKind.Completed,
+                    JobId = jobId
                 };
             }
         }
