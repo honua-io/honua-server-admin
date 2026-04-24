@@ -147,6 +147,7 @@ public sealed class SpecWorkspaceState : IAsyncDisposable
 
         var parse = SpecSectionTextTranslator.ParseSection(Spec, section, _sectionTexts[section]);
         Spec = parse.Document;
+        InvalidatePlanAndApply();
         _editorDiagnosticsBySection[section] = parse.Diagnostics;
 
         RefreshTextView();
@@ -530,6 +531,7 @@ public sealed class SpecWorkspaceState : IAsyncDisposable
     public void ReplaceSpec(SpecDocument document)
     {
         Spec = document;
+        InvalidatePlanAndApply();
         SyncSectionTextsFromSpec();
         _editorDiagnosticsBySection.Clear();
         RefreshTextView();
@@ -667,6 +669,7 @@ public sealed class SpecWorkspaceState : IAsyncDisposable
         if (outcome.Kind == IntentResponseKind.Mutation && outcome.Mutation?.NextDocument is { } nextDocument)
         {
             Spec = nextDocument;
+            InvalidatePlanAndApply();
             SyncSectionTextsFromSpec();
             _editorDiagnosticsBySection.Clear();
             RefreshTextView();
@@ -733,6 +736,15 @@ public sealed class SpecWorkspaceState : IAsyncDisposable
             .DistinctBy(d => $"{d.Section}:{d.Code}:{d.Identifier}:{d.Message}")
             .OrderBy(d => d.Section)
             .ThenBy(d => d.Severity));
+    }
+
+    private void InvalidatePlanAndApply()
+    {
+        // Any mutation of Spec orphans the previous plan/apply artifacts: they were
+        // computed against a spec that no longer matches. Clear them so Preview stops
+        // rendering stale payloads and RunApplyAsync re-plans before the next apply.
+        PlanResult = null;
+        _applyEvents.Clear();
     }
 
     private static string StorageKeyFor(string principalId) => $"{StorageKeyPrefix}draft:{principalId}";

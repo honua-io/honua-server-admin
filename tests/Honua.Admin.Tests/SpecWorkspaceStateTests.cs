@@ -186,6 +186,80 @@ public sealed class SpecWorkspaceStateTests
     }
 
     [Fact]
+    public async Task Spec_mutation_via_text_edit_invalidates_prior_plan_and_apply_results()
+    {
+        var storage = new MemoryBrowserStorageService();
+        var state = new SpecWorkspaceState(
+            new StubSpecWorkspaceClient(),
+            storage,
+            new NullSpecWorkspaceTelemetry(),
+            new CatalogCache());
+
+        await state.InitializeAsync("operator");
+        await state.SubmitPromptAsync("aggregate count of @parcels by county");
+        await state.RunPlanAsync();
+        await state.RunApplyAsync();
+
+        Assert.NotNull(state.PlanResult);
+        Assert.NotEmpty(state.ApplyEvents);
+        Assert.Contains(state.ApplyEvents, e => e.Kind == ApplyEventKind.Completed);
+
+        await state.UpdateSectionTextAsync(SpecSectionId.Sources, "@parcels = parcels pin=v2");
+
+        Assert.Null(state.PlanResult);
+        Assert.Empty(state.ApplyEvents);
+    }
+
+    [Fact]
+    public async Task RunApplyAsync_replans_after_spec_edit_invalidates_prior_plan()
+    {
+        var storage = new MemoryBrowserStorageService();
+        var client = new CountingPlanClient();
+        var state = new SpecWorkspaceState(
+            client,
+            storage,
+            new NullSpecWorkspaceTelemetry(),
+            new CatalogCache());
+
+        await state.InitializeAsync("operator");
+        await state.SubmitPromptAsync("aggregate count of @parcels by county");
+        await state.RunPlanAsync();
+        var plansBeforeEdit = client.PlanCallCount;
+
+        await state.UpdateSectionTextAsync(SpecSectionId.Sources, "@parcels = parcels pin=v2");
+        Assert.Null(state.PlanResult);
+
+        await state.RunApplyAsync();
+
+        Assert.Equal(plansBeforeEdit + 1, client.PlanCallCount);
+        Assert.NotNull(state.PlanResult);
+    }
+
+    [Fact]
+    public async Task Spec_mutation_via_clarification_invalidates_prior_plan_and_apply_results()
+    {
+        var storage = new MemoryBrowserStorageService();
+        var state = new SpecWorkspaceState(
+            new StubSpecWorkspaceClient(),
+            storage,
+            new NullSpecWorkspaceTelemetry(),
+            new CatalogCache());
+
+        await state.InitializeAsync("operator");
+        await state.SubmitPromptAsync("aggregate count of @parcels by county");
+        await state.RunPlanAsync();
+        await state.RunApplyAsync();
+
+        Assert.NotNull(state.PlanResult);
+        Assert.NotEmpty(state.ApplyEvents);
+
+        await state.AnswerClarificationAsync("pick-value:filter:parcels:county", "Alpha");
+
+        Assert.Null(state.PlanResult);
+        Assert.Empty(state.ApplyEvents);
+    }
+
+    [Fact]
     public async Task InitializeAsync_rehydrates_persisted_workspace_snapshot()
     {
         var storage = new MemoryBrowserStorageService();
@@ -311,6 +385,40 @@ public sealed class SpecWorkspaceStateTests
             PlanEntered.TrySetResult();
             await _release.Task.ConfigureAwait(false);
             return await _inner.PlanAsync(document, cancellationToken).ConfigureAwait(false);
+        }
+
+        public IAsyncEnumerable<ApplyEvent> ApplyAsync(SpecDocument document, string jobId, CancellationToken cancellationToken) =>
+            _inner.ApplyAsync(document, jobId, cancellationToken);
+
+        public Task CancelAsync(string jobId, CancellationToken cancellationToken) =>
+            _inner.CancelAsync(jobId, cancellationToken);
+
+        public Task<string> SummarizeSectionAsync(SpecDocument document, SpecSectionId section, CancellationToken cancellationToken) =>
+            _inner.SummarizeSectionAsync(document, section, cancellationToken);
+
+        public Task<SpecGrammar> LoadGrammarAsync(CancellationToken cancellationToken) =>
+            _inner.LoadGrammarAsync(cancellationToken);
+
+        public IReadOnlyList<ValidationDiagnostic> Validate(SpecDocument document) => _inner.Validate(document);
+    }
+
+    private sealed class CountingPlanClient : ISpecWorkspaceClient
+    {
+        private readonly StubSpecWorkspaceClient _inner = new();
+        private int _planCallCount;
+
+        public int PlanCallCount => _planCallCount;
+
+        public Task<IntentOutcome> SubmitIntentAsync(IntentRequest request, CancellationToken cancellationToken) =>
+            _inner.SubmitIntentAsync(request, cancellationToken);
+
+        public Task<IReadOnlyList<CatalogCandidate>> ResolveCatalogAsync(ResolveQuery query, CancellationToken cancellationToken) =>
+            _inner.ResolveCatalogAsync(query, cancellationToken);
+
+        public Task<PlanResult> PlanAsync(SpecDocument document, CancellationToken cancellationToken)
+        {
+            Interlocked.Increment(ref _planCallCount);
+            return _inner.PlanAsync(document, cancellationToken);
         }
 
         public IAsyncEnumerable<ApplyEvent> ApplyAsync(SpecDocument document, string jobId, CancellationToken cancellationToken) =>
