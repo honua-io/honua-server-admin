@@ -1,0 +1,83 @@
+@* Entitlements pane: list of entitlement keys + names + active state. Inactive
+   rows surface a per-row FeatureNotEntitled diagnostic so operators can click
+   through from a failure trace and see the remediation. *@
+@using Honua.Admin.Models.LicenseWorkspace
+@using Honua.Admin.Services.LicenseWorkspace
+@inject LicenseWorkspaceState State
+@implements IDisposable
+
+<MudPaper Class="license-pane license-pane-entitlements pa-3 h-100" Elevation="0" data-testid="license-entitlements-pane">
+    <MudStack Spacing="2">
+        <MudStack Row AlignItems="AlignItems.Center" Spacing="2">
+            <MudText Typo="Typo.h6">Entitlements</MudText>
+            <MudSpacer />
+            <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" data-testid="license-entitlement-count">
+                @($"{ActiveCount}/{State.Entitlements.Count} active")
+            </MudChip>
+        </MudStack>
+
+        @if (State.Entitlements.Count == 0)
+        {
+            <MudAlert Severity="Severity.Info" Variant="Variant.Outlined" Dense="true" data-testid="license-entitlements-empty">
+                No entitlements reported by the server.
+            </MudAlert>
+        }
+        else
+        {
+            <MudList T="string" Dense="true" data-testid="license-entitlement-list">
+                @foreach (var entitlement in State.Entitlements)
+                {
+                    <MudListItem T="string"
+                                 Icon="@(entitlement.IsActive ? Icons.Material.Filled.CheckCircle : Icons.Material.Filled.Lock)"
+                                 IconColor="@(entitlement.IsActive ? Color.Success : Color.Warning)"
+                                 data-testid="@($"license-entitlement-{entitlement.Key}")"
+                                 data-active="@entitlement.IsActive.ToString().ToLowerInvariant()">
+                        <MudStack Spacing="0">
+                            <MudText Typo="Typo.body1">@entitlement.Name</MudText>
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                <code>@entitlement.Key</code>
+                            </MudText>
+                            @if (!entitlement.IsActive)
+                            {
+                                var copy = LicenseDiagnosticCopy.For(LicenseDiagnostic.FeatureNotEntitled);
+                                <MudText Typo="Typo.caption" data-testid="@($"license-entitlement-{entitlement.Key}-action")">
+                                    @copy.Action
+                                </MudText>
+                            }
+                        </MudStack>
+                    </MudListItem>
+                }
+            </MudList>
+        }
+    </MudStack>
+</MudPaper>
+
+@code {
+    protected override void OnInitialized()
+    {
+        State.OnChanged += HandleStateChanged;
+    }
+
+    public void Dispose()
+    {
+        State.OnChanged -= HandleStateChanged;
+    }
+
+    private void HandleStateChanged() => InvokeAsync(StateHasChanged);
+
+    private int ActiveCount
+    {
+        get
+        {
+            var count = 0;
+            foreach (var entitlement in State.Entitlements)
+            {
+                if (entitlement.IsActive)
+                {
+                    count++;
+                }
+            }
+            return count;
+        }
+    }
+}

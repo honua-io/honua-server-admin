@@ -1,0 +1,73 @@
+@* Actions pane: replace-license trigger and last-refresh metadata. The
+   replace flow opens the ReplaceLicenseDialog which owns the upload bytes;
+   this pane is purely an entry point. *@
+@using Honua.Admin.Services.LicenseWorkspace
+@using MudBlazor
+@inject LicenseWorkspaceState State
+@inject IDialogService DialogService
+@implements IDisposable
+
+<MudPaper Class="license-pane license-pane-actions pa-3 h-100" Elevation="0" data-testid="license-actions-pane">
+    <MudStack Spacing="2">
+        <MudText Typo="Typo.h6">Actions</MudText>
+
+        <MudButton Color="Color.Primary"
+                   Variant="Variant.Filled"
+                   StartIcon="@Icons.Material.Filled.UploadFile"
+                   Disabled="State.IsBusy"
+                   OnClick="OpenReplaceDialogAsync"
+                   data-testid="license-replace-trigger">
+            Replace license file…
+        </MudButton>
+
+        <MudButton Color="Color.Default"
+                   Variant="Variant.Text"
+                   StartIcon="@Icons.Material.Filled.Refresh"
+                   Disabled="State.IsBusy"
+                   OnClick="RefreshAsync"
+                   data-testid="license-actions-refresh">
+            Refresh status
+        </MudButton>
+
+        <MudDivider />
+
+        <MudText Typo="Typo.caption" Color="Color.Secondary" data-testid="license-last-refreshed">
+            @LastRefreshedCopy
+        </MudText>
+    </MudStack>
+</MudPaper>
+
+@code {
+    protected override void OnInitialized()
+    {
+        State.OnChanged += HandleStateChanged;
+    }
+
+    public void Dispose()
+    {
+        State.OnChanged -= HandleStateChanged;
+    }
+
+    private void HandleStateChanged() => InvokeAsync(StateHasChanged);
+
+    private string LastRefreshedCopy => State.LastRefreshedUtc is { } stamp
+        ? $"Last refreshed {stamp.UtcDateTime:yyyy-MM-dd HH:mm} UTC"
+        : "Not refreshed yet.";
+
+    private async Task RefreshAsync()
+    {
+        await State.RefreshAsync();
+    }
+
+    private async Task OpenReplaceDialogAsync()
+    {
+        var options = new DialogOptions
+        {
+            CloseOnEscapeKey = true,
+            MaxWidth = MaxWidth.Small,
+            FullWidth = true
+        };
+        var reference = await DialogService.ShowAsync<ReplaceLicenseDialog>("Replace license", options);
+        await reference.Result;
+    }
+}

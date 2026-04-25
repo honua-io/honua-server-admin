@@ -1,5 +1,6 @@
 using Honua.Admin;
 using Honua.Admin.Services.Identity;
+using Honua.Admin.Services.LicenseWorkspace;
 using Honua.Admin.Services.SpecWorkspace;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Components.Web;
@@ -52,6 +53,14 @@ builder.Services.AddHttpClient<IIdentityAdminClient, HttpIdentityAdminClient>(cl
         }
     }
 });
+
+// License workspace services (ticket #23). Stub client backs the workspace
+// until a server-pinned configuration flips it to the HTTP client. Both
+// implementations live alongside each other so tests and offline preview can
+// pick the stub without touching the page-level wiring.
+builder.Services.AddScoped<ILicenseWorkspaceTelemetry, LoggingLicenseWorkspaceTelemetry>();
+builder.Services.AddScoped<ILicenseWorkspaceClient, StubLicenseWorkspaceClient>();
+builder.Services.AddScoped<LicenseWorkspaceState>();
 
 // Dev auth scaffold — replaced once the real admin auth provider lands.
 builder.Services.AddAuthorizationCore();

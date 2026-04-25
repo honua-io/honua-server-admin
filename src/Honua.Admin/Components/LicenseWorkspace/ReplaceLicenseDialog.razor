@@ -1,0 +1,187 @@
+@* Replace-license dialog. Holds the upload bytes only inside this component's
+   local scope: never persisted to BrowserStorage, never round-tripped to the
+   DOM as text. The confirmation gate enforces the explicit-confirmation AC. *@
+@using Honua.Admin.Models.LicenseWorkspace
+@using Honua.Admin.Services.LicenseWorkspace
+@using Microsoft.AspNetCore.Components.Forms
+@inject LicenseWorkspaceState State
+@implements IDisposable
+
+<MudDialog data-testid="replace-license-dialog">
+    <DialogContent>
+        <MudStack Spacing="3">
+            <MudAlert Severity="Severity.Info" Variant="Variant.Outlined" Dense="true">
+                Replacing the active license will overwrite the current
+                <strong>@(State.Status?.Edition ?? "(unknown edition)")</strong> entitlements.
+                Signature verification runs on the server; any verification failure surfaces in the diagnostic banner after the replace completes.
+            </MudAlert>
+
+            <MudFileUpload T="IBrowserFile"
+                           FilesChanged="HandleFileSelected"
+                           Accept=".lic,.honua-license,.json,.bin"
+                           Hidden="false"
+                           MaximumFileCount="1"
+                           data-testid="replace-license-file-input">
+                <ActivatorContent>
+                    <MudButton HtmlTag="label"
+                               Variant="Variant.Outlined"
+                               StartIcon="@Icons.Material.Filled.UploadFile">
+                        Choose license file
+                    </MudButton>
+                </ActivatorContent>
+            </MudFileUpload>
+
+            @if (_selectedFileName is not null)
+            {
+                <MudPaper Class="pa-3" Elevation="0" data-testid="replace-license-summary">
+                    <MudStack Spacing="0">
+                        <MudText Typo="Typo.body2"><strong>File:</strong> @_selectedFileName</MudText>
+                        <MudText Typo="Typo.caption"><strong>Size:</strong> @_selectedFileSize.ToString("n0") bytes</MudText>
+                    </MudStack>
+                </MudPaper>
+            }
+
+            @if (!string.IsNullOrEmpty(_pickerError))
+            {
+                <MudAlert Severity="Severity.Error" Dense="true" data-testid="replace-license-picker-error">
+                    @_pickerError
+                </MudAlert>
+            }
+
+            <MudCheckBox T="bool"
+                         Value="_confirmed"
+                         ValueChanged="ConfirmedChanged"
+                         Color="Color.Primary"
+                         Label="I understand this replaces the active license."
+                         data-testid="replace-license-confirm-check" />
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel" data-testid="replace-license-cancel">Cancel</MudButton>
+        <MudButton Color="Color.Primary"
+                   Variant="Variant.Filled"
+                   StartIcon="@Icons.Material.Filled.PublishedWithChanges"
+                   Disabled="!CanSubmit"
+                   OnClick="SubmitAsync"
+                   data-testid="replace-license-submit">
+            @if (State.WorkflowStatus == LicenseWorkspaceStatus.Uploading)
+            {
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" />
+                <span style="margin-left: 0.5em;">Replacing…</span>
+            }
+            else
+            {
+                <span>Replace current license</span>
+            }
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    private const long MaxBytes = 256 * 1024;
+
+    [CascadingParameter]
+    private IMudDialogInstance? MudDialog { get; set; }
+
+    private string? _selectedFileName;
+    private long _selectedFileSize;
+    private byte[]? _pendingBytes;
+    private bool _confirmed;
+    private string? _pickerError;
+
+    protected override void OnInitialized()
+    {
+        State.OnChanged += HandleStateChanged;
+    }
+
+    public void Dispose()
+    {
+        State.OnChanged -= HandleStateChanged;
+        // Drop the byte buffer eagerly so the garbage collector can reclaim
+        // it. The redaction invariant relies on this not lingering.
+        _pendingBytes = null;
+    }
+
+    private void HandleStateChanged() => InvokeAsync(StateHasChanged);
+
+    private bool CanSubmit =>
+        _confirmed
+        && _pendingBytes is { Length: > 0 }
+        && State.WorkflowStatus != LicenseWorkspaceStatus.Uploading;
+
+    private void ConfirmedChanged(bool value)
+    {
+        _confirmed = value;
+    }
+
+    private async Task HandleFileSelected(IBrowserFile? file)
+    {
+        _pickerError = null;
+        if (file is null)
+        {
+            _pendingBytes = null;
+            _selectedFileName = null;
+            _selectedFileSize = 0;
+            return;
+        }
+
+        if (file.Size <= 0)
+        {
+            _pickerError = "Selected file is empty.";
+            _pendingBytes = null;
+            _selectedFileName = file.Name;
+            _selectedFileSize = 0;
+            return;
+        }
+
+        if (file.Size > MaxBytes)
+        {
+            _pickerError = $"License files larger than {MaxBytes / 1024} KB are not supported.";
+            _pendingBytes = null;
+            _selectedFileName = file.Name;
+            _selectedFileSize = file.Size;
+            return;
+        }
+
+        _selectedFileName = file.Name;
+        _selectedFileSize = file.Size;
+
+        await using var stream = file.OpenReadStream(MaxBytes);
+        using var memory = new MemoryStream();
+        await stream.CopyToAsync(memory);
+        _pendingBytes = memory.ToArray();
+    }
+
+    private async Task SubmitAsync()
+    {
+        if (_pendingBytes is null)
+        {
+            return;
+        }
+
+        var bytes = _pendingBytes;
+        try
+        {
+            await State.UploadAsync(bytes);
+        }
+        finally
+        {
+            // Eagerly clear our local reference so the buffer can be collected
+            // even if the dialog stays mounted. The state layer never copies
+            // the buffer beyond the upload call.
+            _pendingBytes = null;
+            _confirmed = false;
+        }
+
+        if (State.WorkflowStatus != LicenseWorkspaceStatus.Error)
+        {
+            MudDialog?.Close(DialogResult.Ok(true));
+        }
+    }
+
+    private void Cancel()
+    {
+        _pendingBytes = null;
+        MudDialog?.Cancel();
+    }
+}
