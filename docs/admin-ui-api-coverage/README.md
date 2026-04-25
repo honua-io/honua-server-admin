@@ -28,10 +28,14 @@ dotnet run --project tools/audit-api-surface -- seed-coverage
 dotnet run --project tools/audit-api-surface -- render
 ```
 
-The `Honua.Admin.Tests` xunit suite enforces three drift guards:
+The `Honua.Admin.Tests` xunit suite enforces four drift guards
+(`tests/Honua.Admin.Tests/Audit/CoverageDriftTests.cs`):
 
 - every key in `endpoints.generated.json` must have a row in `coverage.yaml`;
 - every `coverage.yaml` row must reference a key still in the inventory;
+- every row uses schema-valid `coverage` and `priority` values, every
+  `out-of-scope` row carries an `out_of_scope_reason`, and every `supported`
+  row names an `admin_page`;
 - when `HONUA_SERVER_PATH` (or a sibling `../honua-server` checkout) is
   available, the generator is re-run and the result is asserted equal to the
   committed JSON. Without honua-server side-by-side the test is a no-op.

@@ -148,15 +148,16 @@ static int Usage()
     Console.Error.WriteLine("Usage: audit-api-surface <command> [options]");
     Console.Error.WriteLine();
     Console.Error.WriteLine("Commands:");
-    Console.Error.WriteLine("  generate    Walk honua-server feature folders and emit docs/admin-ui-api-coverage/endpoints.generated.json.");
-    Console.Error.WriteLine("  render      Render docs/admin-ui-api-coverage/matrix.md from coverage.yaml + endpoints.generated.json.");
+    Console.Error.WriteLine("  generate       Walk honua-server feature folders and emit docs/admin-ui-api-coverage/endpoints.generated.json.");
+    Console.Error.WriteLine("  seed-coverage  Add coverage.yaml rows for new endpoint keys while preserving existing rows.");
+    Console.Error.WriteLine("  render         Render docs/admin-ui-api-coverage/matrix.md from coverage.yaml + endpoints.generated.json.");
     Console.Error.WriteLine();
     Console.Error.WriteLine("Options (generate):");
     Console.Error.WriteLine("  --honua-server-root <path>    Override the honua-server checkout path.");
     Console.Error.WriteLine("  --honua-server-commit <sha>   Override the captured commit SHA (default: git rev-parse HEAD).");
     Console.Error.WriteLine("  --output <path>               Override the output JSON path.");
     Console.Error.WriteLine();
-    Console.Error.WriteLine("Options (render):");
+    Console.Error.WriteLine("Options (seed-coverage, render):");
     Console.Error.WriteLine("  --docs-root <path>            Override docs/admin-ui-api-coverage/.");
     return 1;
 }

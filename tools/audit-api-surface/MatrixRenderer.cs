@@ -86,7 +86,7 @@ public static class MatrixRenderer
             sb.AppendLine();
         }
 
-        return sb.ToString();
+        return sb.ToString().TrimEnd() + "\n";
     }
 
     private static (int supported, int partial, int missing, int outOfScope, int unclassified) SummariseCoverage(

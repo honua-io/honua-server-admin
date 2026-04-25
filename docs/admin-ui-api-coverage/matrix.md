@@ -479,4 +479,3 @@
 | `Streaming/FeatureStreamEndpoints:GET:/api/v{version:apiVersion}/admin/streaming/features/sessions` | P2 | missing |  | Feature stream session admin (mixed admin + public surface) |
 | `Streaming/FeatureStreamEndpoints:DELETE:/api/v{version:apiVersion}/admin/streaming/features/sessions/{sessionId:guid}` | P2 | missing |  | Feature stream session admin (mixed admin + public surface) |
 | `Streaming/FeatureStreamEndpoints:GET:/api/v{version:apiVersion}/streaming/features` | P2 | missing |  | Feature stream session admin (mixed admin + public surface) |
-
