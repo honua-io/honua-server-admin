@@ -31,10 +31,25 @@ builder.Services.AddHttpClient<IIdentityAdminClient, HttpIdentityAdminClient>(cl
         ? new Uri(baseUrl)
         : new Uri(builder.HostEnvironment.BaseAddress);
 
+    // X-API-Key carries server-admin credentials. Shipping it through WASM
+    // configuration leaks it to every browser that loads the static app, so
+    // only attach it in Development. Production deployments must front the
+    // admin UI with a same-origin BFF that injects credentials server-side
+    // (tracked as a follow-on; see README "Identity workspace" security note).
     var apiKey = builder.Configuration["HonuaServer:ApiKey"];
     if (!string.IsNullOrWhiteSpace(apiKey))
     {
-        client.DefaultRequestHeaders.Add("X-API-Key", apiKey);
+        if (builder.HostEnvironment.IsDevelopment())
+        {
+            client.DefaultRequestHeaders.Add("X-API-Key", apiKey);
+        }
+        else
+        {
+            Console.Error.WriteLine(
+                "[Honua.Admin] HonuaServer:ApiKey is set in a non-Development build. " +
+                "Refusing to forward it from the browser. Front the admin UI with a same-origin " +
+                "BFF that injects credentials server-side.");
+        }
     }
 });
 

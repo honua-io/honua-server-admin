@@ -174,8 +174,12 @@ public sealed class OidcProviderFormModelTests
     }
 
     [Fact]
-    public void SecretHint_in_edit_mode_shows_masked_indicator()
+    public void SecretHint_in_edit_mode_describes_secret_as_write_only_without_asserting_it_is_set()
     {
+        // honua-server's OidcProviderResponse does not expose whether a secret is
+        // configured. The hint must therefore describe the value as write-only
+        // rather than asserting "(set)" — public / PKCE providers stored with a
+        // null secret would otherwise be misrepresented when reopened for edit.
         var existing = new OidcProviderResponse
         {
             ProviderId = Guid.NewGuid(),
@@ -190,8 +194,33 @@ public sealed class OidcProviderFormModelTests
 
         var model = OidcProviderFormModel.ForEdit(existing);
 
-        // Hint must indicate the secret is set without exposing it.
-        Assert.Contains("set", model.SecretHint, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("Write-only", model.SecretHint, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("Rotate", model.SecretHint, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("(set)", model.SecretHint, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void SecretHint_in_edit_rotate_mode_shows_optional_create_hint()
+    {
+        // Once the operator opts in to rotating, the editable field is shown,
+        // and the same "optional / required for confidential" hint applies as
+        // in create mode.
+        var existing = new OidcProviderResponse
+        {
+            ProviderId = Guid.NewGuid(),
+            Name = "Acme IdP",
+            ProviderType = "Generic",
+            Authority = "https://idp.example",
+            ClientId = "honua-admin",
+            Enabled = true,
+            CreatedAt = DateTimeOffset.UtcNow,
+            UpdatedAt = DateTimeOffset.UtcNow
+        };
+
+        var model = OidcProviderFormModel.ForEdit(existing);
+        model.RotateSecret = true;
+
+        Assert.Contains("Optional", model.SecretHint, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("PKCE", model.SecretHint, StringComparison.OrdinalIgnoreCase);
     }
 }

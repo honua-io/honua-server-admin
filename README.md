@@ -57,9 +57,17 @@ Configure server connection in `src/Honua.Admin/appsettings.json`:
 
 `HonuaServer:BaseUrl` is the absolute URL of the Honua server. When omitted,
 the admin UI falls back to its own host base address (assumes same-origin
-deployment). `HonuaServer:ApiKey` is forwarded as `X-API-Key` on every admin
-API request — this is the same authentication scheme honua-server's
-`ApiKeyAuthenticationHandler` expects.
+deployment).
+
+`HonuaServer:ApiKey` is **development-only**. Blazor WebAssembly ships
+configuration to the browser, so any value placed here is visible to every
+client that loads the static app. `Program.cs` therefore only forwards the
+key as `X-API-Key` when `builder.HostEnvironment.IsDevelopment()` is true;
+production builds log a warning and refuse to attach it. Production
+deployments must front the admin UI with a same-origin backend / BFF that
+injects credentials server-side (or replace the dev auth scaffold with a
+real OIDC bearer-token flow). Tracked as a follow-on in
+[`docs/identity-admin-gaps.md`](docs/identity-admin-gaps.md).
 
 ### Operator Spec Workspace
 
@@ -145,8 +153,10 @@ go through unchanged. When supplied, the secret lives in
 `OidcProviderFormModel.ClientSecret` only for the duration of the dialog,
 is sent to the server exactly once on create or rotate, and is zeroed
 out from in-memory state immediately after submit. The server never
-returns secrets; edit dialogs render a `••••• (set)` placeholder and
-require an explicit "Rotate secret" toggle to send a new value.
+returns secrets and `OidcProviderResponse` carries no has-secret flag, so
+edit dialogs render a `••••• (write-only)` placeholder — neutral about
+whether the server has anything stored — and require an explicit
+"Rotate secret" toggle to send a new value.
 
 Diagnostics classify each failure as *operator action* (configuration the
 operator can fix — bad authority host, wrong client credentials, missing

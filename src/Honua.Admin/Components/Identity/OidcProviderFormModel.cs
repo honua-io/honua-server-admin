@@ -41,12 +41,6 @@ public sealed class OidcProviderFormModel
     public bool Enabled { get; set; } = true;
 
     /// <summary>
-    /// Whether the existing record had a secret configured. Drives the
-    /// <c>••••• (set)</c> hint and the rotate-toggle default.
-    /// </summary>
-    public bool ServerHasSecret { get; set; }
-
-    /// <summary>
     /// In edit mode, the operator opts in to rotating the secret. When false, the
     /// form omits <c>ClientSecret</c> from the update request so the server keeps
     /// the existing value.
@@ -65,9 +59,8 @@ public sealed class OidcProviderFormModel
         Authority = provider.Authority,
         ClientId = provider.ClientId,
         Enabled = provider.Enabled,
-        // Best-effort heuristic: configured providers nearly always have a secret;
-        // honua-server returns no flag for it. Operators can rotate via the toggle.
-        ServerHasSecret = true,
+        // honua-server's OidcProviderResponse does not expose whether a secret is
+        // stored, so the form treats the value as write-only/unknown — see SecretHint.
         RotateSecret = false,
         ClientSecret = string.Empty
     };
@@ -157,13 +150,14 @@ public sealed class OidcProviderFormModel
     }
 
     /// <summary>
-    /// Hint copy for the secret field. Edit mode renders an obscured indicator
-    /// when the server reports a secret is configured; create mode tells the
-    /// operator the secret is optional (public / PKCE-style clients leave it
-    /// blank).
+    /// Hint copy for the secret field. In the masked edit-mode view the form
+    /// describes the secret as write-only — the server does not return stored
+    /// secrets, so the UI cannot truthfully claim that one is or is not set.
+    /// In create or rotate mode it tells the operator the secret is optional
+    /// (public / PKCE-style clients leave it blank).
     /// </summary>
     public string SecretHint =>
-        IsEdit && ServerHasSecret
-            ? "••••• (set) — toggle Rotate to replace"
+        IsEdit && !RotateSecret
+            ? "Write-only — the server does not return stored secrets. Toggle Rotate secret to send a replacement; leave it off to keep whatever is stored (if any)."
             : "Optional — leave blank for public / PKCE clients; required for confidential clients.";
 }
