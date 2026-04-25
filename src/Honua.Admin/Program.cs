@@ -54,12 +54,35 @@ builder.Services.AddHttpClient<IIdentityAdminClient, HttpIdentityAdminClient>(cl
     }
 });
 
-// License workspace services (ticket #23). Stub client backs the workspace
-// until a server-pinned configuration flips it to the HTTP client. Both
-// implementations live alongside each other so tests and offline preview can
-// pick the stub without touching the page-level wiring.
+// License workspace services (ticket #23). HttpLicenseWorkspaceClient is the
+// default so the workspace reads + replaces the actual server license; the
+// in-memory StubLicenseWorkspaceClient stays available for direct test /
+// offline-preview construction (no DI registration). Mirrors the identity
+// client's HonuaServer:BaseUrl + Development-only X-API-Key handling.
 builder.Services.AddScoped<ILicenseWorkspaceTelemetry, LoggingLicenseWorkspaceTelemetry>();
-builder.Services.AddScoped<ILicenseWorkspaceClient, StubLicenseWorkspaceClient>();
+builder.Services.AddHttpClient<ILicenseWorkspaceClient, HttpLicenseWorkspaceClient>(client =>
+{
+    var baseUrl = builder.Configuration["HonuaServer:BaseUrl"];
+    client.BaseAddress = !string.IsNullOrWhiteSpace(baseUrl)
+        ? new Uri(baseUrl)
+        : new Uri(builder.HostEnvironment.BaseAddress);
+
+    var apiKey = builder.Configuration["HonuaServer:ApiKey"];
+    if (!string.IsNullOrWhiteSpace(apiKey))
+    {
+        if (builder.HostEnvironment.IsDevelopment())
+        {
+            client.DefaultRequestHeaders.Add("X-API-Key", apiKey);
+        }
+        else
+        {
+            Console.Error.WriteLine(
+                "[Honua.Admin] HonuaServer:ApiKey is set in a non-Development build. " +
+                "Refusing to forward it from the browser. Front the admin UI with a same-origin " +
+                "BFF that injects credentials server-side.");
+        }
+    }
+});
 builder.Services.AddScoped<LicenseWorkspaceState>();
 
 // Dev auth scaffold — replaced once the real admin auth provider lands.
