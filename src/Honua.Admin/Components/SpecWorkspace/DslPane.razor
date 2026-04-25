@@ -1,0 +1,115 @@
+@using Honua.Admin.Models.SpecWorkspace
+@using System.Threading
+@inject SpecWorkspaceState State
+@implements IDisposable
+
+<MudPaper Class="spec-pane spec-pane-dsl pa-3 h-100" Elevation="0" data-testid="spec-dsl-pane">
+    <MudStack Class="h-100" Spacing="2">
+        <MudStack Row AlignItems="AlignItems.Center" Spacing="2">
+            <MudText Typo="Typo.h6">Spec draft</MudText>
+            <MudSpacer />
+            <MudToggleIconButton Toggled="@State.IsJsonView"
+                                 ToggledChanged="HandleJsonToggleChanged"
+                                 Icon="@Icons.Material.Filled.Notes"
+                                 ToggledIcon="@Icons.Material.Filled.DataObject"
+                                 aria-label="Toggle canonical JSON view"
+                                 data-testid="dsl-json-toggle" />
+            <MudButton Color="Color.Primary"
+                       Variant="Variant.Outlined"
+                       StartIcon="@Icons.Material.Filled.PlayArrow"
+                       OnClick="RunPlanAsync"
+                       Disabled="_busy || ActiveWork"
+                       data-testid="dsl-plan">Plan</MudButton>
+            <MudButton Color="Color.Success"
+                       Variant="Variant.Filled"
+                       StartIcon="@Icons.Material.Filled.RocketLaunch"
+                       OnClick="RunApplyAsync"
+                       Disabled="_busy || ActiveWork"
+                       data-testid="dsl-apply">Apply</MudButton>
+            <MudButton Color="Color.Error"
+                       Variant="Variant.Text"
+                       StartIcon="@Icons.Material.Filled.Cancel"
+                       OnClick="CancelApplyAsync"
+                       Disabled="State.Status != WorkspaceStatus.Applying"
+                       data-testid="dsl-cancel">Cancel</MudButton>
+        </MudStack>
+
+        @if (State.IsJsonView)
+        {
+            <MudPaper Elevation="0" Class="spec-json-view">
+                <pre data-testid="dsl-json">@State.TextView</pre>
+            </MudPaper>
+        }
+        else
+        {
+            <div class="spec-dsl-accordions flex-grow-1 overflow-auto">
+                <MudExpansionPanels MultiExpansion="true">
+                    @foreach (var sectionId in Enum.GetValues<SpecSectionId>())
+                    {
+                        <MudExpansionPanel Expanded="true" data-testid="@($"section-{sectionId}")">
+                            <TitleContent>
+                                <MudStack Row AlignItems="AlignItems.Center" Spacing="2">
+                                    <MudChip T="string" Size="Size.Small" Color="Color.Primary">@(sectionId.ToString().ToLowerInvariant())</MudChip>
+                                    <MudText Typo="Typo.body2" Color="Color.Secondary">@State.GetSectionSummary(sectionId)</MudText>
+                                </MudStack>
+                            </TitleContent>
+                            <ChildContent>
+                                <DslSectionEditor SectionId="sectionId" />
+                            </ChildContent>
+                        </MudExpansionPanel>
+                    }
+                </MudExpansionPanels>
+            </div>
+        }
+    </MudStack>
+</MudPaper>
+
+@code {
+    private bool _busy;
+    private bool ActiveWork => State.Status is WorkspaceStatus.Planning or WorkspaceStatus.Applying or WorkspaceStatus.Cancelling;
+
+    protected override void OnInitialized()
+    {
+        State.OnChanged += StateChanged;
+    }
+
+    public void Dispose() => State.OnChanged -= StateChanged;
+
+    private void StateChanged() => InvokeAsync(StateHasChanged);
+
+    private void HandleJsonToggleChanged(bool toggled)
+    {
+        if (toggled != State.IsJsonView)
+        {
+            State.ToggleJsonView();
+        }
+    }
+
+    private async Task RunPlanAsync()
+    {
+        _busy = true;
+        try
+        {
+            await State.RunPlanAsync(CancellationToken.None);
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private async Task RunApplyAsync()
+    {
+        _busy = true;
+        try
+        {
+            await State.RunApplyAsync(CancellationToken.None);
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private Task CancelApplyAsync() => State.CancelApplyAsync(CancellationToken.None);
+}

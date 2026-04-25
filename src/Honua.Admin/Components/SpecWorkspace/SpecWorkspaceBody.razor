@@ -1,0 +1,105 @@
+@* Three-pane resizable body — NL | DSL | Preview. Widths persist to
+   localStorage via <c>SpecWorkspaceState.SetLayout</c>. Splitter handles use
+   pointer events routed through the <c>spec-workspace-interop</c> JS helper. *@
+@using Honua.Admin.Models.SpecWorkspace
+@inject SpecWorkspaceState State
+@inject IJSRuntime JS
+@implements IAsyncDisposable
+
+<div class="spec-workspace-root" data-testid="spec-workspace-root"
+     style="@($"grid-template-columns: {State.Layout.Nl}fr 6px {State.Layout.Dsl}fr 6px {State.Layout.Preview}fr;")">
+
+    <div class="spec-workspace-cell spec-workspace-nl">
+        <ConversationPane />
+    </div>
+
+    <div class="spec-workspace-splitter"
+         data-splitter-left="nl"
+         data-splitter-right="dsl"
+         @onpointerdown="(e => BeginDragAsync(e, SpecSplitter.NlDsl))"
+         data-testid="splitter-nl-dsl"></div>
+
+    <div class="spec-workspace-cell spec-workspace-dsl">
+        <DslPane />
+    </div>
+
+    <div class="spec-workspace-splitter"
+         data-splitter-left="dsl"
+         data-splitter-right="preview"
+         @onpointerdown="(e => BeginDragAsync(e, SpecSplitter.DslPreview))"
+         data-testid="splitter-dsl-preview"></div>
+
+    <div class="spec-workspace-cell spec-workspace-preview">
+        <PreviewPane />
+    </div>
+</div>
+
+@code {
+    private enum SpecSplitter
+    {
+        NlDsl,
+        DslPreview
+    }
+
+    private DotNetObjectReference<SpecWorkspaceBody>? _selfRef;
+    private bool _interopReady;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            _selfRef = DotNetObjectReference.Create(this);
+            try
+            {
+                await JS.InvokeVoidAsync("specWorkspace.attachSplitters", _selfRef);
+                _interopReady = true;
+            }
+            catch
+            {
+                // interop helper missing — splitter falls back to server-side buttons only
+            }
+        }
+    }
+
+    [JSInvokable]
+    public Task OnSplitterDrag(string splitterId, double deltaFraction)
+    {
+        var layout = State.Layout;
+        if (splitterId == "nl-dsl")
+        {
+            var nl = Math.Clamp(layout.Nl + deltaFraction * 100, 15, 60);
+            var dsl = Math.Clamp(layout.Dsl - deltaFraction * 100, 15, 70);
+            State.SetLayout(new LayoutWidths(nl, dsl, layout.Preview));
+        }
+        else if (splitterId == "dsl-preview")
+        {
+            var dsl = Math.Clamp(layout.Dsl + deltaFraction * 100, 15, 70);
+            var preview = Math.Clamp(layout.Preview - deltaFraction * 100, 15, 60);
+            State.SetLayout(new LayoutWidths(layout.Nl, dsl, preview));
+        }
+        return Task.CompletedTask;
+    }
+
+    private async Task BeginDragAsync(PointerEventArgs e, SpecSplitter splitter)
+    {
+        if (!_interopReady)
+        {
+            return;
+        }
+        var id = splitter == SpecSplitter.NlDsl ? "nl-dsl" : "dsl-preview";
+        try
+        {
+            await JS.InvokeVoidAsync("specWorkspace.beginSplitterDrag", id, e.ClientX);
+        }
+        catch
+        {
+            // non-fatal: drag will be inert if interop is unavailable
+        }
+    }
+
+    public ValueTask DisposeAsync()
+    {
+        _selfRef?.Dispose();
+        return ValueTask.CompletedTask;
+    }
+}

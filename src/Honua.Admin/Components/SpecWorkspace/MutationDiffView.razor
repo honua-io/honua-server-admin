@@ -1,0 +1,26 @@
+@* Collapsible before/after diff for a single mutation turn. *@
+@using Honua.Admin.Models.SpecWorkspace
+
+@if (Mutation is not null)
+{
+    <MudStack Spacing="1" Class="spec-diff">
+        <MudStack Row AlignItems="AlignItems.Center" Spacing="2">
+            <MudChip T="string" Size="Size.Small" Color="Color.Primary" Variant="Variant.Filled">@Mutation.Section.ToString().ToLowerInvariant()</MudChip>
+            <MudText Typo="Typo.caption" Color="Color.Secondary">@Mutation.Summary</MudText>
+        </MudStack>
+        <MudGrid Spacing="1" Class="mt-1">
+            <MudItem xs="6">
+                <MudText Typo="Typo.overline">before</MudText>
+                <pre class="spec-diff-before" data-testid="mutation-before">@Mutation.BeforeJson</pre>
+            </MudItem>
+            <MudItem xs="6">
+                <MudText Typo="Typo.overline">after</MudText>
+                <pre class="spec-diff-after" data-testid="mutation-after">@Mutation.AfterJson</pre>
+            </MudItem>
+        </MudGrid>
+    </MudStack>
+}
+
+@code {
+    [Parameter] public SpecMutation? Mutation { get; set; }
+}

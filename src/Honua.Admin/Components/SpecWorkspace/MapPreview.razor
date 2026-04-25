@@ -1,0 +1,96 @@
+@* Minimal MapLibre bootstrap — S1 wires the component to a JS interop helper
+   that either boots MapLibre (if <c>wwwroot/lib/maplibre/</c> is vendored) or
+   falls back to a canvas-based placeholder for tests and offline dev. Feature
+   clicks call back into <c>SpecWorkspaceState.InsertPromptToken</c>. *@
+@using Honua.Admin.Models.SpecWorkspace
+@inject IJSRuntime JS
+@inject SpecWorkspaceState State
+@implements IAsyncDisposable
+
+<div class="spec-map-root" data-testid="map-preview">
+    <div id="@_elementId" class="spec-map-canvas"></div>
+    <MudStack Class="spec-map-legend pa-2" Spacing="1" data-testid="map-legend">
+        <MudText Typo="Typo.caption" Color="Color.Secondary">features</MudText>
+        @foreach (var feature in Features)
+        {
+            <MudStack Row AlignItems="AlignItems.Center" Spacing="1">
+                <MudIcon Icon="@Icons.Material.Filled.Place" Size="Size.Small" Color="Color.Primary" />
+                <MudButton Size="Size.Small"
+                           Variant="Variant.Text"
+                           Color="Color.Primary"
+                           OnClick="@(() => InsertReference(feature))"
+                           data-testid="@($"map-feature-{feature.Id}")">
+                    @(feature.Label ?? feature.Id)
+                </MudButton>
+            </MudStack>
+        }
+    </MudStack>
+</div>
+
+@code {
+    private readonly string _elementId = $"spec-map-{Guid.NewGuid():n}";
+    private bool _initialized;
+    private DotNetObjectReference<MapPreview>? _selfRef;
+
+    [Parameter] public IReadOnlyList<MapFeature> Features { get; set; } = System.Array.Empty<MapFeature>();
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            _selfRef = DotNetObjectReference.Create(this);
+            try
+            {
+                await JS.InvokeVoidAsync("specWorkspace.initializeMap", _elementId, _selfRef);
+                _initialized = true;
+            }
+            catch
+            {
+                // interop may not be wired in test / pre-render contexts
+            }
+        }
+
+        if (_initialized)
+        {
+            try
+            {
+                await JS.InvokeVoidAsync("specWorkspace.setMapFeatures", _elementId, Features);
+            }
+            catch
+            {
+                // no-op in environments without the interop helper
+            }
+        }
+    }
+
+    [JSInvokable]
+    public Task FeatureClicked(string featureId)
+    {
+        var feature = Features.FirstOrDefault(f => f.Id == featureId);
+        if (feature is not null)
+        {
+            InsertReference(feature);
+            StateHasChanged();
+        }
+        return Task.CompletedTask;
+    }
+
+    private void InsertReference(MapFeature feature) =>
+        State.InsertPromptToken($"@{feature.Source}.id={feature.Id} ");
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_initialized)
+        {
+            try
+            {
+                await JS.InvokeVoidAsync("specWorkspace.disposeMap", _elementId);
+            }
+            catch
+            {
+                // swallow — component is being torn down
+            }
+        }
+        _selfRef?.Dispose();
+    }
+}

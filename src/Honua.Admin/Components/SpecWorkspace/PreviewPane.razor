@@ -1,0 +1,79 @@
+@* Preview pane — auto-routes to the right renderer based on the latest apply
+   payload or, absent that, the current plan result. Idle hint points back at
+   the Plan button. *@
+@using Honua.Admin.Models.SpecWorkspace
+@inject SpecWorkspaceState State
+@implements IDisposable
+
+<MudPaper Class="spec-pane spec-pane-preview pa-3 h-100" Elevation="0" data-testid="spec-preview-pane">
+    <MudStack Class="h-100" Spacing="2">
+        <MudStack Row AlignItems="AlignItems.Center" Spacing="2">
+            <MudText Typo="Typo.h6">Preview</MudText>
+            <MudSpacer />
+            <MudChip T="string" Color="@StatusColor(State.Status)" Variant="Variant.Outlined" Size="Size.Small" data-testid="preview-status">@State.Status</MudChip>
+        </MudStack>
+
+        @if (_payload is { Kind: SpecOutputKind.Map } mapPayload)
+        {
+            <MapPreview Features="mapPayload.MapFeatures" />
+        }
+        else if (_payload is { Kind: SpecOutputKind.Analysis } analysisPayload)
+        {
+            <TablePreview Columns="analysisPayload.TableColumns" Rows="analysisPayload.TableRows" />
+        }
+        else if (_payload is { Kind: SpecOutputKind.AppScaffold } appPayload)
+        {
+            <AppScaffoldPreview Scaffold="appPayload.AppScaffold" />
+        }
+        else if (State.ApplyEvents.Count > 0)
+        {
+            <ApplyStreamView Events="State.ApplyEvents" />
+        }
+        else if (State.PlanResult is not null)
+        {
+            <PlanDagView Plan="State.PlanResult" />
+        }
+        else
+        {
+            <MudAlert Severity="Severity.Info" Dense="true" Variant="Variant.Text" data-testid="preview-idle">
+                Build a spec and press Plan — the DAG, cost, and any warnings will appear here.
+            </MudAlert>
+        }
+    </MudStack>
+</MudPaper>
+
+@code {
+    private ApplyPayload? _payload;
+
+    protected override void OnInitialized()
+    {
+        State.OnChanged += StateChanged;
+        RefreshPayload();
+    }
+
+    public void Dispose() => State.OnChanged -= StateChanged;
+
+    private void StateChanged()
+    {
+        RefreshPayload();
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void RefreshPayload()
+    {
+        _payload = State.ApplyEvents
+            .Where(e => e.Kind == ApplyEventKind.Completed && e.Payload is not null)
+            .Select(e => e.Payload)
+            .LastOrDefault();
+    }
+
+    private static Color StatusColor(WorkspaceStatus status) => status switch
+    {
+        WorkspaceStatus.Idle => Color.Default,
+        WorkspaceStatus.Planning => Color.Info,
+        WorkspaceStatus.Applying => Color.Warning,
+        WorkspaceStatus.Cancelling => Color.Warning,
+        WorkspaceStatus.Error => Color.Error,
+        _ => Color.Default
+    };
+}

@@ -1,0 +1,338 @@
+@using System.Text
+@using System.Text.Encodings.Web
+@using Honua.Admin.Models.SpecWorkspace
+@inject IJSRuntime JS
+@inject SpecWorkspaceState State
+@implements IDisposable
+
+<div class="spec-section-editor" data-testid="@($"section-editor-{SectionId}")">
+    <div class="spec-editor-shell">
+        <pre class="spec-editor-underlay" aria-hidden="true">@((MarkupString)BuildHighlightedMarkup())</pre>
+        <textarea class="spec-editor-input"
+                  value="@State.GetSectionText(SectionId)"
+                  @ref="_editorRef"
+                  @oninput="HandleInputAsync"
+                  @onfocus="HandleFocusAsync"
+                  @onclick="HandleCursorInteractionAsync"
+                  @onmouseup="HandleCursorInteractionAsync"
+                  @onkeyup="HandleKeyUpAsync"
+                  data-testid="@($"dsl-editor-{SectionId}")"></textarea>
+    </div>
+
+    @if (SectionDiagnostics.Count > 0)
+    {
+        <MudStack Spacing="1" Class="mt-2" data-testid="@($"dsl-diagnostics-{SectionId}")">
+            @foreach (var diagnostic in SectionDiagnostics)
+            {
+                <MudAlert Severity="@(diagnostic.Severity == ValidationSeverity.Red ? Severity.Error : Severity.Warning)"
+                          Dense="true"
+                          Variant="Variant.Text"
+                          data-testid="@($"diag-{SectionId}-{diagnostic.Code}")">
+                    @diagnostic.Message
+                </MudAlert>
+            }
+        </MudStack>
+    }
+
+    @if (_candidates.Count > 0)
+    {
+        <MudPaper Class="spec-intellisense-popover mt-2 pa-1" Elevation="0" data-testid="@($"dsl-intellisense-{SectionId}")">
+            <MudStack Spacing="1">
+                <MudText Typo="Typo.caption" Color="Color.Secondary">
+                    completion: @_lastLatencyMs ms (@_lastCached)
+                </MudText>
+                <MudList T="string" Dense="true">
+                    @foreach (var candidate in _candidates)
+                    {
+                        <MudListItem T="string"
+                                     Icon="@IconForKind(candidate.Kind)"
+                                     OnClick="@(() => InsertCandidateAsync(candidate))"
+                                     title="@BuildCandidateTitle(candidate)"
+                                     data-testid="@($"candidate-{SectionId}-{candidate.Id}")">
+                            <MudStack Spacing="0">
+                                <MudText Typo="Typo.body2"><strong>@candidate.Label</strong> @(candidate.Parent is null ? string.Empty : $"from @{candidate.Parent}")</MudText>
+                                <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                    type: @(candidate.Type ?? "unknown")
+                                    @if (!string.IsNullOrWhiteSpace(candidate.RbacScope))
+                                    {
+                                        <span> | rbac: @candidate.RbacScope</span>
+                                    }
+                                </MudText>
+                                @if (candidate.SampleValues.Count > 0)
+                                {
+                                    <MudText Typo="Typo.caption" Color="Color.Tertiary">
+                                        sample: @string.Join(", ", candidate.SampleValues.Take(3))
+                                    </MudText>
+                                }
+                            </MudStack>
+                        </MudListItem>
+                    }
+                </MudList>
+            </MudStack>
+        </MudPaper>
+    }
+</div>
+
+@code {
+    private ElementReference _editorRef;
+    private IReadOnlyList<CatalogCandidate> _candidates = Array.Empty<CatalogCandidate>();
+    private long _lastLatencyMs;
+    private string _lastCached = "–";
+    private CompletionRequest? _completion;
+
+    [Parameter] public SpecSectionId SectionId { get; set; }
+
+    private IReadOnlyList<ValidationDiagnostic> SectionDiagnostics => State.GetDiagnostics(SectionId);
+
+    protected override void OnInitialized()
+    {
+        State.OnChanged += StateChanged;
+    }
+
+    public void Dispose() => State.OnChanged -= StateChanged;
+
+    private void StateChanged()
+    {
+        if (State.ActiveDslSection != SectionId && _candidates.Count > 0)
+        {
+            _candidates = Array.Empty<CatalogCandidate>();
+            _completion = null;
+        }
+
+        InvokeAsync(StateHasChanged);
+    }
+
+    private async Task HandleInputAsync(ChangeEventArgs args)
+    {
+        var text = args.Value?.ToString() ?? string.Empty;
+        await State.UpdateSectionTextAsync(SectionId, text);
+        await RefreshCompletionAsync();
+    }
+
+    private async Task HandleFocusAsync(FocusEventArgs _)
+    {
+        State.SetActiveDslSection(SectionId);
+        await RefreshCompletionAsync();
+    }
+
+    private async Task HandleCursorInteractionAsync()
+    {
+        await RefreshCompletionAsync();
+    }
+
+    private async Task HandleKeyUpAsync(KeyboardEventArgs _)
+    {
+        await RefreshCompletionAsync();
+    }
+
+    private async Task RefreshCompletionAsync()
+    {
+        var selection = await ReadSelectionAsync();
+        State.SetDslSelection(SectionId, selection.Start, selection.End);
+
+        var query = BuildCompletionRequest(State.GetSectionText(SectionId), selection.Start);
+        _completion = query;
+        if (query is null)
+        {
+            _candidates = Array.Empty<CatalogCandidate>();
+            return;
+        }
+
+        State.SetDslSelection(SectionId, query.ReplaceStart, query.ReplaceEnd);
+        var resolution = await State.ResolveCatalogAsync(query.Query);
+        _candidates = resolution.Candidates;
+        _lastLatencyMs = resolution.ElapsedMillis;
+        _lastCached = resolution.Cached ? "cached" : "fresh";
+    }
+
+    private async Task InsertCandidateAsync(CatalogCandidate candidate)
+    {
+        var token = candidate.Kind switch
+        {
+            CatalogCandidateKind.Dataset => $"@{candidate.Id}",
+            CatalogCandidateKind.Column => $"@{candidate.Parent}.{candidate.Label}",
+            _ => candidate.Label
+        };
+
+        await State.InsertDslTokenAsync(token);
+        _candidates = Array.Empty<CatalogCandidate>();
+        _completion = null;
+    }
+
+    private async Task<TextSelection> ReadSelectionAsync()
+    {
+        try
+        {
+            return await JS.InvokeAsync<TextSelection>("specWorkspace.getTextSelection", _editorRef);
+        }
+        catch
+        {
+            var length = State.GetSectionText(SectionId).Length;
+            return new TextSelection(length, length);
+        }
+    }
+
+    private CompletionRequest? BuildCompletionRequest(string text, int cursor)
+    {
+        if (cursor < 0 || cursor > text.Length)
+        {
+            return null;
+        }
+
+        var prefixText = text[..cursor];
+        var atIndex = prefixText.LastIndexOf('@');
+        if (atIndex < 0)
+        {
+            return null;
+        }
+
+        var tail = prefixText[atIndex..];
+        if (tail.Any(ch => char.IsWhiteSpace(ch) || ch == ',' || ch == ')' || ch == '(' || ch == ':'))
+        {
+            return null;
+        }
+
+        var raw = prefixText[(atIndex + 1)..];
+        if (raw.Length == 0)
+        {
+            return new CompletionRequest(
+                new ResolveQuery
+                {
+                    Trigger = CatalogTrigger.AtMention,
+                    Prefix = string.Empty,
+                    PrincipalId = State.PrincipalId
+                },
+                atIndex,
+                cursor);
+        }
+
+        var dotIndex = raw.IndexOf('.');
+        if (dotIndex >= 0)
+        {
+            var parent = raw[..dotIndex];
+            var memberPrefix = raw[(dotIndex + 1)..];
+            if (parent.Length == 0)
+            {
+                return null;
+            }
+
+            return new CompletionRequest(
+                new ResolveQuery
+                {
+                    Trigger = CatalogTrigger.DotMember,
+                    Parent = parent,
+                    Prefix = memberPrefix,
+                    PrincipalId = State.PrincipalId
+                },
+                atIndex,
+                cursor);
+        }
+
+        return new CompletionRequest(
+            new ResolveQuery
+            {
+                Trigger = CatalogTrigger.AtMention,
+                Prefix = raw,
+                PrincipalId = State.PrincipalId
+            },
+            atIndex,
+            cursor);
+    }
+
+    private string BuildHighlightedMarkup()
+    {
+        var text = State.GetSectionText(SectionId);
+        if (text.Length == 0)
+        {
+            return string.Empty;
+        }
+
+        var matches = BuildDiagnosticMatches(text, SectionDiagnostics);
+        if (matches.Count == 0)
+        {
+            return HtmlEncoder.Default.Encode(text);
+        }
+
+        var builder = new StringBuilder();
+        var index = 0;
+        foreach (var match in matches.OrderBy(m => m.Start))
+        {
+            if (match.Start < index)
+            {
+                continue;
+            }
+
+            builder.Append(HtmlEncoder.Default.Encode(text[index..match.Start]));
+            builder.Append("<span class=\"")
+                .Append(match.Severity == ValidationSeverity.Red ? "spec-editor-mark-red" : "spec-editor-mark-yellow")
+                .Append("\">")
+                .Append(HtmlEncoder.Default.Encode(text.Substring(match.Start, match.Length)))
+                .Append("</span>");
+            index = match.Start + match.Length;
+        }
+
+        if (index < text.Length)
+        {
+            builder.Append(HtmlEncoder.Default.Encode(text[index..]));
+        }
+
+        return builder.ToString();
+    }
+
+    private static List<DiagnosticMatch> BuildDiagnosticMatches(string text, IReadOnlyList<ValidationDiagnostic> diagnostics)
+    {
+        var matches = new List<DiagnosticMatch>();
+        foreach (var diagnostic in diagnostics.Where(d => !string.IsNullOrWhiteSpace(d.Identifier)))
+        {
+            var needle = diagnostic.Identifier!;
+            var searchIndex = 0;
+            while (searchIndex < text.Length)
+            {
+                var index = text.IndexOf(needle, searchIndex, StringComparison.Ordinal);
+                if (index < 0)
+                {
+                    break;
+                }
+
+                matches.Add(new DiagnosticMatch(index, needle.Length, diagnostic.Severity));
+                searchIndex = index + needle.Length;
+            }
+        }
+
+        return matches
+            .OrderBy(m => m.Start)
+            .ThenByDescending(m => m.Length)
+            .ToList();
+    }
+
+    private static string BuildCandidateTitle(CatalogCandidate candidate)
+    {
+        var lines = new List<string> { $"type: {candidate.Type ?? "unknown"}" };
+        if (!string.IsNullOrWhiteSpace(candidate.RbacScope))
+        {
+            lines.Add($"rbac: {candidate.RbacScope}");
+        }
+
+        if (candidate.SampleValues.Count > 0)
+        {
+            lines.Add($"sample: {string.Join(", ", candidate.SampleValues.Take(3))}");
+        }
+
+        return string.Join(" | ", lines);
+    }
+
+    private static string IconForKind(CatalogCandidateKind kind) => kind switch
+    {
+        CatalogCandidateKind.Dataset => Icons.Material.Filled.Storage,
+        CatalogCandidateKind.Column => Icons.Material.Filled.ViewColumn,
+        CatalogCandidateKind.Operator => Icons.Material.Filled.Functions,
+        CatalogCandidateKind.SymbologyRamp => Icons.Material.Filled.Palette,
+        _ => Icons.Material.Filled.Code
+    };
+
+    private sealed record CompletionRequest(ResolveQuery Query, int ReplaceStart, int ReplaceEnd);
+
+    private sealed record TextSelection(int Start, int End);
+
+    private sealed record DiagnosticMatch(int Start, int Length, ValidationSeverity Severity);
+}

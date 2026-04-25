@@ -1,0 +1,16 @@
+@page "/operator/spec"
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize]
+@using Honua.Admin.Models.SpecWorkspace
+@inject SpecWorkspaceState State
+
+<PageTitle>Spec workspace</PageTitle>
+
+<SpecWorkspaceBody />
+
+@code {
+    protected override async Task OnInitializedAsync()
+    {
+        await State.InitializeAsync("operator", default);
+    }
+}
