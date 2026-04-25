@@ -1,0 +1,90 @@
+.spatial-sql-root {
+    display: flex;
+    flex-direction: column;
+    height: calc(100vh - 128px);
+    min-height: 480px;
+    gap: 8px;
+}
+
+.spatial-sql-toolbar {
+    flex: 0 0 auto;
+}
+
+.spatial-sql-grid {
+    flex: 1 1 auto;
+    display: grid;
+    grid-template-columns: 1fr 1.4fr;
+    grid-template-rows: 1fr 1fr;
+    gap: 8px;
+    min-height: 0;
+}
+
+.spatial-sql-cell {
+    min-height: 0;
+    min-width: 0;
+    overflow: auto;
+}
+
+.spatial-sql-editor-cell {
+    grid-column: 1 / span 1;
+    grid-row: 1 / span 2;
+}
+
+.spatial-sql-results-cell {
+    grid-column: 2 / span 1;
+    grid-row: 1 / span 1;
+}
+
+.spatial-sql-plan-cell {
+    grid-column: 2 / span 1;
+    grid-row: 2 / span 1;
+}
+
+.spatial-sql-schema {
+    border-top: 1px solid var(--mud-palette-divider, #e0e0e0);
+    padding-top: 8px;
+    overflow-y: auto;
+    max-height: 280px;
+}
+
+.spatial-sql-map {
+    flex: 1 1 auto;
+    min-height: 240px;
+    display: flex;
+    flex-direction: column;
+}
+
+.sql-keyword {
+    color: #4527a0;
+    font-weight: 600;
+}
+
+.sql-postgis {
+    color: #006d77;
+    font-weight: 600;
+}
+
+.sql-literal {
+    color: #b71c1c;
+}
+
+.sql-comment {
+    color: #6b7280;
+    font-style: italic;
+}
+
+.explain-node {
+    padding: 4px 0 4px 0;
+    border-left: 2px solid transparent;
+}
+
+.explain-children {
+    margin-left: 20px;
+    border-left: 2px dashed var(--mud-palette-divider, #cfd8dc);
+    padding-left: 8px;
+}
+
+.explain-node-spacer {
+    display: inline-block;
+    width: 32px;
+}

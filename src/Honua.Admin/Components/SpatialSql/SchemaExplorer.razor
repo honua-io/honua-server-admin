@@ -1,0 +1,102 @@
+@* Schema sidebar — shows tables/columns/PostGIS reference. Clicking a column or
+   function inserts the token into the SQL editor through the playground state. *@
+@using Honua.Admin.Models.SpatialSql
+@using Honua.Admin.Services.SpatialSql
+
+<div class="spatial-sql-schema" data-testid="sql-schema-explorer">
+    <MudStack Row AlignItems="AlignItems.Center" Spacing="1" Class="mb-2">
+        <MudText Typo="Typo.subtitle2">Schema</MudText>
+        <MudSpacer />
+        <MudIconButton Icon="@Icons.Material.Filled.Refresh"
+                       Size="Size.Small"
+                       OnClick="OnRefreshRequested"
+                       data-testid="sql-schema-refresh"
+                       title="Refresh schema" />
+    </MudStack>
+
+    @if (Snapshot is null)
+    {
+        <MudAlert Severity="Severity.Info" Dense="true" Variant="Variant.Text" data-testid="sql-schema-empty">
+            Loading schema…
+        </MudAlert>
+    }
+    else
+    {
+        <MudExpansionPanels MultiExpansion="true" Dense="true" Elevation="0">
+            <MudExpansionPanel Text="Tables" Expanded="true" data-testid="sql-schema-tables">
+                <MudStack Spacing="1">
+                    @foreach (var table in Snapshot.Tables)
+                    {
+                        <MudPaper Class="pa-1" Elevation="0" data-testid="@($"sql-schema-table-{table.Name}")">
+                            <MudButton Variant="Variant.Text"
+                                       Size="Size.Small"
+                                       StartIcon="@Icons.Material.Filled.TableChart"
+                                       OnClick="@(() => InsertTokenAsync(table.Name))"
+                                       data-testid="@($"sql-schema-table-insert-{table.Name}")">
+                                @table.Name
+                            </MudButton>
+                            <MudStack Spacing="0" Class="pl-3">
+                                @foreach (var column in table.Columns)
+                                {
+                                    <MudStack Row AlignItems="AlignItems.Center" Spacing="1">
+                                        <MudButton Variant="Variant.Text"
+                                                   Size="Size.Small"
+                                                   OnClick="@(() => InsertTokenAsync(column.Name))"
+                                                   data-testid="@($"sql-schema-column-{table.Name}-{column.Name}")">
+                                            @column.Name
+                                        </MudButton>
+                                        <MudText Typo="Typo.caption" Color="Color.Secondary">@column.Type</MudText>
+                                        @if (string.Equals(column.Name, table.GeometryColumn, StringComparison.OrdinalIgnoreCase))
+                                        {
+                                            <MudChip T="string" Color="Color.Primary" Size="Size.Small" Variant="Variant.Outlined">geom</MudChip>
+                                        }
+                                    </MudStack>
+                                }
+                            </MudStack>
+                        </MudPaper>
+                    }
+                </MudStack>
+            </MudExpansionPanel>
+            <MudExpansionPanel Text="PostGIS functions" data-testid="sql-schema-functions">
+                <MudStack Spacing="1">
+                    @foreach (var fn in Snapshot.Functions)
+                    {
+                        <MudButton Variant="Variant.Text"
+                                   Size="Size.Small"
+                                   OnClick="@(() => InsertTokenAsync(fn.Name + "("))"
+                                   data-testid="@($"sql-schema-fn-{fn.Name}")"
+                                   title="@fn.Documentation">
+                            <MudStack Row Spacing="1" AlignItems="AlignItems.Center">
+                                <MudText Typo="Typo.body2"><strong>@fn.Name</strong></MudText>
+                                <MudText Typo="Typo.caption" Color="Color.Secondary">@fn.Signature</MudText>
+                            </MudStack>
+                        </MudButton>
+                    }
+                </MudStack>
+            </MudExpansionPanel>
+            <MudExpansionPanel Text="PostGIS operators" data-testid="sql-schema-operators">
+                <MudStack Spacing="0">
+                    @foreach (var op in Snapshot.Operators)
+                    {
+                        <MudStack Row AlignItems="AlignItems.Center" Spacing="2" data-testid="@($"sql-schema-op-{op.Symbol}")">
+                            <MudText Typo="Typo.body2"><code>@op.Symbol</code></MudText>
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">@op.Description</MudText>
+                        </MudStack>
+                    }
+                </MudStack>
+            </MudExpansionPanel>
+        </MudExpansionPanels>
+    }
+</div>
+
+@code {
+    [Parameter] public SchemaSnapshot? Snapshot { get; set; }
+
+    [Parameter] public EventCallback<string> OnInsertToken { get; set; }
+
+    [Parameter] public EventCallback OnRefresh { get; set; }
+
+    private Task InsertTokenAsync(string token) => OnInsertToken.InvokeAsync(token);
+
+    private Task OnRefreshRequested() => OnRefresh.InvokeAsync();
+}

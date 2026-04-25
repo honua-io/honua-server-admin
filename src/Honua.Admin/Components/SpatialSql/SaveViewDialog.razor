@@ -1,0 +1,114 @@
+@* Save current SQL as a named virtual layer. The dialog returns the
+   <c>NamedViewRegistration</c> from the server which the caller surfaces as the
+   FeatureServer / OGC API Features / OData URL chips. *@
+@using Honua.Admin.Models.SpatialSql
+@using Honua.Admin.Services.SpatialSql
+
+<MudDialog data-testid="save-view-dialog">
+    <DialogContent>
+        <MudStack Spacing="2">
+            <MudTextField T="string"
+                          Label="Name"
+                          Required="true"
+                          @bind-Value="_name"
+                          data-testid="save-view-name" />
+            <MudTextField T="string"
+                          Label="Description (optional)"
+                          Lines="3"
+                          @bind-Value="_description"
+                          data-testid="save-view-description" />
+            @if (_error is not null)
+            {
+                <MudAlert Severity="Severity.Error" Dense="true" Variant="Variant.Filled" data-testid="save-view-error">
+                    @_error
+                </MudAlert>
+            }
+            @if (Registration is not null && !Registration.IsError)
+            {
+                <MudPaper Class="pa-2" Elevation="0" data-testid="save-view-success">
+                    <MudText Typo="Typo.subtitle2">Registered as <code>@Registration.Name</code></MudText>
+                    <MudStack Spacing="1" Class="mt-1">
+                        @if (Registration.FeatureServerUrl is not null)
+                        {
+                            <MudStack Row Spacing="1" AlignItems="AlignItems.Center">
+                                <MudChip T="string" Color="Color.Primary" Variant="Variant.Outlined" Size="Size.Small">FeatureServer</MudChip>
+                                <code data-testid="save-view-featureserver-url">@Registration.FeatureServerUrl</code>
+                            </MudStack>
+                        }
+                        @if (Registration.OgcFeaturesUrl is not null)
+                        {
+                            <MudStack Row Spacing="1" AlignItems="AlignItems.Center">
+                                <MudChip T="string" Color="Color.Secondary" Variant="Variant.Outlined" Size="Size.Small">OGC API</MudChip>
+                                <code data-testid="save-view-ogc-url">@Registration.OgcFeaturesUrl</code>
+                            </MudStack>
+                        }
+                        @if (Registration.ODataUrl is not null)
+                        {
+                            <MudStack Row Spacing="1" AlignItems="AlignItems.Center">
+                                <MudChip T="string" Color="Color.Tertiary" Variant="Variant.Outlined" Size="Size.Small">OData</MudChip>
+                                <code data-testid="save-view-odata-url">@Registration.ODataUrl</code>
+                            </MudStack>
+                        }
+                    </MudStack>
+                </MudPaper>
+            }
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel" data-testid="save-view-cancel">Cancel</MudButton>
+        <MudButton Color="Color.Primary"
+                   Variant="Variant.Filled"
+                   Disabled="@_busy"
+                   OnClick="Submit"
+                   data-testid="save-view-submit">
+            Save
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance Dialog { get; set; } = default!;
+
+    [Parameter] public SpatialSqlPlaygroundState State { get; set; } = default!;
+
+    private string _name = string.Empty;
+    private string _description = string.Empty;
+    private string? _error;
+    private bool _busy;
+
+    public NamedViewRegistration? Registration { get; private set; }
+
+    private async Task Submit()
+    {
+        _error = null;
+        if (string.IsNullOrWhiteSpace(_name))
+        {
+            _error = "A view name is required.";
+            return;
+        }
+
+        _busy = true;
+        try
+        {
+            Registration = await State.SaveViewAsync(_name, _description, default);
+            if (Registration.IsError)
+            {
+                _error = Registration.Error?.Message;
+            }
+            else
+            {
+                Dialog.Close(DialogResult.Ok(Registration));
+            }
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private void Cancel() => Dialog.Cancel();
+}

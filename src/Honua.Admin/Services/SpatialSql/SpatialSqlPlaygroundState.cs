@@ -1,0 +1,514 @@
+using System;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
+using Honua.Admin.Models.SpatialSql;
+
+namespace Honua.Admin.Services.SpatialSql;
+
+public enum SpatialSqlPaneStatus
+{
+    Idle,
+    Loading,
+    Executing,
+    Explaining,
+    Saving,
+    Error
+}
+
+/// <summary>
+/// Scoped observable store backing the SQL playground. All mutations route through
+/// explicit methods so telemetry, cancellation, and persistence stay single-origin
+/// — the same pattern used by <see cref="Honua.Admin.Services.SpecWorkspace.SpecWorkspaceState"/>.
+/// </summary>
+public sealed class SpatialSqlPlaygroundState : IDisposable
+{
+    private readonly ISpatialSqlClient _client;
+    private readonly ISpatialSqlTelemetry _telemetry;
+    private readonly object _sync = new();
+    private CancellationTokenSource? _executeCts;
+    private bool _disposed;
+
+    public SpatialSqlPlaygroundState(ISpatialSqlClient client, ISpatialSqlTelemetry telemetry)
+    {
+        _client = client;
+        _telemetry = telemetry;
+    }
+
+    public string Sql { get; private set; } = string.Empty;
+
+    public SchemaSnapshot? Schema { get; private set; }
+
+    public SqlExecuteResult? LastResult { get; private set; }
+
+    public ExplainPlan? LastPlan { get; private set; }
+
+    public NamedViewRegistration? LastSavedView { get; private set; }
+
+    public string? LastError { get; private set; }
+
+    public SpatialSqlPaneStatus Status { get; private set; } = SpatialSqlPaneStatus.Idle;
+
+    public bool MutationOverrideArmed { get; private set; }
+
+    public bool ExportTruncatedConfirmed { get; private set; }
+
+    public string ResultsTab { get; private set; } = "table";
+
+    public event Action? OnChanged;
+
+    public void SetSql(string? value)
+    {
+        Sql = value ?? string.Empty;
+        // Disarm any previous mutation override the moment the operator edits the SQL —
+        // a confirmation must apply only to the exact statement the operator approved.
+        MutationOverrideArmed = false;
+        Notify();
+    }
+
+    public void SetResultsTab(string tab)
+    {
+        if (tab != "table" && tab != "map")
+        {
+            return;
+        }
+        ResultsTab = tab;
+        _telemetry.Record("results_tab_changed", new Dictionary<string, object?> { ["tab"] = tab });
+        Notify();
+    }
+
+    public void ArmMutationOverride()
+    {
+        MutationOverrideArmed = true;
+        _telemetry.Record("mutation_override_accepted", new Dictionary<string, object?>
+        {
+            ["sql_length"] = Sql.Length
+        });
+        Notify();
+    }
+
+    public void ConfirmTruncatedExport()
+    {
+        ExportTruncatedConfirmed = true;
+        Notify();
+    }
+
+    public async Task LoadSchemaAsync(CancellationToken cancellationToken = default)
+    {
+        Status = SpatialSqlPaneStatus.Loading;
+        LastError = null;
+        Notify();
+
+        try
+        {
+            Schema = await _client.GetSchemaAsync(cancellationToken).ConfigureAwait(false);
+            Status = SpatialSqlPaneStatus.Idle;
+            _telemetry.Record("schema_loaded", new Dictionary<string, object?>
+            {
+                ["tables"] = Schema?.Tables.Count ?? 0,
+                ["functions"] = Schema?.Functions.Count ?? 0
+            });
+        }
+        catch (OperationCanceledException)
+        {
+            Status = SpatialSqlPaneStatus.Idle;
+            throw;
+        }
+        catch (Exception ex)
+        {
+            Status = SpatialSqlPaneStatus.Error;
+            LastError = ex.Message;
+            _telemetry.Record("schema_load_failed", new Dictionary<string, object?>
+            {
+                ["message"] = ex.Message
+            });
+        }
+
+        Notify();
+    }
+
+    public async Task RunQueryAsync(CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(Sql))
+        {
+            LastError = "Enter a SQL statement to run.";
+            Status = SpatialSqlPaneStatus.Error;
+            Notify();
+            return;
+        }
+
+        var allowMutation = MutationOverrideArmed;
+
+        if (!allowMutation && MutationGuard.IsMutating(Sql))
+        {
+            LastError = "Mutating SQL is rejected by default. Use the override dialog to confirm and resubmit.";
+            Status = SpatialSqlPaneStatus.Error;
+            LastResult = new SqlExecuteResult
+            {
+                RowLimit = 0,
+                TimeoutMs = 0,
+                Error = new SqlExecuteError("mutation_blocked", LastError)
+            };
+            _telemetry.Record("query_rejected", new Dictionary<string, object?>
+            {
+                ["reason"] = "mutation_blocked"
+            });
+            Notify();
+            return;
+        }
+
+        CancellationTokenSource cts;
+        lock (_sync)
+        {
+            _executeCts?.Cancel();
+            _executeCts?.Dispose();
+            cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            _executeCts = cts;
+        }
+
+        Status = SpatialSqlPaneStatus.Executing;
+        LastError = null;
+        ExportTruncatedConfirmed = false;
+        Notify();
+
+        var watch = Stopwatch.StartNew();
+        try
+        {
+            _telemetry.Record("query_submitted", new Dictionary<string, object?>
+            {
+                ["sql_length"] = Sql.Length,
+                ["allow_mutation"] = allowMutation
+            });
+
+            var request = new SqlExecuteRequest
+            {
+                Sql = Sql,
+                AllowMutation = allowMutation
+            };
+
+            var result = await _client.ExecuteAsync(request, cts.Token).ConfigureAwait(false);
+            watch.Stop();
+            LastResult = result;
+            if (result.IsError)
+            {
+                Status = SpatialSqlPaneStatus.Error;
+                LastError = result.Error?.Message;
+                _telemetry.Record("query_rejected", new Dictionary<string, object?>
+                {
+                    ["reason"] = result.Error?.Code,
+                    ["message"] = result.Error?.Message
+                });
+            }
+            else
+            {
+                Status = SpatialSqlPaneStatus.Idle;
+                if (result.HasGeometry)
+                {
+                    ResultsTab = "map";
+                }
+                else
+                {
+                    ResultsTab = "table";
+                }
+                _telemetry.RecordLatency("query_completed", watch.ElapsedMilliseconds, new Dictionary<string, object?>
+                {
+                    ["rows"] = result.Rows.Count,
+                    ["truncated"] = result.Truncated,
+                    ["has_geometry"] = result.HasGeometry,
+                    ["audit_entry_id"] = result.AuditEntryId
+                });
+
+                if (result.Truncated)
+                {
+                    _telemetry.Record("cap_reached", new Dictionary<string, object?>
+                    {
+                        ["row_limit"] = result.RowLimit
+                    });
+                }
+            }
+
+            // Reset override after each submit so the next mutation requires a fresh
+            // confirmation. The audit log on the server records this single statement.
+            MutationOverrideArmed = false;
+        }
+        catch (OperationCanceledException)
+        {
+            Status = SpatialSqlPaneStatus.Idle;
+        }
+        catch (Exception ex)
+        {
+            Status = SpatialSqlPaneStatus.Error;
+            LastError = ex.Message;
+            _telemetry.Record("query_rejected", new Dictionary<string, object?>
+            {
+                ["reason"] = "transport_error",
+                ["message"] = ex.Message
+            });
+        }
+        finally
+        {
+            lock (_sync)
+            {
+                if (ReferenceEquals(_executeCts, cts))
+                {
+                    _executeCts.Dispose();
+                    _executeCts = null;
+                }
+            }
+        }
+
+        Notify();
+    }
+
+    public async Task RunExplainAsync(CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(Sql))
+        {
+            return;
+        }
+
+        Status = SpatialSqlPaneStatus.Explaining;
+        LastError = null;
+        Notify();
+
+        var watch = Stopwatch.StartNew();
+        try
+        {
+            var plan = await _client.ExplainAsync(new SqlExplainRequest { Sql = Sql }, cancellationToken).ConfigureAwait(false);
+            watch.Stop();
+            LastPlan = plan;
+            Status = plan.IsError ? SpatialSqlPaneStatus.Error : SpatialSqlPaneStatus.Idle;
+            if (plan.IsError)
+            {
+                LastError = plan.Error?.Message;
+                _telemetry.Record("explain_rejected", new Dictionary<string, object?>
+                {
+                    ["reason"] = plan.Error?.Code,
+                    ["message"] = plan.Error?.Message
+                });
+            }
+            else
+            {
+                _telemetry.RecordLatency("explain_completed", watch.ElapsedMilliseconds, new Dictionary<string, object?>
+                {
+                    ["total_elapsed_ms"] = plan.TotalElapsedMs,
+                    ["root_node"] = plan.Root.NodeType
+                });
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            Status = SpatialSqlPaneStatus.Idle;
+        }
+        catch (Exception ex)
+        {
+            Status = SpatialSqlPaneStatus.Error;
+            LastError = ex.Message;
+            _telemetry.Record("explain_rejected", new Dictionary<string, object?>
+            {
+                ["reason"] = "transport_error",
+                ["message"] = ex.Message
+            });
+        }
+
+        Notify();
+    }
+
+    public async Task<NamedViewRegistration> SaveViewAsync(string name, string? description, CancellationToken cancellationToken = default)
+    {
+        Status = SpatialSqlPaneStatus.Saving;
+        LastError = null;
+        Notify();
+
+        try
+        {
+            var request = new SaveViewRequest
+            {
+                Name = name,
+                Description = description,
+                Sql = Sql,
+                GeometryColumn = LastResult?.HasGeometry == true && LastResult.GeometryColumnIndex is int idx
+                    ? LastResult.Columns[idx].Name
+                    : null,
+                Srid = LastResult?.GeometrySrid
+            };
+
+            var registration = await _client.SaveViewAsync(request, cancellationToken).ConfigureAwait(false);
+            LastSavedView = registration;
+            Status = registration.IsError ? SpatialSqlPaneStatus.Error : SpatialSqlPaneStatus.Idle;
+            if (registration.IsError)
+            {
+                LastError = registration.Error?.Message;
+                _telemetry.Record("view_save_rejected", new Dictionary<string, object?>
+                {
+                    ["reason"] = registration.Error?.Code,
+                    ["message"] = registration.Error?.Message
+                });
+            }
+            else
+            {
+                _telemetry.Record("view_saved", new Dictionary<string, object?>
+                {
+                    ["name"] = registration.Name
+                });
+            }
+            Notify();
+            return registration;
+        }
+        catch (Exception ex)
+        {
+            Status = SpatialSqlPaneStatus.Error;
+            LastError = ex.Message;
+            _telemetry.Record("view_save_rejected", new Dictionary<string, object?>
+            {
+                ["reason"] = "transport_error",
+                ["message"] = ex.Message
+            });
+            Notify();
+            throw;
+        }
+    }
+
+    public bool CanExportRows()
+    {
+        if (LastResult is null || LastResult.IsError || LastResult.Rows.Count == 0)
+        {
+            return false;
+        }
+        return !LastResult.Truncated || ExportTruncatedConfirmed;
+    }
+
+    public string ExportCsv()
+    {
+        var result = RequireExportableResult();
+        _telemetry.Record("export_triggered", new Dictionary<string, object?>
+        {
+            ["format"] = "csv",
+            ["rows"] = result.Rows.Count
+        });
+        return SqlResultExporter.ToCsv(result);
+    }
+
+    public string ExportGeoJson()
+    {
+        var result = RequireExportableResult();
+        if (!result.HasGeometry)
+        {
+            throw new InvalidOperationException("Result has no geometry column to export.");
+        }
+        _telemetry.Record("export_triggered", new Dictionary<string, object?>
+        {
+            ["format"] = "geojson",
+            ["rows"] = result.Rows.Count
+        });
+        return SqlResultExporter.ToGeoJson(result);
+    }
+
+    public string ExportClipboard()
+    {
+        var result = RequireExportableResult();
+        _telemetry.Record("export_triggered", new Dictionary<string, object?>
+        {
+            ["format"] = "clipboard",
+            ["rows"] = result.Rows.Count
+        });
+        return SqlResultExporter.ToClipboardText(result);
+    }
+
+    public IReadOnlyList<MapPreviewFeature> BuildMapFeatures()
+    {
+        if (LastResult is null || !LastResult.HasGeometry)
+        {
+            return Array.Empty<MapPreviewFeature>();
+        }
+        var geometryIndex = LastResult.GeometryColumnIndex!.Value;
+        var idIndex = FindIdColumn(LastResult.Columns);
+        var labelIndex = FindLabelColumn(LastResult.Columns, idIndex);
+
+        var features = new List<MapPreviewFeature>(LastResult.Rows.Count);
+        var fallback = 0;
+        foreach (var row in LastResult.Rows)
+        {
+            if (geometryIndex >= row.Cells.Count)
+            {
+                continue;
+            }
+
+            var geometry = row.Cells[geometryIndex];
+            if (string.IsNullOrWhiteSpace(geometry))
+            {
+                continue;
+            }
+
+            var id = idIndex >= 0 && idIndex < row.Cells.Count ? row.Cells[idIndex] : null;
+            var label = labelIndex >= 0 && labelIndex < row.Cells.Count ? row.Cells[labelIndex] : null;
+            features.Add(new MapPreviewFeature(
+                id ?? $"row-{fallback}",
+                label ?? id ?? $"row-{fallback}",
+                geometry!));
+            fallback++;
+        }
+        return features;
+    }
+
+    private SqlExecuteResult RequireExportableResult()
+    {
+        if (!CanExportRows())
+        {
+            throw new InvalidOperationException("Result is not exportable in its current state.");
+        }
+        return LastResult!;
+    }
+
+    private static int FindIdColumn(IReadOnlyList<SqlColumn> columns)
+    {
+        for (var i = 0; i < columns.Count; i++)
+        {
+            if (columns[i].Name.Equals("id", StringComparison.OrdinalIgnoreCase))
+            {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    private static int FindLabelColumn(IReadOnlyList<SqlColumn> columns, int idIndex)
+    {
+        for (var i = 0; i < columns.Count; i++)
+        {
+            if (i == idIndex)
+            {
+                continue;
+            }
+            if (columns[i].IsGeometry)
+            {
+                continue;
+            }
+            return i;
+        }
+        return -1;
+    }
+
+    public void Dispose()
+    {
+        if (_disposed)
+        {
+            return;
+        }
+        _disposed = true;
+        try
+        {
+            _executeCts?.Cancel();
+        }
+        catch (ObjectDisposedException)
+        {
+        }
+        _executeCts?.Dispose();
+    }
+
+    private void Notify() => OnChanged?.Invoke();
+}
+
+public sealed record MapPreviewFeature(string Id, string Label, string GeoJson);

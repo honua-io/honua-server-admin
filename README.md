@@ -13,6 +13,7 @@ This is the official admin UI for managing Honua Server instances:
 - **Operator Spec Workspace**: Stub-backed three-pane NL + DSL + preview workspace for walking the spec workflow end to end
 - **Identity Workspace**: OIDC provider lifecycle (list / create / edit / enable / delete), provider status, auth diagnostics, and API-key gap surface — see [Identity workspace](#identity-workspace) below
 - **License Workspace**: BYOL license status, entitlement inspection, expiry banding, replace flow, and operator-actionable diagnostics — see [License workspace](#license-workspace) below
+- **Spatial SQL Playground**: Browser-based PostGIS-aware SQL editor with schema autocomplete, MapLibre preview, EXPLAIN tree, and named-view save flow — see [Spatial SQL playground](#spatial-sql-playground) below
 
 ## Architecture
 
@@ -282,6 +283,58 @@ Server-side gaps surfaced by this workspace are catalogued in
 duplicate endpoint-set consolidation, server-side `IssuanceSource`,
 real Ed25519 verification on `ApplyLicenseAsync`, phone-home health
 field, marketplace-aware surfaces).
+
+### Spatial SQL Playground
+
+The SQL playground lives at `/operator/sql` (gated by `[Authorize]`; reuses
+the same `DevAuthenticationStateProvider` shim as the spec workspace until
+the real admin auth provider lands). It registers as a `MudNavLink` inside
+the shared `Shared/NavMenu.razor` so it lives in the same shell as Spec
+Workspace.
+
+The route includes:
+
+- A SQL editor with PostGIS-aware highlighting and schema-driven
+  autocomplete (tables, columns, PostGIS function/operator reference).
+- A schema sidebar with click-to-insert tables, columns, and PostGIS
+  helpers, plus a manual refresh button to defeat cache staleness.
+- A results pane with `Table | Map` tabs. Map auto-selects when the result
+  carries a geometry column. The geometry column is identified from the
+  server-supplied `GeometryColumnIndex`, never from client guessing.
+- A collapsible EXPLAIN tree with per-node row counts, actual time, and a
+  warning chip when the planner row estimate is off by ≥10×.
+- Save-as-view dialog that returns FeatureServer / OGC API Features /
+  OData URLs once the named view is registered.
+- Per-query mutation override dialog. The operator must tick the
+  acknowledgement before the request is re-sent with `allowMutation=true`;
+  the resulting `auditEntryId` is shown back next to the result chip.
+- Result export to CSV, GeoJSON, and clipboard. Exports refuse to run
+  while the result is truncated until the operator opts in via the
+  toolbar.
+
+#### Wiring
+
+Backend calls funnel through `ISpatialSqlClient`
+(`src/Honua.Admin/Services/SpatialSql/`). S1 ships the deterministic
+`StubSpatialSqlClient`, which seeds two geometry tables, a curated PostGIS
+reference, and an in-memory named-view registry. The HTTP-backed client
+will land once the matching server endpoints
+(`POST /api/v1/admin/sql/{execute,explain,views}`,
+`GET /api/v1/admin/sql/schema`) ship — the page is feature-flagged behind
+the operator role until then.
+
+`SpatialSqlPlaygroundState` emits `ISpatialSqlTelemetry` events
+(`schema_loaded`, `query_submitted`, `query_completed`, `query_rejected`,
+`mutation_override_accepted`, `cap_reached`, `view_saved`,
+`export_triggered`) via the default `ILogger` sink. AOT/trim-friendly:
+all DTOs are wired through the source-generated `SpatialSqlJsonContext`;
+the EXPLAIN parser and exporter are reflection-free; the MapLibre interop
+re-uses the existing vendored bootstrap from the spec workspace.
+
+The S1 scope deliberately excludes Monaco / CodeMirror integration, write
+SQL beyond the per-query override, multi-database routing, query history
+sharing across operators, and live `pg_proc` introspection — each is
+tracked as a follow-on against `honua-server` or a future admin ticket.
 
 ## Features
 

@@ -1,0 +1,35 @@
+@* Recursive collapsible tree for EXPLAIN nodes. Each node shows its operator,
+   actual rows, planner-vs-actual delta, and accumulated time. Mis-estimated
+   rows (>= 10x off in either direction) get a warning chip. *@
+@using Honua.Admin.Models.SpatialSql
+
+<div class="spatial-sql-explain" data-testid="explain-tree">
+    @if (Plan is null)
+    {
+        <MudAlert Severity="Severity.Info" Dense="true" Variant="Variant.Text" data-testid="explain-empty">
+            Run EXPLAIN to populate the plan tree.
+        </MudAlert>
+    }
+    else if (Plan.IsError)
+    {
+        <MudAlert Severity="Severity.Error" Dense="true" Variant="Variant.Filled" data-testid="explain-error">
+            <strong>@Plan.Error!.Code</strong>: @Plan.Error.Message
+        </MudAlert>
+    }
+    else
+    {
+        <MudStack Row Spacing="2" AlignItems="AlignItems.Center" Class="mb-2">
+            <MudChip T="string" Variant="Variant.Outlined" Size="Size.Small" data-testid="explain-total">
+                total @Plan.TotalElapsedMs.ToString("0.0") ms
+            </MudChip>
+            <MudChip T="string" Variant="Variant.Outlined" Size="Size.Small" data-testid="explain-planning">
+                planning @Plan.PlanningMs.ToString("0.0") ms
+            </MudChip>
+        </MudStack>
+        <ExplainNodeView Node="Plan.Root" Depth="0" />
+    }
+</div>
+
+@code {
+    [Parameter] public ExplainPlan? Plan { get; set; }
+}
