@@ -1,0 +1,235 @@
+@page "/connections/{ConnectionId}"
+@using MudBlazor
+@inherits Honua.Admin.Shared.AdminPageBase
+
+<PageTitle>Connection detail - Honua Server Admin</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="mt-4">
+    <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Class="mb-4">
+        <MudStack Row="true" AlignItems="AlignItems.Center">
+            <MudIconButton Icon="@Icons.Material.Filled.ArrowBack" OnClick="@(() => Navigation.NavigateTo("/connections"))" />
+            <MudText Typo="Typo.h4">@(_connection?.Name ?? "Connection detail")</MudText>
+        </MudStack>
+        <MudStack Row="true" Spacing="1">
+            <MudButton Variant="Variant.Outlined" Color="Color.Info" StartIcon="@Icons.Material.Filled.NetworkCheck" OnClick="TestAsync" Disabled="IsLoading">
+                Test
+            </MudButton>
+            <MudButton Variant="Variant.Outlined" Color="Color.Error" StartIcon="@Icons.Material.Filled.Delete" OnClick="DeleteAsync" Disabled="IsLoading">
+                Delete
+            </MudButton>
+        </MudStack>
+    </MudStack>
+
+    <ErrorBanner Message="@ErrorMessage" />
+
+    @if (IsLoading && _connection is null)
+    {
+        <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="320px" Animation="Animation.Wave" />
+    }
+    else if (_connection is not null)
+    {
+        <MudTabs Elevation="1" Rounded="true" PanelClass="pa-4">
+            <MudTabPanel Text="Details" Icon="@Icons.Material.Filled.Info">
+                <MudGrid>
+                    <MudItem xs="12" sm="6">
+                        <MudTextField Value="@_connection.Name" Label="Name" ReadOnly="true" Variant="Variant.Outlined" />
+                    </MudItem>
+                    <MudItem xs="12" sm="6">
+                        <MudTextField Value="@_connection.StorageType" Label="Storage" ReadOnly="true" Variant="Variant.Outlined" />
+                    </MudItem>
+                    <MudItem xs="12">
+                        <MudTextField @bind-Value="_description" Label="Description" Variant="Variant.Outlined" Lines="2" />
+                    </MudItem>
+                    <MudItem xs="12" sm="8">
+                        <MudTextField @bind-Value="_host" Label="Host" Variant="Variant.Outlined" />
+                    </MudItem>
+                    <MudItem xs="12" sm="4">
+                        <MudNumericField T="int" @bind-Value="_port" Label="Port" Min="1" Max="65535" Variant="Variant.Outlined" />
+                    </MudItem>
+                    <MudItem xs="12" sm="6">
+                        <MudTextField @bind-Value="_databaseName" Label="Database" Variant="Variant.Outlined" />
+                    </MudItem>
+                    <MudItem xs="12" sm="6">
+                        <MudTextField @bind-Value="_username" Label="Username" Variant="Variant.Outlined" />
+                    </MudItem>
+                    <MudItem xs="12" sm="6">
+                        <MudTextField @bind-Value="_password" Label="New password" InputType="InputType.Password" Variant="Variant.Outlined" />
+                    </MudItem>
+                    <MudItem xs="12" sm="3">
+                        <MudCheckBox T="bool" @bind-Value="_sslRequired" Label="Require SSL" />
+                    </MudItem>
+                    <MudItem xs="12" sm="3">
+                        <MudCheckBox T="bool" @bind-Value="_isActive" Label="Active" />
+                    </MudItem>
+                    <MudItem xs="12" sm="6">
+                        <MudTextField @bind-Value="_sslMode" Label="SSL mode" Variant="Variant.Outlined" />
+                    </MudItem>
+                </MudGrid>
+                <MudButton Class="mt-4" Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Save" OnClick="SaveAsync" Disabled="IsLoading">
+                    Save changes
+                </MudButton>
+            </MudTabPanel>
+
+            <MudTabPanel Text="Discovery" Icon="@Icons.Material.Filled.TableChart">
+                <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Refresh" OnClick="LoadTablesAsync" Disabled="IsLoading" Class="mb-3">
+                    Refresh tables
+                </MudButton>
+                <MudTable Items="_tables" Dense="true" Hover="true" aria-label="Discovered tables">
+                    <HeaderContent>
+                        <MudTh>Schema</MudTh>
+                        <MudTh>Table</MudTh>
+                        <MudTh>Geometry</MudTh>
+                        <MudTh>SRID</MudTh>
+                        <MudTh>Rows</MudTh>
+                    </HeaderContent>
+                    <RowTemplate>
+                        <MudTd>@context.Schema</MudTd>
+                        <MudTd>@context.Table</MudTd>
+                        <MudTd>@context.GeometryColumn (@context.GeometryType)</MudTd>
+                        <MudTd>@context.Srid</MudTd>
+                        <MudTd>@(context.EstimatedRows?.ToString("N0") ?? "unknown")</MudTd>
+                    </RowTemplate>
+                </MudTable>
+            </MudTabPanel>
+
+            <MudTabPanel Text="Layers" Icon="@Icons.Material.Filled.Layers">
+                <MudStack Row="true" Justify="Justify.SpaceBetween" Class="mb-3">
+                    <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Refresh" OnClick="LoadLayersAsync" Disabled="IsLoading">
+                        Refresh layers
+                    </MudButton>
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Publish" Href="@($"/connections/{ConnectionId}/publish")">
+                        Publish layer
+                    </MudButton>
+                </MudStack>
+                <MudTable Items="_layers" Dense="true" Hover="true" aria-label="Connection layers">
+                    <HeaderContent>
+                        <MudTh>Name</MudTh>
+                        <MudTh>Source</MudTh>
+                        <MudTh>Service</MudTh>
+                        <MudTh>Enabled</MudTh>
+                        <MudTh></MudTh>
+                    </HeaderContent>
+                    <RowTemplate>
+                        <MudTd>@context.LayerName</MudTd>
+                        <MudTd>@($"{context.Schema}.{context.Table}")</MudTd>
+                        <MudTd>@context.ServiceName</MudTd>
+                        <MudTd>@(context.Enabled ? "yes" : "no")</MudTd>
+                        <MudTd>
+                            <MudButton Size="Size.Small" Variant="Variant.Text" OnClick="@(() => ToggleLayerAsync(context))">
+                                @(context.Enabled ? "Disable" : "Enable")
+                            </MudButton>
+                            <MudButton Size="Size.Small" Variant="Variant.Text" Href="@($"/layers/{context.LayerId}/style")">Style</MudButton>
+                        </MudTd>
+                    </RowTemplate>
+                </MudTable>
+            </MudTabPanel>
+        </MudTabs>
+    }
+</MudContainer>
+
+@code {
+    [Parameter] public string ConnectionId { get; set; } = string.Empty;
+
+    private ConnectionDetail? _connection;
+    private IReadOnlyList<DiscoveredTable> _tables = Array.Empty<DiscoveredTable>();
+    private IReadOnlyList<LayerSummary> _layers = Array.Empty<LayerSummary>();
+    private string? _description;
+    private string _host = string.Empty;
+    private int _port = 5432;
+    private string _databaseName = string.Empty;
+    private string _username = string.Empty;
+    private string? _password;
+    private bool _sslRequired;
+    private bool _isActive;
+    private string _sslMode = "Require";
+
+    protected override async Task OnInitializedAsync()
+    {
+        Telemetry.PageNavigated($"/connections/{ConnectionId}", principalId: null);
+        await ExecuteAsync(async () =>
+        {
+            _connection = await AdminClient.GetConnectionAsync(ConnectionId, CancellationToken.None);
+            PopulateEditFields();
+            await LoadTablesCoreAsync();
+            await LoadLayersCoreAsync();
+        });
+    }
+
+    private void PopulateEditFields()
+    {
+        if (_connection is null) return;
+        _description = _connection.Description;
+        _host = _connection.Host;
+        _port = _connection.Port;
+        _databaseName = _connection.DatabaseName;
+        _username = _connection.Username;
+        _sslRequired = _connection.SslRequired;
+        _isActive = _connection.IsActive;
+        _sslMode = _connection.SslMode;
+    }
+
+    private Task LoadTablesAsync() => ExecuteAsync(LoadTablesCoreAsync);
+
+    private async Task LoadTablesCoreAsync()
+    {
+        _tables = await AdminClient.DiscoverConnectionTablesAsync(ConnectionId, CancellationToken.None);
+    }
+
+    private Task LoadLayersAsync() => ExecuteAsync(LoadLayersCoreAsync);
+
+    private async Task LoadLayersCoreAsync()
+    {
+        _layers = await AdminClient.ListLayersAsync(ConnectionId, serviceName: null, CancellationToken.None);
+    }
+
+    private async Task SaveAsync()
+    {
+        await ExecuteAsync(async () =>
+        {
+            await AdminClient.UpdateConnectionAsync(ConnectionId, new UpdateConnectionRequest
+            {
+                Description = _description,
+                Host = _host,
+                Port = _port,
+                DatabaseName = _databaseName,
+                Username = _username,
+                Password = string.IsNullOrWhiteSpace(_password) ? null : _password,
+                SslRequired = _sslRequired,
+                SslMode = _sslMode,
+                IsActive = _isActive,
+            }, CancellationToken.None);
+            _connection = await AdminClient.GetConnectionAsync(ConnectionId, CancellationToken.None);
+            PopulateEditFields();
+            Snackbar.Add("Connection updated.", Severity.Success);
+        });
+    }
+
+    private async Task TestAsync()
+    {
+        await ExecuteAsync(async () =>
+        {
+            var result = await AdminClient.TestConnectionAsync(ConnectionId, CancellationToken.None);
+            Snackbar.Add(result.Message, result.IsHealthy ? Severity.Success : Severity.Warning);
+        });
+    }
+
+    private async Task DeleteAsync()
+    {
+        await ExecuteAsync(async () =>
+        {
+            Telemetry.DestructiveAction("delete-connection", ConnectionId, principalId: null);
+            await AdminClient.DeleteConnectionAsync(ConnectionId, CancellationToken.None);
+            Snackbar.Add("Connection deleted.", Severity.Success);
+            Navigation.NavigateTo("/connections");
+        });
+    }
+
+    private async Task ToggleLayerAsync(LayerSummary layer)
+    {
+        await ExecuteAsync(async () =>
+        {
+            await AdminClient.SetLayerEnabledAsync(ConnectionId, layer.LayerId, !layer.Enabled, layer.ServiceName, CancellationToken.None);
+            await LoadLayersCoreAsync();
+        });
+    }
+}

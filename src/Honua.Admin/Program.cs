@@ -1,4 +1,7 @@
 using Honua.Admin;
+using Honua.Admin.Auth;
+using Honua.Admin.Configuration;
+using Honua.Admin.Services.Admin;
 using Honua.Admin.Services.DataConnections;
 using Honua.Admin.Services.DataConnections.Providers;
 using Honua.Admin.Services.Identity;
@@ -14,7 +17,8 @@ var builder = WebAssemblyHostBuilder.CreateDefault(args);
 builder.RootComponents.Add<App>("#app");
 builder.RootComponents.Add<HeadOutlet>("head::after");
 
-builder.Services.AddScoped(sp => new HttpClient { BaseAddress = new Uri(builder.HostEnvironment.BaseAddress) });
+// Bind appsettings:HonuaServer for the typed admin client (BaseUrl + ApiKey).
+builder.Services.Configure<HonuaAdminOptions>(builder.Configuration.GetSection(HonuaAdminOptions.SectionName));
 
 // Add MudBlazor services
 builder.Services.AddMudServices();
@@ -31,6 +35,33 @@ builder.Services.AddScoped<SpecWorkspaceState>();
 builder.Services.AddScoped<ISpatialSqlTelemetry, LoggingSpatialSqlTelemetry>();
 builder.Services.AddScoped<ISpatialSqlClient, StubSpatialSqlClient>();
 builder.Services.AddScoped<SpatialSqlPlaygroundState>();
+
+// Admin client + auth wiring (ticket #28 — restored from PR #17 onto the post-#27 shell).
+builder.Services.AddSingleton<AdminAuthStateProvider>();
+builder.Services.AddTransient<AdminAuthHandler>();
+builder.Services.AddTransient<GlobalErrorHandler>();
+builder.Services.AddScoped<IAdminTelemetry, LoggingAdminTelemetry>();
+
+// While the real honua-server is reachable the typed HttpClient routes through the
+// auth + global-error handlers. Until then (default `appsettings.json` ships no
+// BaseUrl) tests and bunit get the deterministic stub via DI.
+var honuaServerSection = builder.Configuration.GetSection(HonuaAdminOptions.SectionName);
+var honuaBaseUrl = honuaServerSection.GetValue<string>("BaseUrl");
+if (!string.IsNullOrWhiteSpace(honuaBaseUrl))
+{
+    builder.Services.AddHttpClient<IHonuaAdminClient, HonuaAdminClient>(client =>
+    {
+        client.BaseAddress = new Uri(honuaBaseUrl, UriKind.Absolute);
+    })
+    .AddHttpMessageHandler<AdminAuthHandler>()
+    .AddHttpMessageHandler<GlobalErrorHandler>();
+}
+else
+{
+    builder.Services.AddScoped<IHonuaAdminClient, StubHonuaAdminClient>();
+}
+
+builder.Services.AddScoped(sp => new HttpClient { BaseAddress = new Uri(builder.HostEnvironment.BaseAddress) });
 
 // Identity admin services (ticket #22).
 builder.Services.AddScoped<IIdentityAdminTelemetry, LoggingIdentityAdminTelemetry>();
@@ -129,12 +160,10 @@ builder.Services.AddHttpClient<IDataConnectionClient, HttpDataConnectionClient>(
 });
 builder.Services.AddScoped<DataConnectionsState>();
 
-// Dev auth scaffold — replaced once the real admin auth provider lands.
+// Dev auth scaffold — replaced once the real admin auth provider (admin#22) lands.
+// The AdminAuthStateProvider above is wired but inert until then.
 builder.Services.AddAuthorizationCore();
 builder.Services.AddScoped<AuthenticationStateProvider, DevAuthenticationStateProvider>();
 builder.Services.AddCascadingAuthenticationState();
-
-// TODO: Add Honua SDK services
-// builder.Services.AddHonuaGrpcClient(options => { ... });
 
 await builder.Build().RunAsync();

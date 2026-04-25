@@ -1,0 +1,59 @@
+@page "/services"
+@using MudBlazor
+@inherits Honua.Admin.Shared.AdminPageBase
+
+<PageTitle>Services - Honua Server Admin</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="mt-4">
+    <MudText Typo="Typo.h4" Class="mb-4">
+        <MudIcon Icon="@Icons.Material.Filled.CloudQueue" Class="mr-2" />
+        Services
+    </MudText>
+
+    <ErrorBanner Message="@ErrorMessage" />
+
+    @if (IsLoading)
+    {
+        <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="240px" Animation="Animation.Wave" />
+    }
+    else if (_services.Count == 0)
+    {
+        <EmptyState Icon="@Icons.Material.Filled.CloudQueue" Title="No services found" />
+    }
+    else
+    {
+        <MudTable Items="_services" Dense="true" Hover="true" aria-label="Services">
+            <HeaderContent>
+                <MudTh>Name</MudTh>
+                <MudTh>Description</MudTh>
+                <MudTh>Layers</MudTh>
+                <MudTh>Protocols</MudTh>
+                <MudTh></MudTh>
+            </HeaderContent>
+            <RowTemplate>
+                <MudTd>@context.ServiceName</MudTd>
+                <MudTd>@context.Description</MudTd>
+                <MudTd>@context.LayerCount</MudTd>
+                <MudTd>@string.Join(", ", context.EnabledProtocols)</MudTd>
+                <MudTd>
+                    <MudButton Size="Size.Small" Variant="Variant.Text" Color="Color.Primary" Href="@($"/services/{context.ServiceName}/settings")">
+                        Settings
+                    </MudButton>
+                </MudTd>
+            </RowTemplate>
+        </MudTable>
+    }
+</MudContainer>
+
+@code {
+    private IReadOnlyList<ServiceSummary> _services = Array.Empty<ServiceSummary>();
+
+    protected override async Task OnInitializedAsync()
+    {
+        Telemetry.PageNavigated("/services", principalId: null);
+        await ExecuteAsync(async () =>
+        {
+            _services = await AdminClient.ListServicesAsync(CancellationToken.None);
+        });
+    }
+}

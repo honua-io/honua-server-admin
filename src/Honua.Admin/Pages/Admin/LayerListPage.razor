@@ -1,0 +1,149 @@
+@page "/layers"
+@page "/connections/{ConnectionId}/layers"
+@using MudBlazor
+@inherits Honua.Admin.Shared.AdminPageBase
+
+<PageTitle>Layers - Honua Server Admin</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="mt-4">
+    <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Class="mb-4">
+        <MudText Typo="Typo.h4">
+            <MudIcon Icon="@Icons.Material.Filled.Layers" Class="mr-2" />
+            Layers
+        </MudText>
+        @if (!string.IsNullOrWhiteSpace(_activeConnectionId))
+        {
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Publish" Href="@($"/connections/{_activeConnectionId}/publish")">
+                Publish layer
+            </MudButton>
+        }
+    </MudStack>
+
+    <ErrorBanner Message="@ErrorMessage" />
+
+    <MudCard Elevation="1" Class="mb-4">
+        <MudCardContent>
+            <MudGrid>
+                <MudItem xs="12" md="6">
+                    <MudTextField @bind-Value="_activeConnectionId" Label="Connection id or name" Variant="Variant.Outlined" />
+                </MudItem>
+                <MudItem xs="12" md="3">
+                    <MudTextField @bind-Value="_serviceName" Label="Service" Placeholder="default" Variant="Variant.Outlined" />
+                </MudItem>
+                <MudItem xs="12" md="3">
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Refresh" OnClick="LoadLayersAsync" Disabled="IsLoading">
+                        Load
+                    </MudButton>
+                </MudItem>
+            </MudGrid>
+        </MudCardContent>
+    </MudCard>
+
+    @if (!string.IsNullOrWhiteSpace(_activeConnectionId))
+    {
+        <MudStack Row="true" Spacing="1" Class="mb-3">
+            <MudButton Variant="Variant.Outlined" Color="Color.Success" OnClick="@(() => SetAllAsync(true))" Disabled="IsLoading">
+                Enable all
+            </MudButton>
+            <MudButton Variant="Variant.Outlined" Color="Color.Warning" OnClick="@(() => SetAllAsync(false))" Disabled="IsLoading">
+                Disable all
+            </MudButton>
+        </MudStack>
+    }
+
+    @if (IsLoading && _layers.Count == 0)
+    {
+        <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="240px" Animation="Animation.Wave" />
+    }
+    else if (_layers.Count == 0)
+    {
+        <EmptyState Icon="@Icons.Material.Filled.Layers" Title="No layers loaded" Description="Select a connection to inspect published layers." />
+    }
+    else
+    {
+        <MudTable Items="_layers" Dense="true" Hover="true" aria-label="Published layers">
+            <HeaderContent>
+                <MudTh>Name</MudTh>
+                <MudTh>Source</MudTh>
+                <MudTh>Service</MudTh>
+                <MudTh>Geometry</MudTh>
+                <MudTh>Enabled</MudTh>
+                <MudTh></MudTh>
+            </HeaderContent>
+            <RowTemplate>
+                <MudTd>@context.LayerName</MudTd>
+                <MudTd>@($"{context.Schema}.{context.Table}")</MudTd>
+                <MudTd>@context.ServiceName</MudTd>
+                <MudTd>@context.GeometryType</MudTd>
+                <MudTd>@(context.Enabled ? "yes" : "no")</MudTd>
+                <MudTd>
+                    <MudButton Size="Size.Small" Variant="Variant.Text" OnClick="@(() => ToggleAsync(context))">
+                        @(context.Enabled ? "Disable" : "Enable")
+                    </MudButton>
+                    <MudButton Size="Size.Small" Variant="Variant.Text" Href="@($"/layers/{context.LayerId}/style")">
+                        Style
+                    </MudButton>
+                </MudTd>
+            </RowTemplate>
+        </MudTable>
+    }
+</MudContainer>
+
+@code {
+    [Parameter] public string? ConnectionId { get; set; }
+
+    private string? _activeConnectionId;
+    private string? _serviceName = "default";
+    private IReadOnlyList<LayerSummary> _layers = Array.Empty<LayerSummary>();
+
+    protected override async Task OnInitializedAsync()
+    {
+        Telemetry.PageNavigated("/layers", principalId: null);
+        _activeConnectionId = ConnectionId;
+        if (string.IsNullOrWhiteSpace(_activeConnectionId))
+        {
+            var connections = await AdminClient.ListConnectionsAsync(CancellationToken.None);
+            _activeConnectionId = connections.Count > 0 ? connections[0].Id : null;
+        }
+
+        if (!string.IsNullOrWhiteSpace(_activeConnectionId))
+        {
+            await LoadLayersAsync();
+        }
+    }
+
+    private async Task LoadLayersAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_activeConnectionId))
+        {
+            return;
+        }
+
+        await ExecuteAsync(async () =>
+        {
+            _layers = await AdminClient.ListLayersAsync(_activeConnectionId, Normalize(_serviceName), CancellationToken.None);
+        });
+    }
+
+    private async Task ToggleAsync(LayerSummary layer)
+    {
+        if (string.IsNullOrWhiteSpace(_activeConnectionId)) return;
+        await ExecuteAsync(async () =>
+        {
+            await AdminClient.SetLayerEnabledAsync(_activeConnectionId, layer.LayerId, !layer.Enabled, Normalize(_serviceName), CancellationToken.None);
+            _layers = await AdminClient.ListLayersAsync(_activeConnectionId, Normalize(_serviceName), CancellationToken.None);
+        });
+    }
+
+    private async Task SetAllAsync(bool enabled)
+    {
+        if (string.IsNullOrWhiteSpace(_activeConnectionId)) return;
+        await ExecuteAsync(async () =>
+        {
+            _layers = await AdminClient.SetServiceLayersEnabledAsync(_activeConnectionId, enabled, Normalize(_serviceName), CancellationToken.None);
+        });
+    }
+
+    private static string? Normalize(string? value)
+        => string.IsNullOrWhiteSpace(value) ? null : value;
+}

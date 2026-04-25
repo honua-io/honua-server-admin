@@ -1,0 +1,2876 @@
+# Admin UI ↔ honua-server API coverage matrix.
+# Authored by `dotnet run --project tools/audit-api-surface -- seed-coverage`.
+# Hand-edit rows for per-endpoint classifications; the seeder preserves them on re-run.
+snapshot_date: 2026-04-25
+honua_server_commit: f1e643aab225162a8daea0cca91a03f9655b1a03
+rows:
+  - key: "Admin/AdminAuthEndpoints:GET:/api/v{version:apiVersion}/admin/auth/config"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Owned by identity/auth admin workstream"
+    follow_up_ticket: honua-server-admin#22
+    notes: ""
+  - key: "Admin/AdminAuthEndpoints:GET:/api/v{version:apiVersion}/admin/auth/providers/{providerKey}/logout-url"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Owned by identity/auth admin workstream"
+    follow_up_ticket: honua-server-admin#22
+    notes: ""
+  - key: "Admin/AdminAuthEndpoints:GET:/api/v{version:apiVersion}/admin/auth/session"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Owned by identity/auth admin workstream"
+    follow_up_ticket: honua-server-admin#22
+    notes: ""
+  - key: "Admin/AdminAuthEndpoints:POST:/api/v{version:apiVersion}/admin/auth/logout"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Owned by identity/auth admin workstream"
+    follow_up_ticket: honua-server-admin#22
+    notes: ""
+  - key: "Admin/AdminAuthEndpoints:POST:/api/v{version:apiVersion}/admin/auth/providers/{providerKey}/authorize-url"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Owned by identity/auth admin workstream"
+    follow_up_ticket: honua-server-admin#22
+    notes: ""
+  - key: "Admin/AdminAuthEndpoints:POST:/api/v{version:apiVersion}/admin/auth/providers/{providerKey}/token"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Owned by identity/auth admin workstream"
+    follow_up_ticket: honua-server-admin#22
+    notes: ""
+  - key: "Admin/AdminEndpoints:DELETE:/api/v{version:apiVersion}/admin/config"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Generated method-not-allowed handler; admin UI intentionally never invokes unsupported verbs"
+    follow_up_ticket: ""
+    notes: ""
+  - key: "Admin/AdminEndpoints:DELETE:/api/v{version:apiVersion}/admin/connections/{id}/tables"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Generated method-not-allowed handler; admin UI intentionally never invokes unsupported verbs"
+    follow_up_ticket: ""
+    notes: ""
+  - key: "Admin/AdminEndpoints:DELETE:/api/v{version:apiVersion}/admin/openapi.json"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Generated method-not-allowed handler; admin UI intentionally never invokes unsupported verbs"
+    follow_up_ticket: ""
+    notes: ""
+  - key: "Admin/AdminEndpoints:GET:/api/v{version:apiVersion}/admin/config"
+    coverage: supported
+    admin_page: "/server-info (ServerInfoPage)"
+    priority: P0
+    out_of_scope_reason: ""
+    follow_up_ticket: ""
+    notes: "Raw tab loads configuration documentation."
+  - key: "Admin/AdminEndpoints:GET:/api/v{version:apiVersion}/admin/connections/tables"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Defensive missing-id error route; the admin UI only calls /connections/{id}/tables with a selected connection"
+    follow_up_ticket: ""
+    notes: ""
+  - key: "Admin/AdminEndpoints:GET:/api/v{version:apiVersion}/admin/connections/{*path}"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Defensive catch-all error route; the admin UI only calls concrete admin routes"
+    follow_up_ticket: ""
+    notes: ""
+  - key: "Admin/AdminEndpoints:GET:/api/v{version:apiVersion}/admin/connections/{id}/tables"
+    coverage: supported
+    admin_page: "/connections/{id} (ConnectionDetailPage) and /connections/{id}/publish (PublishLayerPage)"
+    priority: P0
+    out_of_scope_reason: ""
+    follow_up_ticket: ""
+    notes: "Discovery tables feed the connection detail and publish-layer workflow."
+  - key: "Admin/AdminEndpoints:GET:/api/v{version:apiVersion}/admin/openapi.json"
+    coverage: supported
+    admin_page: "/server-info (ServerInfoPage)"
+    priority: P0
+    out_of_scope_reason: ""
+    follow_up_ticket: ""
+    notes: "Raw tab loads the admin OpenAPI document."
+  - key: "Admin/AdminEndpoints:PATCH:/api/v{version:apiVersion}/admin/config"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Generated method-not-allowed handler; admin UI intentionally never invokes unsupported verbs"
+    follow_up_ticket: ""
+    notes: ""
+  - key: "Admin/AdminEndpoints:PATCH:/api/v{version:apiVersion}/admin/connections/{id}/tables"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Generated method-not-allowed handler; admin UI intentionally never invokes unsupported verbs"
+    follow_up_ticket: ""
+    notes: ""
+  - key: "Admin/AdminEndpoints:PATCH:/api/v{version:apiVersion}/admin/openapi.json"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Generated method-not-allowed handler; admin UI intentionally never invokes unsupported verbs"
+    follow_up_ticket: ""
+    notes: ""
+  - key: "Admin/AdminEndpoints:POST:/api/v{version:apiVersion}/admin/config"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Generated method-not-allowed handler; admin UI intentionally never invokes unsupported verbs"
+    follow_up_ticket: ""
+    notes: ""
+  - key: "Admin/AdminEndpoints:POST:/api/v{version:apiVersion}/admin/connections/{id}/tables"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Generated method-not-allowed handler; admin UI intentionally never invokes unsupported verbs"
+    follow_up_ticket: ""
+    notes: ""
+  - key: "Admin/AdminEndpoints:POST:/api/v{version:apiVersion}/admin/openapi.json"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Generated method-not-allowed handler; admin UI intentionally never invokes unsupported verbs"
+    follow_up_ticket: ""
+    notes: ""
+  - key: "Admin/AdminEndpoints:PUT:/api/v{version:apiVersion}/admin/config"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Generated method-not-allowed handler; admin UI intentionally never invokes unsupported verbs"
+    follow_up_ticket: ""
+    notes: ""
+  - key: "Admin/AdminEndpoints:PUT:/api/v{version:apiVersion}/admin/connections/{id}/tables"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Generated method-not-allowed handler; admin UI intentionally never invokes unsupported verbs"
+    follow_up_ticket: ""
+    notes: ""
+  - key: "Admin/AdminEndpoints:PUT:/api/v{version:apiVersion}/admin/openapi.json"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Generated method-not-allowed handler; admin UI intentionally never invokes unsupported verbs"
+    follow_up_ticket: ""
+    notes: ""
+  - key: "Admin/AdminLayerStyleEndpoints:GET:/api/v{version:apiVersion}/admin/metadata/layers/{layerId:int}/style"
+    coverage: supported
+    admin_page: "/layers/{layerId}/style (LayerStylePage)"
+    priority: P0
+    out_of_scope_reason: ""
+    follow_up_ticket: ""
+    notes: "LayerStylePage loads MapLibre and drawingInfo JSON."
+  - key: "Admin/AdminLayerStyleEndpoints:PUT:/api/v{version:apiVersion}/admin/metadata/layers/{layerId:int}/style"
+    coverage: supported
+    admin_page: "/layers/{layerId}/style (LayerStylePage)"
+    priority: P0
+    out_of_scope_reason: ""
+    follow_up_ticket: ""
+    notes: "LayerStylePage saves MapLibre and drawingInfo JSON."
+  - key: "Admin/AdminStyleSuggestionEndpoints:POST:/api/v{version:apiVersion}/admin/metadata/layers/{layerId:int}/suggest-style"
+    coverage: missing
+    admin_page: ""
+    priority: P1
+    out_of_scope_reason: ""
+    follow_up_ticket: ""
+    notes: "Style suggestion UX; deferred to follow-up"
+  - key: "Admin/AlertAdminEndpoints:DELETE:/api/v{version:apiVersion}/admin/alerts/rules/{ruleId:long}"
+    coverage: missing
+    admin_page: ""
+    priority: P1
+    out_of_scope_reason: ""
+    follow_up_ticket: ""
+    notes: "Alert admin pages; deferred to follow-up"
+  - key: "Admin/AlertAdminEndpoints:DELETE:/api/v{version:apiVersion}/admin/alerts/zones/{zoneId:long}"
+    coverage: missing
+    admin_page: ""
+    priority: P1
+    out_of_scope_reason: ""
+    follow_up_ticket: ""
+    notes: "Alert admin pages; deferred to follow-up"
+  - key: "Admin/AlertAdminEndpoints:GET:/api/v{version:apiVersion}/admin/alerts/rules"
+    coverage: missing
+    admin_page: ""
+    priority: P1
+    out_of_scope_reason: ""
+    follow_up_ticket: ""
+    notes: "Alert admin pages; deferred to follow-up"
+  - key: "Admin/AlertAdminEndpoints:GET:/api/v{version:apiVersion}/admin/alerts/zones"
+    coverage: missing
+    admin_page: ""
+    priority: P1
+    out_of_scope_reason: ""
+    follow_up_ticket: ""
+    notes: "Alert admin pages; deferred to follow-up"
+  - key: "Admin/AlertAdminEndpoints:POST:/api/v{version:apiVersion}/admin/alerts/rules"
+    coverage: missing
+    admin_page: ""
+    priority: P1
+    out_of_scope_reason: ""
+    follow_up_ticket: ""
+    notes: "Alert admin pages; deferred to follow-up"
+  - key: "Admin/AlertAdminEndpoints:POST:/api/v{version:apiVersion}/admin/alerts/zones"
+    coverage: missing
+    admin_page: ""
+    priority: P1
+    out_of_scope_reason: ""
+    follow_up_ticket: ""
+    notes: "Alert admin pages; deferred to follow-up"
+  - key: "Admin/AlertAdminEndpoints:PUT:/api/v{version:apiVersion}/admin/alerts/rules/{ruleId:long}"
+    coverage: missing
+    admin_page: ""
+    priority: P1
+    out_of_scope_reason: ""
+    follow_up_ticket: ""
+    notes: "Alert admin pages; deferred to follow-up"
+  - key: "Admin/AlertAdminEndpoints:PUT:/api/v{version:apiVersion}/admin/alerts/zones/{zoneId:long}"
+    coverage: missing
+    admin_page: ""
+    priority: P1
+    out_of_scope_reason: ""
+    follow_up_ticket: ""
+    notes: "Alert admin pages; deferred to follow-up"
+  - key: "Admin/CacheAdminEndpoints:GET:/api/v{version:apiVersion}/admin/cache/status"
+    coverage: missing
+    admin_page: ""
+    priority: P1
+    out_of_scope_reason: ""
+    follow_up_ticket: ""
+    notes: "Cache invalidation pages; deferred to follow-up"
+  - key: "Admin/CacheAdminEndpoints:POST:/api/v{version:apiVersion}/admin/cache/invalidate"
+    coverage: missing
+    admin_page: ""
+    priority: P1
+    out_of_scope_reason: ""
+    follow_up_ticket: ""
+    notes: "Cache invalidation pages; deferred to follow-up"
+  - key: "Admin/CacheOperationsEndpoints:GET:/api/v{version:apiVersion}/admin/operations/cache/health"
+    coverage: missing
+    admin_page: ""
+    priority: P1
+    out_of_scope_reason: ""
+    follow_up_ticket: ""
+    notes: "Cache ops console; deferred to follow-up"
+  - key: "Admin/CacheOperationsEndpoints:POST:/api/v{version:apiVersion}/admin/operations/cache/invalidate"
+    coverage: missing
+    admin_page: ""
+    priority: P1
+    out_of_scope_reason: ""
+    follow_up_ticket: ""
+    notes: "Cache ops console; deferred to follow-up"
+  - key: "Admin/ConfigurationDiscoveryEndpoints:GET:/api/v{version:apiVersion}/admin/configuration/audit"
+    coverage: supported
+    admin_page: "/server-info (ServerInfoPage)"
+    priority: P0
+    out_of_scope_reason: ""
+    follow_up_ticket: ""
+    notes: "Audit tab renders environment, machine, application, and source counts."
+  - key: "Admin/ConfigurationDiscoveryEndpoints:GET:/api/v{version:apiVersion}/admin/configuration/auto-documentation"
+    coverage: supported
+    admin_page: "/server-info (ServerInfoPage)"
+    priority: P0
+    out_of_scope_reason: ""
+    follow_up_ticket: ""
+    notes: "Documentation tab renders generated configuration sections."
+  - key: "Admin/ConfigurationDiscoveryEndpoints:GET:/api/v{version:apiVersion}/admin/configuration/discover"
+    coverage: supported
+    admin_page: "/server-info (ServerInfoPage)"
+    priority: P0
+    out_of_scope_reason: ""
+    follow_up_ticket: ""
+    notes: "Discovery tab renders discovered option types."
+  - key: "Admin/ConfigurationDiscoveryEndpoints:GET:/api/v{version:apiVersion}/admin/configuration/metadata"
+    coverage: supported
+    admin_page: "/server-info (ServerInfoPage)"
+    priority: P0
+    out_of_scope_reason: ""
+    follow_up_ticket: ""
+    notes: "Metadata tab renders section/type/property counts."
+  - key: "Admin/ConfigurationDiscoveryEndpoints:GET:/api/v{version:apiVersion}/admin/configuration/secrets/validate"
+    coverage: supported
+    admin_page: "/server-info (ServerInfoPage)"
+    priority: P0
+    out_of_scope_reason: ""
+    follow_up_ticket: ""
+    notes: "Secrets tab renders validation result and issues."
+  - key: "Admin/ConfigurationDiscoveryEndpoints:GET:/api/v{version:apiVersion}/admin/configuration/summary"
+    coverage: supported
+    admin_page: "/server-info (ServerInfoPage)"
+    priority: P0
+    out_of_scope_reason: ""
+    follow_up_ticket: ""
+    notes: "ServerInfoPage renders environment, type, property, and secret summary cards."
+  - key: "Admin/DeployControlEndpoints:GET:/api/v{version:apiVersion}/admin/deploy/operations/{operationId}"
+    coverage: supported
+    admin_page: "/deploy (DeployControlPage)"
+    priority: P0
+    out_of_scope_reason: ""
+    follow_up_ticket: ""
+    notes: "Operations tab refreshes durable deploy operation status."
+  - key: "Admin/DeployControlEndpoints:GET:/api/v{version:apiVersion}/admin/deploy/preflight"
+    coverage: supported
+    admin_page: "/deploy (DeployControlPage)"
+    priority: P0
+    out_of_scope_reason: ""
+    follow_up_ticket: ""
+    notes: "Preflight tab runs diagnostics with includeDiagnostics=true."
+  - key: "Admin/DeployControlEndpoints:POST:/api/v{version:apiVersion}/admin/deploy/operations"
+    coverage: supported
+    admin_page: "/deploy (DeployControlPage)"
+    priority: P0
+    out_of_scope_reason: ""
+    follow_up_ticket: ""
+    notes: "Plan tab can create a durable deploy operation."
+  - key: "Admin/DeployControlEndpoints:POST:/api/v{version:apiVersion}/admin/deploy/operations/{operationId}/rollback"
+    coverage: supported
+    admin_page: "/deploy (DeployControlPage)"
+    priority: P0
+    out_of_scope_reason: ""
+    follow_up_ticket: ""
+    notes: "Operations tab exposes rollback and records destructive telemetry."
+  - key: "Admin/DeployControlEndpoints:POST:/api/v{version:apiVersion}/admin/deploy/operations/{operationId}/submit"
+    coverage: supported
+    admin_page: "/deploy (DeployControlPage)"
+    priority: P0
+    out_of_scope_reason: ""
+    follow_up_ticket: ""
+    notes: "Operations tab submits awaiting-approval operations."
+  - key: "Admin/DeployControlEndpoints:POST:/api/v{version:apiVersion}/admin/deploy/plan"
+    coverage: supported
+    admin_page: "/deploy (DeployControlPage)"
+    priority: P0
+    out_of_scope_reason: ""
+    follow_up_ticket: ""
+    notes: "Plan tab previews target/current/desired revision planning."
+  - key: "Admin/FeatureOverviewEndpoints:GET:/api/v{version:apiVersion}/admin/features/"
+    coverage: supported
+    admin_page: "/ (Index dashboard)"
+    priority: P0
+    out_of_scope_reason: ""
+    follow_up_ticket: ""
+    notes: "Index dashboard renders edition and feature-gating overview."
+  - key: "Admin/GeocodingAdminEndpoints:GET:/api/v{version:apiVersion}/admin/geocoding/providers"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Geocoding admin lives with the geocoding-config UI; deferred"
+    follow_up_ticket: "honua-server-admin#1 (SQL playground sibling) / future geocoding-admin ticket"
+    notes: ""
+  - key: "Admin/GeocodingOperationsEndpoints:GET:/api/v{version:apiVersion}/admin/operations/geocoding/configuration"
+    coverage: missing
+    admin_page: ""
+    priority: P2
+    out_of_scope_reason: ""
+    follow_up_ticket: ""
+    notes: "Geocoding ops console"
+  - key: "Admin/GeocodingOperationsEndpoints:GET:/api/v{version:apiVersion}/admin/operations/geocoding/providers"
+    coverage: missing
+    admin_page: ""
+    priority: P2
+    out_of_scope_reason: ""
+    follow_up_ticket: ""
+    notes: "Geocoding ops console"
+  - key: "Admin/IdentityAdminEndpoints:GET:/api/v{version:apiVersion}/admin/identity/providers"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Owned by identity/auth admin workstream"
+    follow_up_ticket: honua-server-admin#22
+    notes: ""
+  - key: "Admin/IdentityAdminEndpoints:GET:/api/v{version:apiVersion}/admin/identity/providers/{providerType}/test"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Owned by identity/auth admin workstream"
+    follow_up_ticket: honua-server-admin#22
+    notes: ""
+  - key: "Admin/LayerPublishingEndpoints:GET:/api/v{version:apiVersion}/admin/connections/{id}/layers/"
+    coverage: supported
+    admin_page: "/layers and /connections/{id} (LayerListPage / ConnectionDetailPage)"
+    priority: P0
+    out_of_scope_reason: ""
+    follow_up_ticket: ""
+    notes: "Layer pages list published layers for a selected connection/service."
+  - key: "Admin/LayerPublishingEndpoints:POST:/api/v{version:apiVersion}/admin/connections/{id}/layers/"
+    coverage: supported
+    admin_page: "/connections/{id}/publish (PublishLayerPage)"
+    priority: P0
+    out_of_scope_reason: ""
+    follow_up_ticket: ""
+    notes: "PublishLayerPage submits layer publish requests."
+  - key: "Admin/LayerPublishingEndpoints:PUT:/api/v{version:apiVersion}/admin/connections/{id}/layers/enabled"
+    coverage: supported
+    admin_page: "/layers (LayerListPage)"
+    priority: P0
+    out_of_scope_reason: ""
+    follow_up_ticket: ""
+    notes: "LayerListPage bulk enables/disables service layers."
+  - key: "Admin/LayerPublishingEndpoints:PUT:/api/v{version:apiVersion}/admin/connections/{id}/layers/{layerId:int}/enabled"
+    coverage: supported
+    admin_page: "/layers and /connections/{id} (LayerListPage / ConnectionDetailPage)"
+    priority: P0
+    out_of_scope_reason: ""
+    follow_up_ticket: ""
+    notes: "Layer tables expose per-layer enable/disable actions."
+  - key: "Admin/LicenseAdminEndpoints:GET:/api/v{version:apiVersion}/admin/license/features"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Owned by license workspace workstream"
+    follow_up_ticket: honua-server-admin#23
+    notes: ""
+  - key: "Admin/LicenseAdminEndpoints:GET:/api/v{version:apiVersion}/admin/license/status"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Owned by license workspace workstream"
+    follow_up_ticket: honua-server-admin#23
+    notes: ""
+  - key: "Admin/LicenseAdminEndpoints:POST:/api/v{version:apiVersion}/admin/license/upload"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Owned by license workspace workstream"
+    follow_up_ticket: honua-server-admin#23
+    notes: ""
+  - key: "Admin/LicenseEndpoints:GET:/api/v{version:apiVersion}/admin/license/"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Owned by license workspace workstream"
+    follow_up_ticket: honua-server-admin#23
+    notes: ""
+  - key: "Admin/LicenseEndpoints:GET:/api/v{version:apiVersion}/admin/license/entitlements"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Owned by license workspace workstream"
+    follow_up_ticket: honua-server-admin#23
+    notes: ""
+  - key: "Admin/LicenseEndpoints:POST:/api/v{version:apiVersion}/admin/license/"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Owned by license workspace workstream"
+    follow_up_ticket: honua-server-admin#23
+    notes: ""
+  - key: "Admin/ObservabilityEndpoints:GET:/api/v{version:apiVersion}/admin/observability/errors"
+    coverage: supported
+    admin_page: "/observability (ObservabilityPage)"
+    priority: P0
+    out_of_scope_reason: ""
+    follow_up_ticket: ""
+    notes: "Errors tab renders the recent-error buffer."
+  - key: "Admin/ObservabilityEndpoints:GET:/api/v{version:apiVersion}/admin/observability/migrations"
+    coverage: supported
+    admin_page: "/observability (ObservabilityPage)"
+    priority: P0
+    out_of_scope_reason: ""
+    follow_up_ticket: ""
+    notes: "Migrations tab renders lifecycle and plan status."
+  - key: "Admin/ObservabilityEndpoints:GET:/api/v{version:apiVersion}/admin/observability/telemetry"
+    coverage: supported
+    admin_page: "/observability (ObservabilityPage)"
+    priority: P0
+    out_of_scope_reason: ""
+    follow_up_ticket: ""
+    notes: "Telemetry tab renders tracing and OTLP status."
+  - key: "Admin/OidcProviderEndpoints:DELETE:/api/v{version:apiVersion}/admin/oidc/providers/{id:guid}"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Owned by identity/auth admin workstream"
+    follow_up_ticket: honua-server-admin#22
+    notes: ""
+  - key: "Admin/OidcProviderEndpoints:GET:/api/v{version:apiVersion}/admin/oidc/providers/"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Owned by identity/auth admin workstream"
+    follow_up_ticket: honua-server-admin#22
+    notes: ""
+  - key: "Admin/OidcProviderEndpoints:GET:/api/v{version:apiVersion}/admin/oidc/providers/{id:guid}"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Owned by identity/auth admin workstream"
+    follow_up_ticket: honua-server-admin#22
+    notes: ""
+  - key: "Admin/OidcProviderEndpoints:POST:/api/v{version:apiVersion}/admin/oidc/providers/"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Owned by identity/auth admin workstream"
+    follow_up_ticket: honua-server-admin#22
+    notes: ""
+  - key: "Admin/OidcProviderEndpoints:POST:/api/v{version:apiVersion}/admin/oidc/providers/{id:guid}/test"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Owned by identity/auth admin workstream"
+    follow_up_ticket: honua-server-admin#22
+    notes: ""
+  - key: "Admin/OidcProviderEndpoints:PUT:/api/v{version:apiVersion}/admin/oidc/providers/{id:guid}"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Owned by identity/auth admin workstream"
+    follow_up_ticket: honua-server-admin#22
+    notes: ""
+  - key: "Admin/OperationsProgressEndpoints:GET:/api/v{version:apiVersion}/admin/operations/active"
+    coverage: missing
+    admin_page: ""
+    priority: P1
+    out_of_scope_reason: ""
+    follow_up_ticket: ""
+    notes: "Operations progress page; deferred to follow-up"
+  - key: "Admin/OperationsProgressEndpoints:GET:/api/v{version:apiVersion}/admin/operations/type/{operationType}"
+    coverage: missing
+    admin_page: ""
+    priority: P1
+    out_of_scope_reason: ""
+    follow_up_ticket: ""
+    notes: "Operations progress page; deferred to follow-up"
+  - key: "Admin/OperationsProgressEndpoints:GET:/api/v{version:apiVersion}/admin/operations/{operationId}"
+    coverage: missing
+    admin_page: ""
+    priority: P1
+    out_of_scope_reason: ""
+    follow_up_ticket: ""
+    notes: "Operations progress page; deferred to follow-up"
+  - key: "Admin/OperationsProgressEndpoints:POST:/api/v{version:apiVersion}/admin/operations/{operationId}/cancel"
+    coverage: missing
+    admin_page: ""
+    priority: P1
+    out_of_scope_reason: ""
+    follow_up_ticket: ""
+    notes: "Operations progress page; deferred to follow-up"
+  - key: "Admin/RateLimitEndpoints:DELETE:/api/v{version:apiVersion}/admin/rate-limits/{id:guid}"
+    coverage: missing
+    admin_page: ""
+    priority: P1
+    out_of_scope_reason: ""
+    follow_up_ticket: ""
+    notes: "Rate-limit admin page; deferred to follow-up"
+  - key: "Admin/RateLimitEndpoints:GET:/api/v{version:apiVersion}/admin/rate-limits/"
+    coverage: missing
+    admin_page: ""
+    priority: P1
+    out_of_scope_reason: ""
+    follow_up_ticket: ""
+    notes: "Rate-limit admin page; deferred to follow-up"
+  - key: "Admin/RateLimitEndpoints:GET:/api/v{version:apiVersion}/admin/rate-limits/status"
+    coverage: missing
+    admin_page: ""
+    priority: P1
+    out_of_scope_reason: ""
+    follow_up_ticket: ""
+    notes: "Rate-limit admin page; deferred to follow-up"
+  - key: "Admin/RateLimitEndpoints:GET:/api/v{version:apiVersion}/admin/rate-limits/{id:guid}"
+    coverage: missing
+    admin_page: ""
+    priority: P1
+    out_of_scope_reason: ""
+    follow_up_ticket: ""
+    notes: "Rate-limit admin page; deferred to follow-up"
+  - key: "Admin/RateLimitEndpoints:POST:/api/v{version:apiVersion}/admin/rate-limits/"
+    coverage: missing
+    admin_page: ""
+    priority: P1
+    out_of_scope_reason: ""
+    follow_up_ticket: ""
+    notes: "Rate-limit admin page; deferred to follow-up"
+  - key: "Admin/RateLimitEndpoints:PUT:/api/v{version:apiVersion}/admin/rate-limits/{id:guid}"
+    coverage: missing
+    admin_page: ""
+    priority: P1
+    out_of_scope_reason: ""
+    follow_up_ticket: ""
+    notes: "Rate-limit admin page; deferred to follow-up"
+  - key: "Admin/RoleEndpoints:DELETE:/api/v{version:apiVersion}/admin/roles/{id:guid}"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Owned by identity/auth admin workstream"
+    follow_up_ticket: honua-server-admin#22
+    notes: ""
+  - key: "Admin/RoleEndpoints:GET:/api/v{version:apiVersion}/admin/roles/"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Owned by identity/auth admin workstream"
+    follow_up_ticket: honua-server-admin#22
+    notes: ""
+  - key: "Admin/RoleEndpoints:GET:/api/v{version:apiVersion}/admin/roles/{id:guid}"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Owned by identity/auth admin workstream"
+    follow_up_ticket: honua-server-admin#22
+    notes: ""
+  - key: "Admin/RoleEndpoints:GET:/api/v{version:apiVersion}/admin/roles/{id:guid}/permissions"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Owned by identity/auth admin workstream"
+    follow_up_ticket: honua-server-admin#22
+    notes: ""
+  - key: "Admin/RoleEndpoints:POST:/api/v{version:apiVersion}/admin/roles/"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Owned by identity/auth admin workstream"
+    follow_up_ticket: honua-server-admin#22
+    notes: ""
+  - key: "Admin/RoleEndpoints:PUT:/api/v{version:apiVersion}/admin/roles/{id:guid}"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Owned by identity/auth admin workstream"
+    follow_up_ticket: honua-server-admin#22
+    notes: ""
+  - key: "Admin/RoleEndpoints:PUT:/api/v{version:apiVersion}/admin/roles/{id:guid}/permissions"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Owned by identity/auth admin workstream"
+    follow_up_ticket: honua-server-admin#22
+    notes: ""
+  - key: "Admin/SecureConnectionEndpoints:DELETE:/api/v{version:apiVersion}/admin/connections/{id:guid}"
+    coverage: supported
+    admin_page: "/connections/{id} (ConnectionDetailPage)"
+    priority: P0
+    out_of_scope_reason: ""
+    follow_up_ticket: ""
+    notes: "Connection detail exposes delete action with destructive telemetry."
+  - key: "Admin/SecureConnectionEndpoints:GET:/api/v{version:apiVersion}/admin/connections/"
+    coverage: supported
+    admin_page: "/connections (ConnectionListPage)"
+    priority: P0
+    out_of_scope_reason: ""
+    follow_up_ticket: ""
+    notes: "Powers the Connections list."
+  - key: "Admin/SecureConnectionEndpoints:GET:/api/v{version:apiVersion}/admin/connections/{id:guid}"
+    coverage: supported
+    admin_page: "/connections/{id} (ConnectionDetailPage)"
+    priority: P0
+    out_of_scope_reason: ""
+    follow_up_ticket: ""
+    notes: "Connection detail loads editable safe connection metadata."
+  - key: "Admin/SecureConnectionEndpoints:POST:/api/v{version:apiVersion}/admin/connections/"
+    coverage: supported
+    admin_page: "/connections/new (CreateConnectionPage)"
+    priority: P0
+    out_of_scope_reason: ""
+    follow_up_ticket: ""
+    notes: "CreateConnectionPage creates managed-password or secret-reference connections."
+  - key: "Admin/SecureConnectionEndpoints:POST:/api/v{version:apiVersion}/admin/connections/encryption/rotate-key"
+    coverage: supported
+    admin_page: "/connections (ConnectionListPage)"
+    priority: P0
+    out_of_scope_reason: ""
+    follow_up_ticket: ""
+    notes: "Connections toolbar exposes encryption key rotation."
+  - key: "Admin/SecureConnectionEndpoints:POST:/api/v{version:apiVersion}/admin/connections/encryption/validate"
+    coverage: supported
+    admin_page: "/connections (ConnectionListPage)"
+    priority: P0
+    out_of_scope_reason: ""
+    follow_up_ticket: ""
+    notes: "Connections toolbar validates encryption service health."
+  - key: "Admin/SecureConnectionEndpoints:POST:/api/v{version:apiVersion}/admin/connections/test"
+    coverage: supported
+    admin_page: "/connections/new (CreateConnectionPage)"
+    priority: P0
+    out_of_scope_reason: ""
+    follow_up_ticket: ""
+    notes: "CreateConnectionPage can test draft connection credentials."
+  - key: "Admin/SecureConnectionEndpoints:POST:/api/v{version:apiVersion}/admin/connections/{id:guid}/test"
+    coverage: supported
+    admin_page: "/connections/{id} (ConnectionDetailPage)"
+    priority: P0
+    out_of_scope_reason: ""
+    follow_up_ticket: ""
+    notes: "Connection detail exposes health test action."
+  - key: "Admin/SecureConnectionEndpoints:PUT:/api/v{version:apiVersion}/admin/connections/{id:guid}"
+    coverage: supported
+    admin_page: "/connections/{id} (ConnectionDetailPage)"
+    priority: P0
+    out_of_scope_reason: ""
+    follow_up_ticket: ""
+    notes: "Connection detail saves editable host/database/user/ssl/active metadata."
+  - key: "Admin/ServiceSettingsEndpoints:GET:/api/v{version:apiVersion}/admin/services/"
+    coverage: supported
+    admin_page: "/services (ServiceListPage)"
+    priority: P0
+    out_of_scope_reason: ""
+    follow_up_ticket: ""
+    notes: "ServiceListPage renders service, layer, and enabled-protocol summary."
+  - key: "Admin/ServiceSettingsEndpoints:GET:/api/v{version:apiVersion}/admin/services/{serviceName}/settings"
+    coverage: supported
+    admin_page: "/services/{serviceName}/settings (ServiceSettingsPage)"
+    priority: P0
+    out_of_scope_reason: ""
+    follow_up_ticket: ""
+    notes: "ServiceSettingsPage loads protocol, access, time, and MapServer settings."
+  - key: "Admin/ServiceSettingsEndpoints:PUT:/api/v{version:apiVersion}/admin/services/{serviceName}/access-policy"
+    coverage: supported
+    admin_page: "/services/{serviceName}/settings (ServiceSettingsPage)"
+    priority: P0
+    out_of_scope_reason: ""
+    follow_up_ticket: ""
+    notes: "Access tab updates anonymous and role policy."
+  - key: "Admin/ServiceSettingsEndpoints:PUT:/api/v{version:apiVersion}/admin/services/{serviceName}/layers/{layerId:int}/metadata"
+    coverage: supported
+    admin_page: "/services/{serviceName}/settings (ServiceSettingsPage)"
+    priority: P0
+    out_of_scope_reason: ""
+    follow_up_ticket: ""
+    notes: "Layer metadata tab updates per-layer time metadata."
+  - key: "Admin/ServiceSettingsEndpoints:PUT:/api/v{version:apiVersion}/admin/services/{serviceName}/mapserver"
+    coverage: supported
+    admin_page: "/services/{serviceName}/settings (ServiceSettingsPage)"
+    priority: P0
+    out_of_scope_reason: ""
+    follow_up_ticket: ""
+    notes: "MapServer tab updates rendering defaults and limits."
+  - key: "Admin/ServiceSettingsEndpoints:PUT:/api/v{version:apiVersion}/admin/services/{serviceName}/protocols"
+    coverage: supported
+    admin_page: "/services/{serviceName}/settings (ServiceSettingsPage)"
+    priority: P0
+    out_of_scope_reason: ""
+    follow_up_ticket: ""
+    notes: "Protocols tab updates enabled protocol list."
+  - key: "Admin/ServiceSettingsEndpoints:PUT:/api/v{version:apiVersion}/admin/services/{serviceName}/timeinfo"
+    coverage: supported
+    admin_page: "/services/{serviceName}/settings (ServiceSettingsPage)"
+    priority: P0
+    out_of_scope_reason: ""
+    follow_up_ticket: ""
+    notes: "Time tab updates service-level time metadata."
+  - key: "Admin/StreamingOperationsEndpoints:DELETE:/api/v{version:apiVersion}/admin/operations/streaming/subscribers/{subscriberId:guid}"
+    coverage: missing
+    admin_page: ""
+    priority: P2
+    out_of_scope_reason: ""
+    follow_up_ticket: ""
+    notes: "Streaming ops console"
+  - key: "Admin/StreamingOperationsEndpoints:GET:/api/v{version:apiVersion}/admin/operations/streaming/alerts"
+    coverage: missing
+    admin_page: ""
+    priority: P2
+    out_of_scope_reason: ""
+    follow_up_ticket: ""
+    notes: "Streaming ops console"
+  - key: "Admin/StreamingOperationsEndpoints:GET:/api/v{version:apiVersion}/admin/operations/streaming/subscribers"
+    coverage: missing
+    admin_page: ""
+    priority: P2
+    out_of_scope_reason: ""
+    follow_up_ticket: ""
+    notes: "Streaming ops console"
+  - key: "Admin/TileOperationsEndpoints:GET:/api/v{version:apiVersion}/admin/tile-operations/jobs"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Tile operations admin lives with the map annotations workstream"
+    follow_up_ticket: honua-server-admin#8
+    notes: ""
+  - key: "Admin/TileOperationsEndpoints:GET:/api/v{version:apiVersion}/admin/tile-operations/jobs/{jobId}"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Tile operations admin lives with the map annotations workstream"
+    follow_up_ticket: honua-server-admin#8
+    notes: ""
+  - key: "Admin/TileOperationsEndpoints:POST:/api/v{version:apiVersion}/admin/tile-operations/jobs"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Tile operations admin lives with the map annotations workstream"
+    follow_up_ticket: honua-server-admin#8
+    notes: ""
+  - key: "Admin/TileOperationsEndpoints:POST:/api/v{version:apiVersion}/admin/tile-operations/jobs/{jobId}/cancel"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Tile operations admin lives with the map annotations workstream"
+    follow_up_ticket: honua-server-admin#8
+    notes: ""
+  - key: "Admin/TileOperationsEndpoints:POST:/api/v{version:apiVersion}/admin/tile-operations/jobs/{jobId}/retry"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Tile operations admin lives with the map annotations workstream"
+    follow_up_ticket: honua-server-admin#8
+    notes: ""
+  - key: "Admin/UserManagementEndpoints:DELETE:/api/v{version:apiVersion}/admin/users/{id}"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Owned by identity/auth admin workstream"
+    follow_up_ticket: honua-server-admin#22
+    notes: ""
+  - key: "Admin/UserManagementEndpoints:GET:/api/v{version:apiVersion}/admin/users/"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Owned by identity/auth admin workstream"
+    follow_up_ticket: honua-server-admin#22
+    notes: ""
+  - key: "Admin/UserManagementEndpoints:GET:/api/v{version:apiVersion}/admin/users/{id}"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Owned by identity/auth admin workstream"
+    follow_up_ticket: honua-server-admin#22
+    notes: ""
+  - key: "Admin/UserManagementEndpoints:GET:/api/v{version:apiVersion}/admin/users/{id}/effective-permissions"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Owned by identity/auth admin workstream"
+    follow_up_ticket: honua-server-admin#22
+    notes: ""
+  - key: "Admin/UserManagementEndpoints:PUT:/api/v{version:apiVersion}/admin/users/{id}/roles"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Owned by identity/auth admin workstream"
+    follow_up_ticket: honua-server-admin#22
+    notes: ""
+  - key: "Export/ExportEndpoints:GET:/api/v{version:apiVersion}/admin/services/{serviceName}/layers/{layerId:int}/export/"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public export endpoint, not admin operations"
+    follow_up_ticket: ""
+    notes: ""
+  - key: Geocoding/GeocodingEndpoints:GET:/rest/services/GeocodeServer
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public geocoding API surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: Geocoding/GeocodingEndpoints:GET:/rest/services/GeocodeServer/findAddressCandidates
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public geocoding API surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: Geocoding/GeocodingEndpoints:GET:/rest/services/GeocodeServer/geocodeAddresses
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public geocoding API surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: Geocoding/GeocodingEndpoints:GET:/rest/services/GeocodeServer/reverseGeocode
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public geocoding API surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: Geocoding/GeocodingEndpoints:GET:/rest/services/GeocodeServer/suggest
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public geocoding API surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: "Geocoding/GeocodingEndpoints:GET:/rest/services/{locatorName}/GeocodeServer"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public geocoding API surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: "Geocoding/GeocodingEndpoints:GET:/rest/services/{locatorName}/GeocodeServer/findAddressCandidates"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public geocoding API surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: "Geocoding/GeocodingEndpoints:GET:/rest/services/{locatorName}/GeocodeServer/geocodeAddresses"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public geocoding API surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: "Geocoding/GeocodingEndpoints:GET:/rest/services/{locatorName}/GeocodeServer/reverseGeocode"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public geocoding API surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: "Geocoding/GeocodingEndpoints:GET:/rest/services/{locatorName}/GeocodeServer/suggest"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public geocoding API surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: "Geocoding/GeocodingEndpoints:POST:/rest/services/{locatorName}/GeocodeServer/findAddressCandidates"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public geocoding API surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: "Geocoding/GeocodingEndpoints:POST:/rest/services/{locatorName}/GeocodeServer/geocodeAddresses"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public geocoding API surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: "Geocoding/GeocodingEndpoints:POST:/rest/services/{locatorName}/GeocodeServer/reverseGeocode"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public geocoding API surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: "Geocoding/GeocodingEndpoints:POST:/rest/services/{locatorName}/GeocodeServer/suggest"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public geocoding API surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: HealthCheck/HealthEndpoints:DELETE:/healthz/live
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Liveness/readiness probes consumed by infra, not admin UI"
+    follow_up_ticket: ""
+    notes: ""
+  - key: HealthCheck/HealthEndpoints:DELETE:/healthz/metrics
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Liveness/readiness probes consumed by infra, not admin UI"
+    follow_up_ticket: ""
+    notes: ""
+  - key: HealthCheck/HealthEndpoints:DELETE:/healthz/ready
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Liveness/readiness probes consumed by infra, not admin UI"
+    follow_up_ticket: ""
+    notes: ""
+  - key: HealthCheck/HealthEndpoints:GET:/healthz/live
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Liveness/readiness probes consumed by infra, not admin UI"
+    follow_up_ticket: ""
+    notes: ""
+  - key: HealthCheck/HealthEndpoints:GET:/healthz/metrics
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Liveness/readiness probes consumed by infra, not admin UI"
+    follow_up_ticket: ""
+    notes: ""
+  - key: HealthCheck/HealthEndpoints:GET:/healthz/ready
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Liveness/readiness probes consumed by infra, not admin UI"
+    follow_up_ticket: ""
+    notes: ""
+  - key: HealthCheck/HealthEndpoints:PATCH:/healthz/live
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Liveness/readiness probes consumed by infra, not admin UI"
+    follow_up_ticket: ""
+    notes: ""
+  - key: HealthCheck/HealthEndpoints:PATCH:/healthz/metrics
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Liveness/readiness probes consumed by infra, not admin UI"
+    follow_up_ticket: ""
+    notes: ""
+  - key: HealthCheck/HealthEndpoints:PATCH:/healthz/ready
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Liveness/readiness probes consumed by infra, not admin UI"
+    follow_up_ticket: ""
+    notes: ""
+  - key: HealthCheck/HealthEndpoints:POST:/healthz/live
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Liveness/readiness probes consumed by infra, not admin UI"
+    follow_up_ticket: ""
+    notes: ""
+  - key: HealthCheck/HealthEndpoints:POST:/healthz/metrics
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Liveness/readiness probes consumed by infra, not admin UI"
+    follow_up_ticket: ""
+    notes: ""
+  - key: HealthCheck/HealthEndpoints:POST:/healthz/ready
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Liveness/readiness probes consumed by infra, not admin UI"
+    follow_up_ticket: ""
+    notes: ""
+  - key: HealthCheck/HealthEndpoints:PUT:/healthz/live
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Liveness/readiness probes consumed by infra, not admin UI"
+    follow_up_ticket: ""
+    notes: ""
+  - key: HealthCheck/HealthEndpoints:PUT:/healthz/metrics
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Liveness/readiness probes consumed by infra, not admin UI"
+    follow_up_ticket: ""
+    notes: ""
+  - key: HealthCheck/HealthEndpoints:PUT:/healthz/ready
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Liveness/readiness probes consumed by infra, not admin UI"
+    follow_up_ticket: ""
+    notes: ""
+  - key: "Import/GeoServerImportEndpoints:GET:/api/v{version:apiVersion}/admin/import/geoserver/jobs"
+    coverage: missing
+    admin_page: ""
+    priority: P1
+    out_of_scope_reason: ""
+    follow_up_ticket: ""
+    notes: "GeoServer import wizard; deferred to follow-up"
+  - key: "Import/GeoServerImportEndpoints:GET:/api/v{version:apiVersion}/admin/import/geoserver/jobs/{jobId}"
+    coverage: missing
+    admin_page: ""
+    priority: P1
+    out_of_scope_reason: ""
+    follow_up_ticket: ""
+    notes: "GeoServer import wizard; deferred to follow-up"
+  - key: "Import/GeoServerImportEndpoints:POST:/api/v{version:apiVersion}/admin/import/geoserver/discover"
+    coverage: missing
+    admin_page: ""
+    priority: P1
+    out_of_scope_reason: ""
+    follow_up_ticket: ""
+    notes: "GeoServer import wizard; deferred to follow-up"
+  - key: "Import/GeoServerImportEndpoints:POST:/api/v{version:apiVersion}/admin/import/geoserver/jobs/{jobId}/cancel"
+    coverage: missing
+    admin_page: ""
+    priority: P1
+    out_of_scope_reason: ""
+    follow_up_ticket: ""
+    notes: "GeoServer import wizard; deferred to follow-up"
+  - key: "Import/GeoServerImportEndpoints:POST:/api/v{version:apiVersion}/admin/import/geoserver/start"
+    coverage: missing
+    admin_page: ""
+    priority: P1
+    out_of_scope_reason: ""
+    follow_up_ticket: ""
+    notes: "GeoServer import wizard; deferred to follow-up"
+  - key: "Import/GeoservicesImportEndpoints:GET:/api/v{version:apiVersion}/admin/import/geoservices/jobs"
+    coverage: missing
+    admin_page: ""
+    priority: P1
+    out_of_scope_reason: ""
+    follow_up_ticket: ""
+    notes: "Geoservices import wizard; deferred to follow-up"
+  - key: "Import/GeoservicesImportEndpoints:GET:/api/v{version:apiVersion}/admin/import/geoservices/jobs/{jobId}"
+    coverage: missing
+    admin_page: ""
+    priority: P1
+    out_of_scope_reason: ""
+    follow_up_ticket: ""
+    notes: "Geoservices import wizard; deferred to follow-up"
+  - key: "Import/GeoservicesImportEndpoints:POST:/api/v{version:apiVersion}/admin/import/geoservices/discover"
+    coverage: missing
+    admin_page: ""
+    priority: P1
+    out_of_scope_reason: ""
+    follow_up_ticket: ""
+    notes: "Geoservices import wizard; deferred to follow-up"
+  - key: "Import/GeoservicesImportEndpoints:POST:/api/v{version:apiVersion}/admin/import/geoservices/jobs/{jobId}/cancel"
+    coverage: missing
+    admin_page: ""
+    priority: P1
+    out_of_scope_reason: ""
+    follow_up_ticket: ""
+    notes: "Geoservices import wizard; deferred to follow-up"
+  - key: "Import/GeoservicesImportEndpoints:POST:/api/v{version:apiVersion}/admin/import/geoservices/start"
+    coverage: missing
+    admin_page: ""
+    priority: P1
+    out_of_scope_reason: ""
+    follow_up_ticket: ""
+    notes: "Geoservices import wizard; deferred to follow-up"
+  - key: "Import/MigrationScannerEndpoints:POST:/api/v{version:apiVersion}/admin/import/scan"
+    coverage: missing
+    admin_page: ""
+    priority: P1
+    out_of_scope_reason: ""
+    follow_up_ticket: ""
+    notes: "Migration scanner page; deferred to follow-up"
+  - key: "Import/RasterImportEndpoints:GET:/api/v{version:apiVersion}/admin/import/raster/formats"
+    coverage: missing
+    admin_page: ""
+    priority: P1
+    out_of_scope_reason: ""
+    follow_up_ticket: ""
+    notes: "Raster import wizard; deferred to follow-up"
+  - key: "Import/RasterImportEndpoints:POST:/api/v{version:apiVersion}/admin/import/raster/"
+    coverage: missing
+    admin_page: ""
+    priority: P1
+    out_of_scope_reason: ""
+    follow_up_ticket: ""
+    notes: "Raster import wizard; deferred to follow-up"
+  - key: "Infrastructure/DatabasePerformanceEndpoints:GET:/api/v{version:apiVersion}/admin/performance/database/query-cache/statistics"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Internal performance/monitoring/metrics surfaces consumed by infra"
+    follow_up_ticket: ""
+    notes: ""
+  - key: "Infrastructure/EnhancedPerformanceEndpoints:DELETE:/api/v{version:apiVersion}/admin/performance/enhanced/cache/invalidate"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Internal performance/monitoring/metrics surfaces consumed by infra"
+    follow_up_ticket: ""
+    notes: ""
+  - key: "Infrastructure/EnhancedPerformanceEndpoints:GET:/api/v{version:apiVersion}/admin/performance/enhanced/cache/effectiveness"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Internal performance/monitoring/metrics surfaces consumed by infra"
+    follow_up_ticket: ""
+    notes: ""
+  - key: "Infrastructure/EnhancedPerformanceEndpoints:GET:/api/v{version:apiVersion}/admin/performance/enhanced/cache/statistics"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Internal performance/monitoring/metrics surfaces consumed by infra"
+    follow_up_ticket: ""
+    notes: ""
+  - key: "Infrastructure/EnhancedPerformanceEndpoints:GET:/api/v{version:apiVersion}/admin/performance/enhanced/database/query-performance"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Internal performance/monitoring/metrics surfaces consumed by infra"
+    follow_up_ticket: ""
+    notes: ""
+  - key: "Infrastructure/EnhancedPerformanceEndpoints:GET:/api/v{version:apiVersion}/admin/performance/enhanced/database/slow-queries"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Internal performance/monitoring/metrics surfaces consumed by infra"
+    follow_up_ticket: ""
+    notes: ""
+  - key: "Infrastructure/EnhancedPerformanceEndpoints:GET:/api/v{version:apiVersion}/admin/performance/enhanced/exceptions/recent"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Internal performance/monitoring/metrics surfaces consumed by infra"
+    follow_up_ticket: ""
+    notes: ""
+  - key: "Infrastructure/EnhancedPerformanceEndpoints:GET:/api/v{version:apiVersion}/admin/performance/enhanced/exceptions/statistics"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Internal performance/monitoring/metrics surfaces consumed by infra"
+    follow_up_ticket: ""
+    notes: ""
+  - key: "Infrastructure/EnhancedPerformanceEndpoints:GET:/api/v{version:apiVersion}/admin/performance/enhanced/resources/potential-leaks"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Internal performance/monitoring/metrics surfaces consumed by infra"
+    follow_up_ticket: ""
+    notes: ""
+  - key: "Infrastructure/EnhancedPerformanceEndpoints:GET:/api/v{version:apiVersion}/admin/performance/enhanced/resources/tracking"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Internal performance/monitoring/metrics surfaces consumed by infra"
+    follow_up_ticket: ""
+    notes: ""
+  - key: "Infrastructure/EnhancedPerformanceEndpoints:GET:/api/v{version:apiVersion}/admin/performance/enhanced/summary"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Internal performance/monitoring/metrics surfaces consumed by infra"
+    follow_up_ticket: ""
+    notes: ""
+  - key: "Infrastructure/EnhancedPerformanceEndpoints:POST:/api/v{version:apiVersion}/admin/performance/enhanced/resources/scan-leaks"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Internal performance/monitoring/metrics surfaces consumed by infra"
+    follow_up_ticket: ""
+    notes: ""
+  - key: "Infrastructure/MetricsEndpoints:GET:/api/v{version:apiVersion}/metrics/cache"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Internal performance/monitoring/metrics surfaces consumed by infra"
+    follow_up_ticket: ""
+    notes: ""
+  - key: "Infrastructure/MetricsEndpoints:GET:/api/v{version:apiVersion}/metrics/database"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Internal performance/monitoring/metrics surfaces consumed by infra"
+    follow_up_ticket: ""
+    notes: ""
+  - key: "Infrastructure/MetricsEndpoints:GET:/api/v{version:apiVersion}/metrics/health"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Internal performance/monitoring/metrics surfaces consumed by infra"
+    follow_up_ticket: ""
+    notes: ""
+  - key: "Infrastructure/MetricsEndpoints:GET:/api/v{version:apiVersion}/metrics/memory"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Internal performance/monitoring/metrics surfaces consumed by infra"
+    follow_up_ticket: ""
+    notes: ""
+  - key: "Infrastructure/MetricsEndpoints:GET:/api/v{version:apiVersion}/metrics/performance"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Internal performance/monitoring/metrics surfaces consumed by infra"
+    follow_up_ticket: ""
+    notes: ""
+  - key: "Infrastructure/MetricsEndpoints:GET:/api/v{version:apiVersion}/metrics/streaming"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Internal performance/monitoring/metrics surfaces consumed by infra"
+    follow_up_ticket: ""
+    notes: ""
+  - key: Infrastructure/ProductionMonitoringEndpoints:GET:/monitoring/alerts
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Internal performance/monitoring/metrics surfaces consumed by infra"
+    follow_up_ticket: ""
+    notes: ""
+  - key: Infrastructure/ProductionMonitoringEndpoints:GET:/monitoring/health/comprehensive
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Internal performance/monitoring/metrics surfaces consumed by infra"
+    follow_up_ticket: ""
+    notes: ""
+  - key: Infrastructure/ProductionMonitoringEndpoints:GET:/monitoring/health/production
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Internal performance/monitoring/metrics surfaces consumed by infra"
+    follow_up_ticket: ""
+    notes: ""
+  - key: Infrastructure/ProductionMonitoringEndpoints:GET:/monitoring/metrics/cache
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Internal performance/monitoring/metrics surfaces consumed by infra"
+    follow_up_ticket: ""
+    notes: ""
+  - key: Infrastructure/ProductionMonitoringEndpoints:GET:/monitoring/metrics/connection-pool
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Internal performance/monitoring/metrics surfaces consumed by infra"
+    follow_up_ticket: ""
+    notes: ""
+  - key: Infrastructure/ProductionMonitoringEndpoints:GET:/monitoring/metrics/database-resilience
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Internal performance/monitoring/metrics surfaces consumed by infra"
+    follow_up_ticket: ""
+    notes: ""
+  - key: Infrastructure/ProductionMonitoringEndpoints:GET:/monitoring/metrics/resources
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Internal performance/monitoring/metrics surfaces consumed by infra"
+    follow_up_ticket: ""
+    notes: ""
+  - key: Infrastructure/ProductionMonitoringEndpoints:GET:/monitoring/metrics/upload-queue
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Internal performance/monitoring/metrics surfaces consumed by infra"
+    follow_up_ticket: ""
+    notes: ""
+  - key: "Infrastructure/StyleEndpoints:GET:/api/styles/{layerId:int}.json"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Internal performance/monitoring/metrics surfaces consumed by infra"
+    follow_up_ticket: ""
+    notes: ""
+  - key: "PrintingTools/PrintingToolsEndpoints:GET:/rest/services/Utilities/PrintingTools/GPServer/Export Web Map Task/execute"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public ArcGIS-compatible printing API, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: "PrintingTools/PrintingToolsEndpoints:GET:/rest/services/Utilities/PrintingTools/GPServer/Export Web Map Task/jobs/{{jobId}}"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public ArcGIS-compatible printing API, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: "PrintingTools/PrintingToolsEndpoints:GET:/rest/services/Utilities/PrintingTools/GPServer/Export Web Map Task/jobs/{{jobId}}/results/Output_File"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public ArcGIS-compatible printing API, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: "PrintingTools/PrintingToolsEndpoints:GET:/rest/services/Utilities/PrintingTools/GPServer/Export Web Map Task/submitJob"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public ArcGIS-compatible printing API, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: "PrintingTools/PrintingToolsEndpoints:GET:/rest/services/Utilities/PrintingTools/GPServer/Get Layout Templates Info Task/execute"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public ArcGIS-compatible printing API, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: "PrintingTools/PrintingToolsEndpoints:POST:/rest/services/Utilities/PrintingTools/GPServer/Export Web Map Task/execute"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public ArcGIS-compatible printing API, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: "PrintingTools/PrintingToolsEndpoints:POST:/rest/services/Utilities/PrintingTools/GPServer/Export Web Map Task/submitJob"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public ArcGIS-compatible printing API, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: "Protocols/AttachmentEndpoints:GET:/rest/services/{serviceId}/FeatureServer/{layerId:int}/{featureId:long}/attachments"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public GeoServices REST surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: "Protocols/AttachmentEndpoints:POST:/rest/services/{serviceId}/FeatureServer/{layerId:int}/{featureId:long}/addAttachment"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public GeoServices REST surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: "Protocols/AttachmentEndpoints:POST:/rest/services/{serviceId}/FeatureServer/{layerId:int}/{featureId:long}/deleteAttachments"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public GeoServices REST surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: "Protocols/AttachmentEndpoints:POST:/rest/services/{serviceId}/FeatureServer/{layerId:int}/{featureId:long}/updateAttachment"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public GeoServices REST surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: Protocols/CatalogEndpoints:GET:/stac
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public STAC API surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: "Protocols/CogEndpoints:DELETE:/api/v{version:apiVersion}/admin/cloud-rasters/{id:long}"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Cloud-COG rendering API, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: "Protocols/CogEndpoints:GET:/api/v{version:apiVersion}/admin/cloud-rasters/"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Cloud-COG rendering API, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: "Protocols/CogEndpoints:GET:/api/v{version:apiVersion}/admin/cloud-rasters/{id:long}"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Cloud-COG rendering API, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: "Protocols/CogEndpoints:POST:/api/v{version:apiVersion}/admin/cloud-rasters/"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Cloud-COG rendering API, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: "Protocols/CogEndpoints:POST:/api/v{version:apiVersion}/admin/cloud-rasters/{id:long}/refresh"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Cloud-COG rendering API, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: Protocols/CollectionEndpoints:GET:/stac/collections
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public STAC API surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: "Protocols/CollectionEndpoints:GET:/stac/collections/{collectionId}"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public STAC API surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: Protocols/CollectionsEndpoints:GET:/ogc/features/collections
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public OGC API surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: "Protocols/CollectionsEndpoints:GET:/ogc/features/collections/{collectionId}"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public OGC API surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: "Protocols/CollectionsEndpoints:GET:/ogc/features/collections/{collectionId}/queryables"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public OGC API surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: Protocols/CollectionsEndpoints:GET:/ogc/tiles/collections
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public OGC API surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: "Protocols/CollectionsEndpoints:GET:/ogc/tiles/collections/{collectionId}"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public OGC API surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: Protocols/CoreEndpoints:GET:/ogc/features
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public OGC API surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: Protocols/CoreEndpoints:GET:/ogc/features/api
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public OGC API surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: Protocols/CoreEndpoints:GET:/ogc/features/conformance
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public OGC API surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: Protocols/CoreEndpoints:GET:/ogc/processes/conformance
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public OGC API surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: Protocols/CoreEndpoints:GET:/ogc/processes/openapi.json
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public OGC API surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: Protocols/CoreEndpoints:GET:/ogc/tiles
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public OGC API surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: Protocols/CoreEndpoints:GET:/ogc/tiles/conformance
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public OGC API surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: Protocols/CoreEndpoints:GET:/ogc/tiles/openapi.json
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public OGC API surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: Protocols/CoreEndpoints:GET:/openapi.json
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public OGC API surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: "Protocols/FeatureServerEndpoints:GET:/rest/services/{serviceId}/FeatureServer"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public GeoServices REST surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: "Protocols/FeatureServerEndpoints:GET:/rest/services/{serviceId}/FeatureServer/getEstimates"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public GeoServices REST surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: "Protocols/FeatureServerEndpoints:GET:/rest/services/{serviceId}/FeatureServer/query"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public GeoServices REST surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: "Protocols/FeatureServerEndpoints:GET:/rest/services/{serviceId}/FeatureServer/queryDomains"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public GeoServices REST surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: "Protocols/FeatureServerEndpoints:GET:/rest/services/{serviceId}/FeatureServer/relationships"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public GeoServices REST surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: "Protocols/FeatureServerEndpoints:GET:/rest/services/{serviceId}/FeatureServer/replicas"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public GeoServices REST surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: "Protocols/FeatureServerEndpoints:GET:/rest/services/{serviceId}/FeatureServer/replicas/{replicaId}"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public GeoServices REST surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: "Protocols/FeatureServerEndpoints:GET:/rest/services/{serviceId}/FeatureServer/{layerId:int}"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public GeoServices REST surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: "Protocols/FeatureServerEndpoints:GET:/rest/services/{serviceId}/FeatureServer/{layerId:int}/calculate"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public GeoServices REST surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: "Protocols/FeatureServerEndpoints:GET:/rest/services/{serviceId}/FeatureServer/{layerId:int}/generateRenderer"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public GeoServices REST surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: "Protocols/FeatureServerEndpoints:GET:/rest/services/{serviceId}/FeatureServer/{layerId:int}/getEstimates"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public GeoServices REST surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: "Protocols/FeatureServerEndpoints:GET:/rest/services/{serviceId}/FeatureServer/{layerId:int}/query"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public GeoServices REST surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: "Protocols/FeatureServerEndpoints:GET:/rest/services/{serviceId}/FeatureServer/{layerId:int}/queryBins"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public GeoServices REST surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: "Protocols/FeatureServerEndpoints:GET:/rest/services/{serviceId}/FeatureServer/{layerId:int}/queryDateBins"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public GeoServices REST surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: "Protocols/FeatureServerEndpoints:GET:/rest/services/{serviceId}/FeatureServer/{layerId:int}/queryH3"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public GeoServices REST surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: "Protocols/FeatureServerEndpoints:GET:/rest/services/{serviceId}/FeatureServer/{layerId:int}/queryRelatedRecords"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public GeoServices REST surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: "Protocols/FeatureServerEndpoints:GET:/rest/services/{serviceId}/FeatureServer/{layerId:int}/queryTopFeatures"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public GeoServices REST surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: "Protocols/FeatureServerEndpoints:GET:/rest/services/{serviceId}/FeatureServer/{layerId:int}/validateSQL"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public GeoServices REST surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: "Protocols/FeatureServerEndpoints:GET:/tiles/{layerId:int}/h3/{z:int}/{x:int}/{y:int}.mvt"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public GeoServices REST surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: "Protocols/FeatureServerEndpoints:GET:/tiles/{layerId:int}/{z:int}/{x:int}/{y:int}.mvt"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public GeoServices REST surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: "Protocols/FeatureServerEndpoints:POST:/rest/services/{serviceId}/FeatureServer/append"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public GeoServices REST surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: "Protocols/FeatureServerEndpoints:POST:/rest/services/{serviceId}/FeatureServer/applyEdits"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public GeoServices REST surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: "Protocols/FeatureServerEndpoints:POST:/rest/services/{serviceId}/FeatureServer/createReplica"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public GeoServices REST surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: "Protocols/FeatureServerEndpoints:POST:/rest/services/{serviceId}/FeatureServer/extractChanges"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public GeoServices REST surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: "Protocols/FeatureServerEndpoints:POST:/rest/services/{serviceId}/FeatureServer/synchronizeReplica"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public GeoServices REST surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: "Protocols/FeatureServerEndpoints:POST:/rest/services/{serviceId}/FeatureServer/unRegisterReplica"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public GeoServices REST surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: "Protocols/FeatureServerEndpoints:POST:/rest/services/{serviceId}/FeatureServer/{layerId:int}/addFeatures"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public GeoServices REST surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: "Protocols/FeatureServerEndpoints:POST:/rest/services/{serviceId}/FeatureServer/{layerId:int}/append"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public GeoServices REST surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: "Protocols/FeatureServerEndpoints:POST:/rest/services/{serviceId}/FeatureServer/{layerId:int}/applyEdits"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public GeoServices REST surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: "Protocols/FeatureServerEndpoints:POST:/rest/services/{serviceId}/FeatureServer/{layerId:int}/calculate"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public GeoServices REST surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: "Protocols/FeatureServerEndpoints:POST:/rest/services/{serviceId}/FeatureServer/{layerId:int}/deleteFeatures"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public GeoServices REST surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: "Protocols/FeatureServerEndpoints:POST:/rest/services/{serviceId}/FeatureServer/{layerId:int}/query"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public GeoServices REST surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: "Protocols/FeatureServerEndpoints:POST:/rest/services/{serviceId}/FeatureServer/{layerId:int}/queryBins"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public GeoServices REST surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: "Protocols/FeatureServerEndpoints:POST:/rest/services/{serviceId}/FeatureServer/{layerId:int}/queryDateBins"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public GeoServices REST surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: "Protocols/FeatureServerEndpoints:POST:/rest/services/{serviceId}/FeatureServer/{layerId:int}/queryH3"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public GeoServices REST surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: "Protocols/FeatureServerEndpoints:POST:/rest/services/{serviceId}/FeatureServer/{layerId:int}/queryRelatedRecords"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public GeoServices REST surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: "Protocols/FeatureServerEndpoints:POST:/rest/services/{serviceId}/FeatureServer/{layerId:int}/queryTopFeatures"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public GeoServices REST surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: "Protocols/FeatureServerEndpoints:POST:/rest/services/{serviceId}/FeatureServer/{layerId:int}/updateFeatures"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public GeoServices REST surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: "Protocols/FeaturesEndpoints:DELETE:/ogc/features/collections/{collectionId}/items/{featureId}"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public OGC API surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: "Protocols/FeaturesEndpoints:GET:/ogc/features/collections/{collectionId}/items"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public OGC API surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: "Protocols/FeaturesEndpoints:GET:/ogc/features/collections/{collectionId}/items/{featureId}"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public OGC API surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: "Protocols/FeaturesEndpoints:POST:/ogc/features/collections/{collectionId}/items"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public OGC API surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: "Protocols/FeaturesEndpoints:POST:/ogc/features/collections/{collectionId}/items/batch"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public OGC API surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: "Protocols/FeaturesEndpoints:PUT:/ogc/features/collections/{collectionId}/items/{featureId}"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public OGC API surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: "Protocols/GPServerEndpoints:GET:/rest/services/{serviceId}/GPServer/{{taskName}}"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public GeoServices REST surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: "Protocols/GPServerEndpoints:GET:/rest/services/{serviceId}/GPServer/{{taskName}}/jobs/{{jobId}}"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public GeoServices REST surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: "Protocols/GPServerEndpoints:GET:/rest/services/{serviceId}/GPServer/{{taskName}}/jobs/{{jobId}}/cancel"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public GeoServices REST surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: "Protocols/GPServerEndpoints:GET:/rest/services/{serviceId}/GPServer/{{taskName}}/jobs/{{jobId}}/results/{{paramName}}"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public GeoServices REST surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: "Protocols/GPServerEndpoints:GET:/rest/services/{serviceId}/GPServer/{{taskName}}/submitJob"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public GeoServices REST surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: "Protocols/GPServerEndpoints:POST:/rest/services/{serviceId}/GPServer/{{taskName}}"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public GeoServices REST surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: "Protocols/GPServerEndpoints:POST:/rest/services/{serviceId}/GPServer/{{taskName}}/jobs/{{jobId}}/cancel"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public GeoServices REST surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: "Protocols/GPServerEndpoints:POST:/rest/services/{serviceId}/GPServer/{{taskName}}/submitJob"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public GeoServices REST surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: Protocols/GeometryServiceEndpoints:GET:/rest/services/Utilities/Geometry/GeometryServer/areasAndLengths
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public GeoServices REST surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: Protocols/GeometryServiceEndpoints:GET:/rest/services/Utilities/Geometry/GeometryServer/buffer
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public GeoServices REST surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: Protocols/GeometryServiceEndpoints:GET:/rest/services/Utilities/Geometry/GeometryServer/clip
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public GeoServices REST surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: Protocols/GeometryServiceEndpoints:GET:/rest/services/Utilities/Geometry/GeometryServer/difference
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public GeoServices REST surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: Protocols/GeometryServiceEndpoints:GET:/rest/services/Utilities/Geometry/GeometryServer/intersect
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public GeoServices REST surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: Protocols/GeometryServiceEndpoints:GET:/rest/services/Utilities/Geometry/GeometryServer/lengths
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public GeoServices REST surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: Protocols/GeometryServiceEndpoints:GET:/rest/services/Utilities/Geometry/GeometryServer/project
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public GeoServices REST surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: Protocols/GeometryServiceEndpoints:GET:/rest/services/Utilities/Geometry/GeometryServer/simplify
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public GeoServices REST surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: Protocols/GeometryServiceEndpoints:GET:/rest/services/Utilities/Geometry/GeometryServer/union
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public GeoServices REST surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: Protocols/GeometryServiceEndpoints:POST:/rest/services/Utilities/Geometry/GeometryServer/areasAndLengths
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public GeoServices REST surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: Protocols/GeometryServiceEndpoints:POST:/rest/services/Utilities/Geometry/GeometryServer/buffer
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public GeoServices REST surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: Protocols/GeometryServiceEndpoints:POST:/rest/services/Utilities/Geometry/GeometryServer/clip
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public GeoServices REST surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: Protocols/GeometryServiceEndpoints:POST:/rest/services/Utilities/Geometry/GeometryServer/difference
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public GeoServices REST surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: Protocols/GeometryServiceEndpoints:POST:/rest/services/Utilities/Geometry/GeometryServer/intersect
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public GeoServices REST surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: Protocols/GeometryServiceEndpoints:POST:/rest/services/Utilities/Geometry/GeometryServer/lengths
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public GeoServices REST surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: Protocols/GeometryServiceEndpoints:POST:/rest/services/Utilities/Geometry/GeometryServer/project
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public GeoServices REST surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: Protocols/GeometryServiceEndpoints:POST:/rest/services/Utilities/Geometry/GeometryServer/simplify
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public GeoServices REST surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: Protocols/GeometryServiceEndpoints:POST:/rest/services/Utilities/Geometry/GeometryServer/union
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public GeoServices REST surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: Protocols/GeoservicesCatalogEndpoints:GET:/rest/info
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public GeoServices REST surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: Protocols/GeoservicesCatalogEndpoints:GET:/rest/services
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public GeoServices REST surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: "Protocols/H3Endpoints:GET:/ogc/features/collections/{collectionId}/h3"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public OGC API surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: "Protocols/ImageServerEndpoints:GET:/rest/services/{id:int}/ImageServer/"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public GeoServices REST surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: "Protocols/ImageServerEndpoints:GET:/rest/services/{id:int}/ImageServer/computeClassStatistics"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public GeoServices REST surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: "Protocols/ImageServerEndpoints:GET:/rest/services/{id:int}/ImageServer/computeStatisticsHistograms"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public GeoServices REST surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: "Protocols/ImageServerEndpoints:GET:/rest/services/{id:int}/ImageServer/exportImage"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public GeoServices REST surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: "Protocols/ImageServerEndpoints:GET:/rest/services/{id:int}/ImageServer/identify"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public GeoServices REST surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: "Protocols/ImageServerEndpoints:GET:/rest/services/{id:int}/ImageServer/legend"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public GeoServices REST surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: "Protocols/ImageServerEndpoints:GET:/rest/services/{id:int}/ImageServer/query"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public GeoServices REST surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: "Protocols/ImageServerEndpoints:GET:/rest/services/{id:int}/ImageServer/tile/{level}/{row}/{col}"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public GeoServices REST surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: "Protocols/ImageServerEndpoints:GET:/rest/services/{serviceId:regex(^(?!\\\\d+$).+$)}/ImageServer/"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public GeoServices REST surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: "Protocols/ImageServerEndpoints:GET:/rest/services/{serviceId:regex(^(?!\\\\d+$).+$)}/ImageServer/computeClassStatistics"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public GeoServices REST surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: "Protocols/ImageServerEndpoints:GET:/rest/services/{serviceId:regex(^(?!\\\\d+$).+$)}/ImageServer/computeStatisticsHistograms"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public GeoServices REST surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: "Protocols/ImageServerEndpoints:GET:/rest/services/{serviceId:regex(^(?!\\\\d+$).+$)}/ImageServer/exportImage"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public GeoServices REST surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: "Protocols/ImageServerEndpoints:GET:/rest/services/{serviceId:regex(^(?!\\\\d+$).+$)}/ImageServer/identify"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public GeoServices REST surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: "Protocols/ImageServerEndpoints:GET:/rest/services/{serviceId:regex(^(?!\\\\d+$).+$)}/ImageServer/legend"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public GeoServices REST surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: "Protocols/ImageServerEndpoints:GET:/rest/services/{serviceId:regex(^(?!\\\\d+$).+$)}/ImageServer/query"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public GeoServices REST surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: "Protocols/ImageServerEndpoints:GET:/rest/services/{serviceId:regex(^(?!\\\\d+$).+$)}/ImageServer/tile/{level}/{row}/{col}"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public GeoServices REST surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: "Protocols/ImageServerEndpoints:POST:/rest/services/{id:int}/ImageServer/computeClassStatistics"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public GeoServices REST surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: "Protocols/ImageServerEndpoints:POST:/rest/services/{id:int}/ImageServer/computeStatisticsHistograms"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public GeoServices REST surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: "Protocols/ImageServerEndpoints:POST:/rest/services/{id:int}/ImageServer/exportImage"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public GeoServices REST surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: "Protocols/ImageServerEndpoints:POST:/rest/services/{id:int}/ImageServer/identify"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public GeoServices REST surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: "Protocols/ImageServerEndpoints:POST:/rest/services/{id:int}/ImageServer/query"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public GeoServices REST surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: "Protocols/ImageServerEndpoints:POST:/rest/services/{serviceId:regex(^(?!\\\\d+$).+$)}/ImageServer/computeClassStatistics"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public GeoServices REST surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: "Protocols/ImageServerEndpoints:POST:/rest/services/{serviceId:regex(^(?!\\\\d+$).+$)}/ImageServer/computeStatisticsHistograms"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public GeoServices REST surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: "Protocols/ImageServerEndpoints:POST:/rest/services/{serviceId:regex(^(?!\\\\d+$).+$)}/ImageServer/exportImage"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public GeoServices REST surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: "Protocols/ImageServerEndpoints:POST:/rest/services/{serviceId:regex(^(?!\\\\d+$).+$)}/ImageServer/identify"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public GeoServices REST surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: "Protocols/ImageServerEndpoints:POST:/rest/services/{serviceId:regex(^(?!\\\\d+$).+$)}/ImageServer/query"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public GeoServices REST surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: "Protocols/ItemEndpoints:GET:/stac/collections/{collectionId}/items"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public STAC API surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: "Protocols/ItemEndpoints:GET:/stac/collections/{collectionId}/items/{itemId}"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public STAC API surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: "Protocols/JobEndpoints:DELETE:/ogc/processes/jobs/{{jobId}}"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public OGC API surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: Protocols/JobEndpoints:GET:/ogc/processes/jobs
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public OGC API surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: "Protocols/JobEndpoints:GET:/ogc/processes/jobs/{{jobId}}"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public OGC API surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: "Protocols/JobEndpoints:GET:/ogc/processes/jobs/{{jobId}}/results"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public OGC API surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: "Protocols/MapServerEndpoints:GET:/rest/services/{serviceId}/MapServer"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public GeoServices REST surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: "Protocols/MapServerEndpoints:GET:/rest/services/{serviceId}/MapServer/export"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public GeoServices REST surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: "Protocols/MapServerEndpoints:GET:/rest/services/{serviceId}/MapServer/find"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public GeoServices REST surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: "Protocols/MapServerEndpoints:GET:/rest/services/{serviceId}/MapServer/generateKml"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public GeoServices REST surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: "Protocols/MapServerEndpoints:GET:/rest/services/{serviceId}/MapServer/identify"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public GeoServices REST surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: "Protocols/MapServerEndpoints:GET:/rest/services/{serviceId}/MapServer/legend"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public GeoServices REST surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: "Protocols/MapServerEndpoints:GET:/rest/services/{serviceId}/MapServer/query"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public GeoServices REST surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: "Protocols/MapServerEndpoints:GET:/rest/services/{serviceId}/MapServer/tile/{z:int}/{y:int}/{x:int}"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public GeoServices REST surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: "Protocols/MapServerEndpoints:GET:/rest/services/{serviceId}/MapServer/{layerId:int}"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public GeoServices REST surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: "Protocols/MapServerEndpoints:GET:/rest/services/{serviceId}/MapServer/{layerId:int}/query"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public GeoServices REST surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: "Protocols/MapServerEndpoints:POST:/rest/services/{serviceId}/MapServer/export"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public GeoServices REST surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: "Protocols/MapServerEndpoints:POST:/rest/services/{serviceId}/MapServer/find"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public GeoServices REST surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: "Protocols/MapServerEndpoints:POST:/rest/services/{serviceId}/MapServer/generateKml"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public GeoServices REST surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: "Protocols/MapServerEndpoints:POST:/rest/services/{serviceId}/MapServer/identify"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public GeoServices REST surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: "Protocols/MapServerEndpoints:POST:/rest/services/{serviceId}/MapServer/query"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public GeoServices REST surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: "Protocols/MapServerEndpoints:POST:/rest/services/{serviceId}/MapServer/{layerId:int}/query"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public GeoServices REST surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: "Protocols/ODataEndpoints:DELETE:/odata/Features(LayerId={layerId:int},ObjectId={objectId:long})"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public OData surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: "Protocols/ODataEndpoints:DELETE:/odata/Features({layerId:int},{objectId:long})"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public OData surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: "Protocols/ODataEndpoints:DELETE:/odata/Layers({layerId:int})/Features({objectId:long})"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public OData surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: Protocols/ODataEndpoints:GET:/odata
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public OData surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: "Protocols/ODataEndpoints:GET:/odata/$metadata"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public OData surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: Protocols/ODataEndpoints:GET:/odata/Features
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public OData surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: "Protocols/ODataEndpoints:GET:/odata/Features(LayerId={layerId:int},ObjectId={objectId:long})"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public OData surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: "Protocols/ODataEndpoints:GET:/odata/Features(LayerId={layerId:int},ObjectId={objectId:long})/$ref"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public OData surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: "Protocols/ODataEndpoints:GET:/odata/Features(LayerId={layerId:int},ObjectId={objectId:long})/$value"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public OData surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: "Protocols/ODataEndpoints:GET:/odata/Features({layerId:int})"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public OData surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: "Protocols/ODataEndpoints:GET:/odata/Features({layerId:int})/$apply"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public OData surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: "Protocols/ODataEndpoints:GET:/odata/Features({layerId:int})/$count"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public OData surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: "Protocols/ODataEndpoints:GET:/odata/Features({layerId:int})/$search"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public OData surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: "Protocols/ODataEndpoints:GET:/odata/Features({layerId:int},{objectId:long})"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public OData surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: "Protocols/ODataEndpoints:GET:/odata/Features/$count"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public OData surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: Protocols/ODataEndpoints:GET:/odata/Layers
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public OData surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: "Protocols/ODataEndpoints:GET:/odata/Layers({layerId:int})"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public OData surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: "Protocols/ODataEndpoints:GET:/odata/Layers({layerId:int})/Features"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public OData surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: "Protocols/ODataEndpoints:GET:/odata/Layers({layerId:int})/Features({objectId:long})"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public OData surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: "Protocols/ODataEndpoints:GET:/odata/Layers({layerId:int})/Features/$count"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public OData surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: "Protocols/ODataEndpoints:GET:/odata/Layers/$count"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public OData surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: "Protocols/ODataEndpoints:PATCH:/odata/Features(LayerId={layerId:int},ObjectId={objectId:long})"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public OData surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: "Protocols/ODataEndpoints:PATCH:/odata/Features({layerId:int},{objectId:long})"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public OData surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: "Protocols/ODataEndpoints:PATCH:/odata/Layers({layerId:int})/Features({objectId:long})"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public OData surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: "Protocols/ODataEndpoints:POST:/odata/$batch"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public OData surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: Protocols/ODataEndpoints:POST:/odata/Features
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public OData surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: "Protocols/ODataEndpoints:POST:/odata/Layers({layerId:int})/Features"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public OData surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: "Protocols/ODataEndpoints:PUT:/odata/Features(LayerId={layerId:int},ObjectId={objectId:long})"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public OData surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: "Protocols/ODataEndpoints:PUT:/odata/Features({layerId:int},{objectId:long})"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public OData surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: "Protocols/ODataEndpoints:PUT:/odata/Layers({layerId:int})/Features({objectId:long})"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public OData surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: "Protocols/OgcClassicEndpoints:GET:/ogc/services/{serviceId}/wms"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public OGC API surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: "Protocols/OgcClassicEndpoints:GET:/ogc/services/{serviceId}/wmts"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public OGC API surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: "Protocols/OgcClassicEndpoints:GET:/rest/services/{serviceId}/MapServer/WMS"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public OGC API surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: "Protocols/OgcClassicEndpoints:GET:/rest/services/{serviceId}/MapServer/WMTS"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public OGC API surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: "Protocols/OgcClassicEndpoints:GET:/rest/services/{serviceId}/MapServer/WMTS/{**restPath}"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public OGC API surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: "Protocols/OgcMapsEndpoints:GET:/ogc/maps/collections/{collectionId}/map"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public OGC API surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: "Protocols/OgcMapsEndpoints:GET:/ogc/maps/collections/{collectionId}/map/tiles"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public OGC API surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: "Protocols/OgcMapsEndpoints:GET:/ogc/maps/collections/{collectionId}/map/tiles/{tileMatrixSetId}"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public OGC API surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: "Protocols/OgcMapsEndpoints:GET:/ogc/maps/collections/{collectionId}/styles/{styleId}/map"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public OGC API surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: Protocols/OgcMapsEndpoints:GET:/ogc/maps/conformance
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public OGC API surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: Protocols/OgcMapsEndpoints:GET:/ogc/maps/map
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public OGC API surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: Protocols/OgcMapsEndpoints:GET:/ogc/maps/openapi.json
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public OGC API surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: Protocols/ProcessEndpoints:GET:/ogc/processes/processes
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public OGC API surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: "Protocols/ProcessEndpoints:GET:/ogc/processes/processes/{{processId}}"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public OGC API surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: "Protocols/ProcessEndpoints:POST:/ogc/processes/processes/{{processId}}/execution"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public OGC API surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: Protocols/SearchEndpoints:GET:/stac/search
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public STAC API surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: Protocols/SearchEndpoints:POST:/stac/search
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public STAC API surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: "Protocols/TileJsonEndpoints:GET:/tiles/{layerId:int}/tile.json"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public tile API surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: Protocols/TileMatrixSetEndpoints:GET:/ogc/tiles/tileMatrixSets
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public OGC API surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: "Protocols/TileMatrixSetEndpoints:GET:/ogc/tiles/tileMatrixSets/{tileMatrixSetId}"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public OGC API surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: "Protocols/TilesEndpoints:GET:/ogc/tiles/collections/{collectionId}/tiles"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public OGC API surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: "Protocols/TilesEndpoints:GET:/ogc/tiles/collections/{collectionId}/tiles/{tileMatrixSetId}"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public OGC API surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: "Protocols/TilesEndpoints:GET:/ogc/tiles/collections/{collectionId}/tiles/{tileMatrixSetId}/{tileMatrix}/{tileRow:int}/{tileCol:int}"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public OGC API surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: Protocols/TilesEndpoints:GET:/ogc/tiles/tiles
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public OGC API surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: "Protocols/TilesEndpoints:GET:/ogc/tiles/tiles/{tileMatrixSetId}"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public OGC API surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: "Protocols/TilesEndpoints:GET:/ogc/tiles/tiles/{tileMatrixSetId}/{tileMatrix}/{tileRow:int}/{tileCol:int}"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public OGC API surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: "Spec/SpecEndpoints:GET:/v1/spec/artifact/{hash}"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Spec workspace shipped in #27; admin coverage lives in /operator/spec"
+    follow_up_ticket: "honua-server-admin#26 (delivered via PR #27)"
+    notes: ""
+  - key: Spec/SpecEndpoints:POST:/v1/spec/apply
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Spec workspace shipped in #27; admin coverage lives in /operator/spec"
+    follow_up_ticket: "honua-server-admin#26 (delivered via PR #27)"
+    notes: ""
+  - key: Spec/SpecEndpoints:POST:/v1/spec/cancel
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Spec workspace shipped in #27; admin coverage lives in /operator/spec"
+    follow_up_ticket: "honua-server-admin#26 (delivered via PR #27)"
+    notes: ""
+  - key: Spec/SpecEndpoints:POST:/v1/spec/plan
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Spec workspace shipped in #27; admin coverage lives in /operator/spec"
+    follow_up_ticket: "honua-server-admin#26 (delivered via PR #27)"
+    notes: ""
+  - key: "StaticMap/StaticMapEndpoints:GET:/static/{serviceId}/bbox/{bbox}/{dimensions}.{format}"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public static-map rendering API, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: "StaticMap/StaticMapEndpoints:GET:/static/{serviceId}/{center}/{dimensions}.{format}"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public static-map rendering API, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: "Streaming/FeatureStreamEndpoints:DELETE:/api/v{version:apiVersion}/admin/streaming/features/sessions/{sessionId:guid}"
+    coverage: missing
+    admin_page: ""
+    priority: P2
+    out_of_scope_reason: ""
+    follow_up_ticket: ""
+    notes: "Feature stream session admin (mixed admin + public surface)"
+  - key: "Streaming/FeatureStreamEndpoints:GET:/api/v{version:apiVersion}/admin/streaming/features/sessions"
+    coverage: missing
+    admin_page: ""
+    priority: P2
+    out_of_scope_reason: ""
+    follow_up_ticket: ""
+    notes: "Feature stream session admin (mixed admin + public surface)"
+  - key: "Streaming/FeatureStreamEndpoints:GET:/api/v{version:apiVersion}/streaming/features"
+    coverage: missing
+    admin_page: ""
+    priority: P2
+    out_of_scope_reason: ""
+    follow_up_ticket: ""
+    notes: "Feature stream session admin (mixed admin + public surface)"

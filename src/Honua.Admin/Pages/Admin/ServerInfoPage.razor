@@ -1,0 +1,181 @@
+@page "/server-info"
+@using System.Text.Json
+@using MudBlazor
+@inherits Honua.Admin.Shared.AdminPageBase
+
+<PageTitle>Server info - Honua Server Admin</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="mt-4">
+    <MudText Typo="Typo.h4" Class="mb-4">
+        <MudIcon Icon="@Icons.Material.Filled.Info" Class="mr-2" />
+        Server info
+    </MudText>
+
+    <ErrorBanner Message="@ErrorMessage" />
+
+    @if (IsLoading)
+    {
+        <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="240px" Animation="Animation.Wave" />
+    }
+    else if (_summary is not null)
+    {
+        <MudGrid>
+            <MudItem xs="12" md="3">
+                <MudCard Elevation="1">
+                    <MudCardContent>
+                        <MudText Typo="Typo.overline">Environment</MudText>
+                        <MudText Typo="Typo.h6">@_summary.Environment</MudText>
+                    </MudCardContent>
+                </MudCard>
+            </MudItem>
+            <MudItem xs="12" md="3">
+                <MudCard Elevation="1">
+                    <MudCardContent>
+                        <MudText Typo="Typo.overline">Configuration types</MudText>
+                        <MudText Typo="Typo.h6">@_summary.RegisteredTypes / @_summary.TotalTypes</MudText>
+                    </MudCardContent>
+                </MudCard>
+            </MudItem>
+            <MudItem xs="12" md="3">
+                <MudCard Elevation="1">
+                    <MudCardContent>
+                        <MudText Typo="Typo.overline">Properties</MudText>
+                        <MudText Typo="Typo.h6">@_summary.TotalProperties</MudText>
+                    </MudCardContent>
+                </MudCard>
+            </MudItem>
+            <MudItem xs="12" md="3">
+                <MudCard Elevation="1">
+                    <MudCardContent>
+                        <MudText Typo="Typo.overline">Secrets</MudText>
+                        <MudText Typo="Typo.h6">@_summary.ValidSecrets / @_summary.TotalSecrets valid</MudText>
+                    </MudCardContent>
+                </MudCard>
+            </MudItem>
+        </MudGrid>
+
+        <MudTabs Class="mt-6" Elevation="1" Rounded="true" PanelClass="pa-4">
+            <MudTabPanel Text="Metadata" Icon="@Icons.Material.Filled.Schema">
+                <MudTable Items="_metadata" Dense="true" Hover="true" aria-label="Configuration metadata">
+                    <HeaderContent>
+                        <MudTh>Section</MudTh>
+                        <MudTh>Type</MudTh>
+                        <MudTh>Properties</MudTh>
+                        <MudTh>Secrets</MudTh>
+                        <MudTh>Validation</MudTh>
+                    </HeaderContent>
+                    <RowTemplate>
+                        <MudTd DataLabel="Section">@context.SectionName</MudTd>
+                        <MudTd DataLabel="Type">@context.TypeName</MudTd>
+                        <MudTd DataLabel="Properties">@context.PropertyCount</MudTd>
+                        <MudTd DataLabel="Secrets">@context.SecretPropertyCount</MudTd>
+                        <MudTd DataLabel="Validation">@(context.HasValidation ? "yes" : "no")</MudTd>
+                    </RowTemplate>
+                </MudTable>
+            </MudTabPanel>
+
+            <MudTabPanel Text="Discovery" Icon="@Icons.Material.Filled.Search">
+                <MudTable Items="@(_discovery?.DiscoveredTypes ?? Array.Empty<ConfigurationTypeInfo>())" Dense="true" Hover="true">
+                    <HeaderContent>
+                        <MudTh>Section</MudTh>
+                        <MudTh>Type</MudTh>
+                        <MudTh>Assembly</MudTh>
+                        <MudTh>Registered</MudTh>
+                    </HeaderContent>
+                    <RowTemplate>
+                        <MudTd DataLabel="Section">@context.SectionName</MudTd>
+                        <MudTd DataLabel="Type">@context.TypeName</MudTd>
+                        <MudTd DataLabel="Assembly">@context.Assembly</MudTd>
+                        <MudTd DataLabel="Registered">@(context.IsRegisteredInDi ? "yes" : "no")</MudTd>
+                    </RowTemplate>
+                </MudTable>
+            </MudTabPanel>
+
+            <MudTabPanel Text="Secrets" Icon="@Icons.Material.Filled.Key">
+                <MudAlert Severity="@(_secrets.InvalidSecrets == 0 ? Severity.Success : Severity.Warning)" Class="mb-4">
+                    @_secrets.ValidSecrets of @_secrets.TotalSecrets secret references are valid.
+                </MudAlert>
+                @if (_secrets.Issues.Count == 0)
+                {
+                    <EmptyState Icon="@Icons.Material.Filled.Key" Title="No secret issues" />
+                }
+                else
+                {
+                    <MudTable Items="_secrets.Issues" Dense="true">
+                        <HeaderContent>
+                            <MudTh>Reference</MudTh>
+                            <MudTh>Severity</MudTh>
+                            <MudTh>Issue</MudTh>
+                        </HeaderContent>
+                        <RowTemplate>
+                            <MudTd>@context.SecretReference</MudTd>
+                            <MudTd>@context.Severity</MudTd>
+                            <MudTd>@context.Issue</MudTd>
+                        </RowTemplate>
+                    </MudTable>
+                }
+            </MudTabPanel>
+
+            <MudTabPanel Text="Audit" Icon="@Icons.Material.Filled.Assignment">
+                <MudSimpleTable Dense="true" Hover="true">
+                    <tbody>
+                        <tr><td>Machine</td><td>@_audit.MachineName</td></tr>
+                        <tr><td>Application</td><td>@_audit.ApplicationName</td></tr>
+                        <tr><td>Content root</td><td>@_audit.ContentRoot</td></tr>
+                        <tr><td>Total keys</td><td>@_audit.TotalConfigurationKeys</td></tr>
+                    </tbody>
+                </MudSimpleTable>
+            </MudTabPanel>
+
+            <MudTabPanel Text="Documentation" Icon="@Icons.Material.Filled.Article">
+                <MudTable Items="_documentation" Dense="true" Hover="true">
+                    <HeaderContent>
+                        <MudTh>Section</MudTh>
+                        <MudTh>Type</MudTh>
+                        <MudTh>Description</MudTh>
+                    </HeaderContent>
+                    <RowTemplate>
+                        <MudTd>@context.SectionName</MudTd>
+                        <MudTd>@context.TypeName</MudTd>
+                        <MudTd>@context.Description</MudTd>
+                    </RowTemplate>
+                </MudTable>
+            </MudTabPanel>
+
+            <MudTabPanel Text="Raw" Icon="@Icons.Material.Filled.DataObject">
+                <MudTextField Value="@_configDocumentText" Label="Config document" ReadOnly="true" Lines="10" Variant="Variant.Outlined" Class="mb-4" />
+                <MudTextField Value="@_openApiText" Label="Admin OpenAPI" ReadOnly="true" Lines="10" Variant="Variant.Outlined" />
+            </MudTabPanel>
+        </MudTabs>
+    }
+</MudContainer>
+
+@code {
+    private ConfigurationSummary? _summary;
+    private ConfigurationDiscoveryResult? _discovery;
+    private IReadOnlyList<ConfigurationMetadata> _metadata = Array.Empty<ConfigurationMetadata>();
+    private IReadOnlyList<AutoGeneratedDocumentationSection> _documentation = Array.Empty<AutoGeneratedDocumentationSection>();
+    private SecretValidationResult _secrets = new();
+    private ConfigurationAuditInfo _audit = new();
+    private string _configDocumentText = string.Empty;
+    private string _openApiText = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        Telemetry.PageNavigated("/server-info", principalId: null);
+        await ExecuteAsync(async () =>
+        {
+            _summary = await AdminClient.GetConfigurationSummaryAsync(CancellationToken.None);
+            _metadata = await AdminClient.GetConfigurationMetadataAsync(CancellationToken.None);
+            _discovery = await AdminClient.DiscoverConfigurationAsync(CancellationToken.None);
+            _documentation = await AdminClient.GetConfigurationAutoDocumentationAsync(CancellationToken.None);
+            _secrets = await AdminClient.ValidateConfigurationSecretsAsync(CancellationToken.None);
+            _audit = await AdminClient.GetConfigurationAuditInfoAsync(CancellationToken.None);
+            _configDocumentText = FormatJson(await AdminClient.GetConfigurationDocumentAsync(CancellationToken.None));
+            _openApiText = FormatJson(await AdminClient.GetAdminOpenApiAsync(CancellationToken.None));
+        });
+    }
+
+    private static string FormatJson(JsonElement element)
+        => JsonSerializer.Serialize(element, AdminJsonContext.Default.JsonElement);
+}

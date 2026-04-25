@@ -1,0 +1,4107 @@
+{
+  "schema_version": 1,
+  "honua_server_commit": "f1e643aab225162a8daea0cca91a03f9655b1a03",
+  "generated_count": 410,
+  "endpoints": [
+    {
+      "key": "Admin/AdminAuthEndpoints:GET:/api/v{version:apiVersion}/admin/auth/config",
+      "feature": "Admin",
+      "file": "AdminAuthEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/api/v{version:apiVersion}/admin/auth/config",
+      "source_file": "Admin/AdminAuthEndpoints.cs",
+      "source_line": 50
+    },
+    {
+      "key": "Admin/AdminAuthEndpoints:GET:/api/v{version:apiVersion}/admin/auth/providers/{providerKey}/logout-url",
+      "feature": "Admin",
+      "file": "AdminAuthEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/api/v{version:apiVersion}/admin/auth/providers/{providerKey}/logout-url",
+      "source_file": "Admin/AdminAuthEndpoints.cs",
+      "source_line": 72
+    },
+    {
+      "key": "Admin/AdminAuthEndpoints:GET:/api/v{version:apiVersion}/admin/auth/session",
+      "feature": "Admin",
+      "file": "AdminAuthEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/api/v{version:apiVersion}/admin/auth/session",
+      "source_file": "Admin/AdminAuthEndpoints.cs",
+      "source_line": 54
+    },
+    {
+      "key": "Admin/AdminAuthEndpoints:POST:/api/v{version:apiVersion}/admin/auth/logout",
+      "feature": "Admin",
+      "file": "AdminAuthEndpoints",
+      "kind": "http",
+      "verb": "POST",
+      "route": "/api/v{version:apiVersion}/admin/auth/logout",
+      "source_file": "Admin/AdminAuthEndpoints.cs",
+      "source_line": 68
+    },
+    {
+      "key": "Admin/AdminAuthEndpoints:POST:/api/v{version:apiVersion}/admin/auth/providers/{providerKey}/authorize-url",
+      "feature": "Admin",
+      "file": "AdminAuthEndpoints",
+      "kind": "http",
+      "verb": "POST",
+      "route": "/api/v{version:apiVersion}/admin/auth/providers/{providerKey}/authorize-url",
+      "source_file": "Admin/AdminAuthEndpoints.cs",
+      "source_line": 58
+    },
+    {
+      "key": "Admin/AdminAuthEndpoints:POST:/api/v{version:apiVersion}/admin/auth/providers/{providerKey}/token",
+      "feature": "Admin",
+      "file": "AdminAuthEndpoints",
+      "kind": "http",
+      "verb": "POST",
+      "route": "/api/v{version:apiVersion}/admin/auth/providers/{providerKey}/token",
+      "source_file": "Admin/AdminAuthEndpoints.cs",
+      "source_line": 63
+    },
+    {
+      "key": "Admin/AdminEndpoints:DELETE:/api/v{version:apiVersion}/admin/config",
+      "feature": "Admin",
+      "file": "AdminEndpoints",
+      "kind": "http",
+      "verb": "DELETE",
+      "route": "/api/v{version:apiVersion}/admin/config",
+      "source_file": "Admin/AdminEndpoints.cs",
+      "source_line": 50
+    },
+    {
+      "key": "Admin/AdminEndpoints:DELETE:/api/v{version:apiVersion}/admin/connections/{id}/tables",
+      "feature": "Admin",
+      "file": "AdminEndpoints",
+      "kind": "http",
+      "verb": "DELETE",
+      "route": "/api/v{version:apiVersion}/admin/connections/{id}/tables",
+      "source_file": "Admin/AdminEndpoints.cs",
+      "source_line": 64
+    },
+    {
+      "key": "Admin/AdminEndpoints:DELETE:/api/v{version:apiVersion}/admin/openapi.json",
+      "feature": "Admin",
+      "file": "AdminEndpoints",
+      "kind": "http",
+      "verb": "DELETE",
+      "route": "/api/v{version:apiVersion}/admin/openapi.json",
+      "source_file": "Admin/AdminEndpoints.cs",
+      "source_line": 57
+    },
+    {
+      "key": "Admin/AdminEndpoints:GET:/api/v{version:apiVersion}/admin/config",
+      "feature": "Admin",
+      "file": "AdminEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/api/v{version:apiVersion}/admin/config",
+      "source_file": "Admin/AdminEndpoints.cs",
+      "source_line": 47
+    },
+    {
+      "key": "Admin/AdminEndpoints:GET:/api/v{version:apiVersion}/admin/connections/tables",
+      "feature": "Admin",
+      "file": "AdminEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/api/v{version:apiVersion}/admin/connections/tables",
+      "source_file": "Admin/AdminEndpoints.cs",
+      "source_line": 67
+    },
+    {
+      "key": "Admin/AdminEndpoints:GET:/api/v{version:apiVersion}/admin/connections/{*path}",
+      "feature": "Admin",
+      "file": "AdminEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/api/v{version:apiVersion}/admin/connections/{*path}",
+      "source_file": "Admin/AdminEndpoints.cs",
+      "source_line": 72
+    },
+    {
+      "key": "Admin/AdminEndpoints:GET:/api/v{version:apiVersion}/admin/connections/{id}/tables",
+      "feature": "Admin",
+      "file": "AdminEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/api/v{version:apiVersion}/admin/connections/{id}/tables",
+      "source_file": "Admin/AdminEndpoints.cs",
+      "source_line": 61
+    },
+    {
+      "key": "Admin/AdminEndpoints:GET:/api/v{version:apiVersion}/admin/openapi.json",
+      "feature": "Admin",
+      "file": "AdminEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/api/v{version:apiVersion}/admin/openapi.json",
+      "source_file": "Admin/AdminEndpoints.cs",
+      "source_line": 54
+    },
+    {
+      "key": "Admin/AdminEndpoints:PATCH:/api/v{version:apiVersion}/admin/config",
+      "feature": "Admin",
+      "file": "AdminEndpoints",
+      "kind": "http",
+      "verb": "PATCH",
+      "route": "/api/v{version:apiVersion}/admin/config",
+      "source_file": "Admin/AdminEndpoints.cs",
+      "source_line": 50
+    },
+    {
+      "key": "Admin/AdminEndpoints:PATCH:/api/v{version:apiVersion}/admin/connections/{id}/tables",
+      "feature": "Admin",
+      "file": "AdminEndpoints",
+      "kind": "http",
+      "verb": "PATCH",
+      "route": "/api/v{version:apiVersion}/admin/connections/{id}/tables",
+      "source_file": "Admin/AdminEndpoints.cs",
+      "source_line": 64
+    },
+    {
+      "key": "Admin/AdminEndpoints:PATCH:/api/v{version:apiVersion}/admin/openapi.json",
+      "feature": "Admin",
+      "file": "AdminEndpoints",
+      "kind": "http",
+      "verb": "PATCH",
+      "route": "/api/v{version:apiVersion}/admin/openapi.json",
+      "source_file": "Admin/AdminEndpoints.cs",
+      "source_line": 57
+    },
+    {
+      "key": "Admin/AdminEndpoints:POST:/api/v{version:apiVersion}/admin/config",
+      "feature": "Admin",
+      "file": "AdminEndpoints",
+      "kind": "http",
+      "verb": "POST",
+      "route": "/api/v{version:apiVersion}/admin/config",
+      "source_file": "Admin/AdminEndpoints.cs",
+      "source_line": 50
+    },
+    {
+      "key": "Admin/AdminEndpoints:POST:/api/v{version:apiVersion}/admin/connections/{id}/tables",
+      "feature": "Admin",
+      "file": "AdminEndpoints",
+      "kind": "http",
+      "verb": "POST",
+      "route": "/api/v{version:apiVersion}/admin/connections/{id}/tables",
+      "source_file": "Admin/AdminEndpoints.cs",
+      "source_line": 64
+    },
+    {
+      "key": "Admin/AdminEndpoints:POST:/api/v{version:apiVersion}/admin/openapi.json",
+      "feature": "Admin",
+      "file": "AdminEndpoints",
+      "kind": "http",
+      "verb": "POST",
+      "route": "/api/v{version:apiVersion}/admin/openapi.json",
+      "source_file": "Admin/AdminEndpoints.cs",
+      "source_line": 57
+    },
+    {
+      "key": "Admin/AdminEndpoints:PUT:/api/v{version:apiVersion}/admin/config",
+      "feature": "Admin",
+      "file": "AdminEndpoints",
+      "kind": "http",
+      "verb": "PUT",
+      "route": "/api/v{version:apiVersion}/admin/config",
+      "source_file": "Admin/AdminEndpoints.cs",
+      "source_line": 50
+    },
+    {
+      "key": "Admin/AdminEndpoints:PUT:/api/v{version:apiVersion}/admin/connections/{id}/tables",
+      "feature": "Admin",
+      "file": "AdminEndpoints",
+      "kind": "http",
+      "verb": "PUT",
+      "route": "/api/v{version:apiVersion}/admin/connections/{id}/tables",
+      "source_file": "Admin/AdminEndpoints.cs",
+      "source_line": 64
+    },
+    {
+      "key": "Admin/AdminEndpoints:PUT:/api/v{version:apiVersion}/admin/openapi.json",
+      "feature": "Admin",
+      "file": "AdminEndpoints",
+      "kind": "http",
+      "verb": "PUT",
+      "route": "/api/v{version:apiVersion}/admin/openapi.json",
+      "source_file": "Admin/AdminEndpoints.cs",
+      "source_line": 57
+    },
+    {
+      "key": "Admin/AdminLayerStyleEndpoints:GET:/api/v{version:apiVersion}/admin/metadata/layers/{layerId:int}/style",
+      "feature": "Admin",
+      "file": "AdminLayerStyleEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/api/v{version:apiVersion}/admin/metadata/layers/{layerId:int}/style",
+      "source_file": "Admin/AdminLayerStyleEndpoints.cs",
+      "source_line": 30
+    },
+    {
+      "key": "Admin/AdminLayerStyleEndpoints:PUT:/api/v{version:apiVersion}/admin/metadata/layers/{layerId:int}/style",
+      "feature": "Admin",
+      "file": "AdminLayerStyleEndpoints",
+      "kind": "http",
+      "verb": "PUT",
+      "route": "/api/v{version:apiVersion}/admin/metadata/layers/{layerId:int}/style",
+      "source_file": "Admin/AdminLayerStyleEndpoints.cs",
+      "source_line": 35
+    },
+    {
+      "key": "Admin/AdminStyleSuggestionEndpoints:POST:/api/v{version:apiVersion}/admin/metadata/layers/{layerId:int}/suggest-style",
+      "feature": "Admin",
+      "file": "AdminStyleSuggestionEndpoints",
+      "kind": "http",
+      "verb": "POST",
+      "route": "/api/v{version:apiVersion}/admin/metadata/layers/{layerId:int}/suggest-style",
+      "source_file": "Admin/AdminStyleSuggestionEndpoints.cs",
+      "source_line": 34
+    },
+    {
+      "key": "Admin/AlertAdminEndpoints:DELETE:/api/v{version:apiVersion}/admin/alerts/rules/{ruleId:long}",
+      "feature": "Admin",
+      "file": "AlertAdminEndpoints",
+      "kind": "http",
+      "verb": "DELETE",
+      "route": "/api/v{version:apiVersion}/admin/alerts/rules/{ruleId:long}",
+      "source_file": "Admin/AlertAdminEndpoints.cs",
+      "source_line": 62
+    },
+    {
+      "key": "Admin/AlertAdminEndpoints:DELETE:/api/v{version:apiVersion}/admin/alerts/zones/{zoneId:long}",
+      "feature": "Admin",
+      "file": "AlertAdminEndpoints",
+      "kind": "http",
+      "verb": "DELETE",
+      "route": "/api/v{version:apiVersion}/admin/alerts/zones/{zoneId:long}",
+      "source_file": "Admin/AlertAdminEndpoints.cs",
+      "source_line": 46
+    },
+    {
+      "key": "Admin/AlertAdminEndpoints:GET:/api/v{version:apiVersion}/admin/alerts/rules",
+      "feature": "Admin",
+      "file": "AlertAdminEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/api/v{version:apiVersion}/admin/alerts/rules",
+      "source_file": "Admin/AlertAdminEndpoints.cs",
+      "source_line": 50
+    },
+    {
+      "key": "Admin/AlertAdminEndpoints:GET:/api/v{version:apiVersion}/admin/alerts/zones",
+      "feature": "Admin",
+      "file": "AlertAdminEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/api/v{version:apiVersion}/admin/alerts/zones",
+      "source_file": "Admin/AlertAdminEndpoints.cs",
+      "source_line": 34
+    },
+    {
+      "key": "Admin/AlertAdminEndpoints:POST:/api/v{version:apiVersion}/admin/alerts/rules",
+      "feature": "Admin",
+      "file": "AlertAdminEndpoints",
+      "kind": "http",
+      "verb": "POST",
+      "route": "/api/v{version:apiVersion}/admin/alerts/rules",
+      "source_file": "Admin/AlertAdminEndpoints.cs",
+      "source_line": 54
+    },
+    {
+      "key": "Admin/AlertAdminEndpoints:POST:/api/v{version:apiVersion}/admin/alerts/zones",
+      "feature": "Admin",
+      "file": "AlertAdminEndpoints",
+      "kind": "http",
+      "verb": "POST",
+      "route": "/api/v{version:apiVersion}/admin/alerts/zones",
+      "source_file": "Admin/AlertAdminEndpoints.cs",
+      "source_line": 38
+    },
+    {
+      "key": "Admin/AlertAdminEndpoints:PUT:/api/v{version:apiVersion}/admin/alerts/rules/{ruleId:long}",
+      "feature": "Admin",
+      "file": "AlertAdminEndpoints",
+      "kind": "http",
+      "verb": "PUT",
+      "route": "/api/v{version:apiVersion}/admin/alerts/rules/{ruleId:long}",
+      "source_file": "Admin/AlertAdminEndpoints.cs",
+      "source_line": 58
+    },
+    {
+      "key": "Admin/AlertAdminEndpoints:PUT:/api/v{version:apiVersion}/admin/alerts/zones/{zoneId:long}",
+      "feature": "Admin",
+      "file": "AlertAdminEndpoints",
+      "kind": "http",
+      "verb": "PUT",
+      "route": "/api/v{version:apiVersion}/admin/alerts/zones/{zoneId:long}",
+      "source_file": "Admin/AlertAdminEndpoints.cs",
+      "source_line": 42
+    },
+    {
+      "key": "Admin/CacheAdminEndpoints:GET:/api/v{version:apiVersion}/admin/cache/status",
+      "feature": "Admin",
+      "file": "CacheAdminEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/api/v{version:apiVersion}/admin/cache/status",
+      "source_file": "Admin/CacheAdminEndpoints.cs",
+      "source_line": 30
+    },
+    {
+      "key": "Admin/CacheAdminEndpoints:POST:/api/v{version:apiVersion}/admin/cache/invalidate",
+      "feature": "Admin",
+      "file": "CacheAdminEndpoints",
+      "kind": "http",
+      "verb": "POST",
+      "route": "/api/v{version:apiVersion}/admin/cache/invalidate",
+      "source_file": "Admin/CacheAdminEndpoints.cs",
+      "source_line": 35
+    },
+    {
+      "key": "Admin/CacheOperationsEndpoints:GET:/api/v{version:apiVersion}/admin/operations/cache/health",
+      "feature": "Admin",
+      "file": "CacheOperationsEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/api/v{version:apiVersion}/admin/operations/cache/health",
+      "source_file": "Admin/CacheOperationsEndpoints.cs",
+      "source_line": 32
+    },
+    {
+      "key": "Admin/CacheOperationsEndpoints:POST:/api/v{version:apiVersion}/admin/operations/cache/invalidate",
+      "feature": "Admin",
+      "file": "CacheOperationsEndpoints",
+      "kind": "http",
+      "verb": "POST",
+      "route": "/api/v{version:apiVersion}/admin/operations/cache/invalidate",
+      "source_file": "Admin/CacheOperationsEndpoints.cs",
+      "source_line": 37
+    },
+    {
+      "key": "Admin/ConfigurationDiscoveryEndpoints:GET:/api/v{version:apiVersion}/admin/configuration/audit",
+      "feature": "Admin",
+      "file": "ConfigurationDiscoveryEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/api/v{version:apiVersion}/admin/configuration/audit",
+      "source_file": "Admin/ConfigurationDiscoveryEndpoints.cs",
+      "source_line": 44
+    },
+    {
+      "key": "Admin/ConfigurationDiscoveryEndpoints:GET:/api/v{version:apiVersion}/admin/configuration/auto-documentation",
+      "feature": "Admin",
+      "file": "ConfigurationDiscoveryEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/api/v{version:apiVersion}/admin/configuration/auto-documentation",
+      "source_file": "Admin/ConfigurationDiscoveryEndpoints.cs",
+      "source_line": 36
+    },
+    {
+      "key": "Admin/ConfigurationDiscoveryEndpoints:GET:/api/v{version:apiVersion}/admin/configuration/discover",
+      "feature": "Admin",
+      "file": "ConfigurationDiscoveryEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/api/v{version:apiVersion}/admin/configuration/discover",
+      "source_file": "Admin/ConfigurationDiscoveryEndpoints.cs",
+      "source_line": 28
+    },
+    {
+      "key": "Admin/ConfigurationDiscoveryEndpoints:GET:/api/v{version:apiVersion}/admin/configuration/metadata",
+      "feature": "Admin",
+      "file": "ConfigurationDiscoveryEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/api/v{version:apiVersion}/admin/configuration/metadata",
+      "source_file": "Admin/ConfigurationDiscoveryEndpoints.cs",
+      "source_line": 32
+    },
+    {
+      "key": "Admin/ConfigurationDiscoveryEndpoints:GET:/api/v{version:apiVersion}/admin/configuration/secrets/validate",
+      "feature": "Admin",
+      "file": "ConfigurationDiscoveryEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/api/v{version:apiVersion}/admin/configuration/secrets/validate",
+      "source_file": "Admin/ConfigurationDiscoveryEndpoints.cs",
+      "source_line": 40
+    },
+    {
+      "key": "Admin/ConfigurationDiscoveryEndpoints:GET:/api/v{version:apiVersion}/admin/configuration/summary",
+      "feature": "Admin",
+      "file": "ConfigurationDiscoveryEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/api/v{version:apiVersion}/admin/configuration/summary",
+      "source_file": "Admin/ConfigurationDiscoveryEndpoints.cs",
+      "source_line": 48
+    },
+    {
+      "key": "Admin/DeployControlEndpoints:GET:/api/v{version:apiVersion}/admin/deploy/operations/{operationId}",
+      "feature": "Admin",
+      "file": "DeployControlEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/api/v{version:apiVersion}/admin/deploy/operations/{operationId}",
+      "source_file": "Admin/DeployControlEndpoints.cs",
+      "source_line": 50
+    },
+    {
+      "key": "Admin/DeployControlEndpoints:GET:/api/v{version:apiVersion}/admin/deploy/preflight",
+      "feature": "Admin",
+      "file": "DeployControlEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/api/v{version:apiVersion}/admin/deploy/preflight",
+      "source_file": "Admin/DeployControlEndpoints.cs",
+      "source_line": 35
+    },
+    {
+      "key": "Admin/DeployControlEndpoints:POST:/api/v{version:apiVersion}/admin/deploy/operations",
+      "feature": "Admin",
+      "file": "DeployControlEndpoints",
+      "kind": "http",
+      "verb": "POST",
+      "route": "/api/v{version:apiVersion}/admin/deploy/operations",
+      "source_file": "Admin/DeployControlEndpoints.cs",
+      "source_line": 45
+    },
+    {
+      "key": "Admin/DeployControlEndpoints:POST:/api/v{version:apiVersion}/admin/deploy/operations/{operationId}/rollback",
+      "feature": "Admin",
+      "file": "DeployControlEndpoints",
+      "kind": "http",
+      "verb": "POST",
+      "route": "/api/v{version:apiVersion}/admin/deploy/operations/{operationId}/rollback",
+      "source_file": "Admin/DeployControlEndpoints.cs",
+      "source_line": 60
+    },
+    {
+      "key": "Admin/DeployControlEndpoints:POST:/api/v{version:apiVersion}/admin/deploy/operations/{operationId}/submit",
+      "feature": "Admin",
+      "file": "DeployControlEndpoints",
+      "kind": "http",
+      "verb": "POST",
+      "route": "/api/v{version:apiVersion}/admin/deploy/operations/{operationId}/submit",
+      "source_file": "Admin/DeployControlEndpoints.cs",
+      "source_line": 55
+    },
+    {
+      "key": "Admin/DeployControlEndpoints:POST:/api/v{version:apiVersion}/admin/deploy/plan",
+      "feature": "Admin",
+      "file": "DeployControlEndpoints",
+      "kind": "http",
+      "verb": "POST",
+      "route": "/api/v{version:apiVersion}/admin/deploy/plan",
+      "source_file": "Admin/DeployControlEndpoints.cs",
+      "source_line": 40
+    },
+    {
+      "key": "Admin/FeatureOverviewEndpoints:GET:/api/v{version:apiVersion}/admin/features/",
+      "feature": "Admin",
+      "file": "FeatureOverviewEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/api/v{version:apiVersion}/admin/features/",
+      "source_file": "Admin/FeatureOverviewEndpoints.cs",
+      "source_line": 28
+    },
+    {
+      "key": "Admin/GeocodingAdminEndpoints:GET:/api/v{version:apiVersion}/admin/geocoding/providers",
+      "feature": "Admin",
+      "file": "GeocodingAdminEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/api/v{version:apiVersion}/admin/geocoding/providers",
+      "source_file": "Admin/GeocodingAdminEndpoints.cs",
+      "source_line": 27
+    },
+    {
+      "key": "Admin/GeocodingOperationsEndpoints:GET:/api/v{version:apiVersion}/admin/operations/geocoding/configuration",
+      "feature": "Admin",
+      "file": "GeocodingOperationsEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/api/v{version:apiVersion}/admin/operations/geocoding/configuration",
+      "source_file": "Admin/GeocodingOperationsEndpoints.cs",
+      "source_line": 33
+    },
+    {
+      "key": "Admin/GeocodingOperationsEndpoints:GET:/api/v{version:apiVersion}/admin/operations/geocoding/providers",
+      "feature": "Admin",
+      "file": "GeocodingOperationsEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/api/v{version:apiVersion}/admin/operations/geocoding/providers",
+      "source_file": "Admin/GeocodingOperationsEndpoints.cs",
+      "source_line": 28
+    },
+    {
+      "key": "Admin/IdentityAdminEndpoints:GET:/api/v{version:apiVersion}/admin/identity/providers",
+      "feature": "Admin",
+      "file": "IdentityAdminEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/api/v{version:apiVersion}/admin/identity/providers",
+      "source_file": "Admin/IdentityAdminEndpoints.cs",
+      "source_line": 33
+    },
+    {
+      "key": "Admin/IdentityAdminEndpoints:GET:/api/v{version:apiVersion}/admin/identity/providers/{providerType}/test",
+      "feature": "Admin",
+      "file": "IdentityAdminEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/api/v{version:apiVersion}/admin/identity/providers/{providerType}/test",
+      "source_file": "Admin/IdentityAdminEndpoints.cs",
+      "source_line": 38
+    },
+    {
+      "key": "Admin/LayerPublishingEndpoints:GET:/api/v{version:apiVersion}/admin/connections/{id}/layers/",
+      "feature": "Admin",
+      "file": "LayerPublishingEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/api/v{version:apiVersion}/admin/connections/{id}/layers/",
+      "source_file": "Admin/LayerPublishingEndpoints.cs",
+      "source_line": 41
+    },
+    {
+      "key": "Admin/LayerPublishingEndpoints:POST:/api/v{version:apiVersion}/admin/connections/{id}/layers/",
+      "feature": "Admin",
+      "file": "LayerPublishingEndpoints",
+      "kind": "http",
+      "verb": "POST",
+      "route": "/api/v{version:apiVersion}/admin/connections/{id}/layers/",
+      "source_file": "Admin/LayerPublishingEndpoints.cs",
+      "source_line": 45
+    },
+    {
+      "key": "Admin/LayerPublishingEndpoints:PUT:/api/v{version:apiVersion}/admin/connections/{id}/layers/enabled",
+      "feature": "Admin",
+      "file": "LayerPublishingEndpoints",
+      "kind": "http",
+      "verb": "PUT",
+      "route": "/api/v{version:apiVersion}/admin/connections/{id}/layers/enabled",
+      "source_file": "Admin/LayerPublishingEndpoints.cs",
+      "source_line": 59
+    },
+    {
+      "key": "Admin/LayerPublishingEndpoints:PUT:/api/v{version:apiVersion}/admin/connections/{id}/layers/{layerId:int}/enabled",
+      "feature": "Admin",
+      "file": "LayerPublishingEndpoints",
+      "kind": "http",
+      "verb": "PUT",
+      "route": "/api/v{version:apiVersion}/admin/connections/{id}/layers/{layerId:int}/enabled",
+      "source_file": "Admin/LayerPublishingEndpoints.cs",
+      "source_line": 55
+    },
+    {
+      "key": "Admin/LicenseAdminEndpoints:GET:/api/v{version:apiVersion}/admin/license/features",
+      "feature": "Admin",
+      "file": "LicenseAdminEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/api/v{version:apiVersion}/admin/license/features",
+      "source_file": "Admin/LicenseAdminEndpoints.cs",
+      "source_line": 33
+    },
+    {
+      "key": "Admin/LicenseAdminEndpoints:GET:/api/v{version:apiVersion}/admin/license/status",
+      "feature": "Admin",
+      "file": "LicenseAdminEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/api/v{version:apiVersion}/admin/license/status",
+      "source_file": "Admin/LicenseAdminEndpoints.cs",
+      "source_line": 28
+    },
+    {
+      "key": "Admin/LicenseAdminEndpoints:POST:/api/v{version:apiVersion}/admin/license/upload",
+      "feature": "Admin",
+      "file": "LicenseAdminEndpoints",
+      "kind": "http",
+      "verb": "POST",
+      "route": "/api/v{version:apiVersion}/admin/license/upload",
+      "source_file": "Admin/LicenseAdminEndpoints.cs",
+      "source_line": 38
+    },
+    {
+      "key": "Admin/LicenseEndpoints:GET:/api/v{version:apiVersion}/admin/license/",
+      "feature": "Admin",
+      "file": "LicenseEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/api/v{version:apiVersion}/admin/license/",
+      "source_file": "Admin/LicenseEndpoints.cs",
+      "source_line": 56
+    },
+    {
+      "key": "Admin/LicenseEndpoints:GET:/api/v{version:apiVersion}/admin/license/entitlements",
+      "feature": "Admin",
+      "file": "LicenseEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/api/v{version:apiVersion}/admin/license/entitlements",
+      "source_file": "Admin/LicenseEndpoints.cs",
+      "source_line": 64
+    },
+    {
+      "key": "Admin/LicenseEndpoints:POST:/api/v{version:apiVersion}/admin/license/",
+      "feature": "Admin",
+      "file": "LicenseEndpoints",
+      "kind": "http",
+      "verb": "POST",
+      "route": "/api/v{version:apiVersion}/admin/license/",
+      "source_file": "Admin/LicenseEndpoints.cs",
+      "source_line": 60
+    },
+    {
+      "key": "Admin/ObservabilityEndpoints:GET:/api/v{version:apiVersion}/admin/observability/errors",
+      "feature": "Admin",
+      "file": "ObservabilityEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/api/v{version:apiVersion}/admin/observability/errors",
+      "source_file": "Admin/ObservabilityEndpoints.cs",
+      "source_line": 30
+    },
+    {
+      "key": "Admin/ObservabilityEndpoints:GET:/api/v{version:apiVersion}/admin/observability/migrations",
+      "feature": "Admin",
+      "file": "ObservabilityEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/api/v{version:apiVersion}/admin/observability/migrations",
+      "source_file": "Admin/ObservabilityEndpoints.cs",
+      "source_line": 40
+    },
+    {
+      "key": "Admin/ObservabilityEndpoints:GET:/api/v{version:apiVersion}/admin/observability/telemetry",
+      "feature": "Admin",
+      "file": "ObservabilityEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/api/v{version:apiVersion}/admin/observability/telemetry",
+      "source_file": "Admin/ObservabilityEndpoints.cs",
+      "source_line": 35
+    },
+    {
+      "key": "Admin/OidcProviderEndpoints:DELETE:/api/v{version:apiVersion}/admin/oidc/providers/{id:guid}",
+      "feature": "Admin",
+      "file": "OidcProviderEndpoints",
+      "kind": "http",
+      "verb": "DELETE",
+      "route": "/api/v{version:apiVersion}/admin/oidc/providers/{id:guid}",
+      "source_file": "Admin/OidcProviderEndpoints.cs",
+      "source_line": 71
+    },
+    {
+      "key": "Admin/OidcProviderEndpoints:GET:/api/v{version:apiVersion}/admin/oidc/providers/",
+      "feature": "Admin",
+      "file": "OidcProviderEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/api/v{version:apiVersion}/admin/oidc/providers/",
+      "source_file": "Admin/OidcProviderEndpoints.cs",
+      "source_line": 55
+    },
+    {
+      "key": "Admin/OidcProviderEndpoints:GET:/api/v{version:apiVersion}/admin/oidc/providers/{id:guid}",
+      "feature": "Admin",
+      "file": "OidcProviderEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/api/v{version:apiVersion}/admin/oidc/providers/{id:guid}",
+      "source_file": "Admin/OidcProviderEndpoints.cs",
+      "source_line": 63
+    },
+    {
+      "key": "Admin/OidcProviderEndpoints:POST:/api/v{version:apiVersion}/admin/oidc/providers/",
+      "feature": "Admin",
+      "file": "OidcProviderEndpoints",
+      "kind": "http",
+      "verb": "POST",
+      "route": "/api/v{version:apiVersion}/admin/oidc/providers/",
+      "source_file": "Admin/OidcProviderEndpoints.cs",
+      "source_line": 59
+    },
+    {
+      "key": "Admin/OidcProviderEndpoints:POST:/api/v{version:apiVersion}/admin/oidc/providers/{id:guid}/test",
+      "feature": "Admin",
+      "file": "OidcProviderEndpoints",
+      "kind": "http",
+      "verb": "POST",
+      "route": "/api/v{version:apiVersion}/admin/oidc/providers/{id:guid}/test",
+      "source_file": "Admin/OidcProviderEndpoints.cs",
+      "source_line": 75
+    },
+    {
+      "key": "Admin/OidcProviderEndpoints:PUT:/api/v{version:apiVersion}/admin/oidc/providers/{id:guid}",
+      "feature": "Admin",
+      "file": "OidcProviderEndpoints",
+      "kind": "http",
+      "verb": "PUT",
+      "route": "/api/v{version:apiVersion}/admin/oidc/providers/{id:guid}",
+      "source_file": "Admin/OidcProviderEndpoints.cs",
+      "source_line": 67
+    },
+    {
+      "key": "Admin/OperationsProgressEndpoints:GET:/api/v{version:apiVersion}/admin/operations/active",
+      "feature": "Admin",
+      "file": "OperationsProgressEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/api/v{version:apiVersion}/admin/operations/active",
+      "source_file": "Admin/OperationsProgressEndpoints.cs",
+      "source_line": 58
+    },
+    {
+      "key": "Admin/OperationsProgressEndpoints:GET:/api/v{version:apiVersion}/admin/operations/type/{operationType}",
+      "feature": "Admin",
+      "file": "OperationsProgressEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/api/v{version:apiVersion}/admin/operations/type/{operationType}",
+      "source_file": "Admin/OperationsProgressEndpoints.cs",
+      "source_line": 64
+    },
+    {
+      "key": "Admin/OperationsProgressEndpoints:GET:/api/v{version:apiVersion}/admin/operations/{operationId}",
+      "feature": "Admin",
+      "file": "OperationsProgressEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/api/v{version:apiVersion}/admin/operations/{operationId}",
+      "source_file": "Admin/OperationsProgressEndpoints.cs",
+      "source_line": 46
+    },
+    {
+      "key": "Admin/OperationsProgressEndpoints:POST:/api/v{version:apiVersion}/admin/operations/{operationId}/cancel",
+      "feature": "Admin",
+      "file": "OperationsProgressEndpoints",
+      "kind": "http",
+      "verb": "POST",
+      "route": "/api/v{version:apiVersion}/admin/operations/{operationId}/cancel",
+      "source_file": "Admin/OperationsProgressEndpoints.cs",
+      "source_line": 52
+    },
+    {
+      "key": "Admin/RateLimitEndpoints:DELETE:/api/v{version:apiVersion}/admin/rate-limits/{id:guid}",
+      "feature": "Admin",
+      "file": "RateLimitEndpoints",
+      "kind": "http",
+      "verb": "DELETE",
+      "route": "/api/v{version:apiVersion}/admin/rate-limits/{id:guid}",
+      "source_file": "Admin/RateLimitEndpoints.cs",
+      "source_line": 67
+    },
+    {
+      "key": "Admin/RateLimitEndpoints:GET:/api/v{version:apiVersion}/admin/rate-limits/",
+      "feature": "Admin",
+      "file": "RateLimitEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/api/v{version:apiVersion}/admin/rate-limits/",
+      "source_file": "Admin/RateLimitEndpoints.cs",
+      "source_line": 51
+    },
+    {
+      "key": "Admin/RateLimitEndpoints:GET:/api/v{version:apiVersion}/admin/rate-limits/status",
+      "feature": "Admin",
+      "file": "RateLimitEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/api/v{version:apiVersion}/admin/rate-limits/status",
+      "source_file": "Admin/RateLimitEndpoints.cs",
+      "source_line": 71
+    },
+    {
+      "key": "Admin/RateLimitEndpoints:GET:/api/v{version:apiVersion}/admin/rate-limits/{id:guid}",
+      "feature": "Admin",
+      "file": "RateLimitEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/api/v{version:apiVersion}/admin/rate-limits/{id:guid}",
+      "source_file": "Admin/RateLimitEndpoints.cs",
+      "source_line": 59
+    },
+    {
+      "key": "Admin/RateLimitEndpoints:POST:/api/v{version:apiVersion}/admin/rate-limits/",
+      "feature": "Admin",
+      "file": "RateLimitEndpoints",
+      "kind": "http",
+      "verb": "POST",
+      "route": "/api/v{version:apiVersion}/admin/rate-limits/",
+      "source_file": "Admin/RateLimitEndpoints.cs",
+      "source_line": 55
+    },
+    {
+      "key": "Admin/RateLimitEndpoints:PUT:/api/v{version:apiVersion}/admin/rate-limits/{id:guid}",
+      "feature": "Admin",
+      "file": "RateLimitEndpoints",
+      "kind": "http",
+      "verb": "PUT",
+      "route": "/api/v{version:apiVersion}/admin/rate-limits/{id:guid}",
+      "source_file": "Admin/RateLimitEndpoints.cs",
+      "source_line": 63
+    },
+    {
+      "key": "Admin/RoleEndpoints:DELETE:/api/v{version:apiVersion}/admin/roles/{id:guid}",
+      "feature": "Admin",
+      "file": "RoleEndpoints",
+      "kind": "http",
+      "verb": "DELETE",
+      "route": "/api/v{version:apiVersion}/admin/roles/{id:guid}",
+      "source_file": "Admin/RoleEndpoints.cs",
+      "source_line": 71
+    },
+    {
+      "key": "Admin/RoleEndpoints:GET:/api/v{version:apiVersion}/admin/roles/",
+      "feature": "Admin",
+      "file": "RoleEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/api/v{version:apiVersion}/admin/roles/",
+      "source_file": "Admin/RoleEndpoints.cs",
+      "source_line": 55
+    },
+    {
+      "key": "Admin/RoleEndpoints:GET:/api/v{version:apiVersion}/admin/roles/{id:guid}",
+      "feature": "Admin",
+      "file": "RoleEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/api/v{version:apiVersion}/admin/roles/{id:guid}",
+      "source_file": "Admin/RoleEndpoints.cs",
+      "source_line": 63
+    },
+    {
+      "key": "Admin/RoleEndpoints:GET:/api/v{version:apiVersion}/admin/roles/{id:guid}/permissions",
+      "feature": "Admin",
+      "file": "RoleEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/api/v{version:apiVersion}/admin/roles/{id:guid}/permissions",
+      "source_file": "Admin/RoleEndpoints.cs",
+      "source_line": 75
+    },
+    {
+      "key": "Admin/RoleEndpoints:POST:/api/v{version:apiVersion}/admin/roles/",
+      "feature": "Admin",
+      "file": "RoleEndpoints",
+      "kind": "http",
+      "verb": "POST",
+      "route": "/api/v{version:apiVersion}/admin/roles/",
+      "source_file": "Admin/RoleEndpoints.cs",
+      "source_line": 59
+    },
+    {
+      "key": "Admin/RoleEndpoints:PUT:/api/v{version:apiVersion}/admin/roles/{id:guid}",
+      "feature": "Admin",
+      "file": "RoleEndpoints",
+      "kind": "http",
+      "verb": "PUT",
+      "route": "/api/v{version:apiVersion}/admin/roles/{id:guid}",
+      "source_file": "Admin/RoleEndpoints.cs",
+      "source_line": 67
+    },
+    {
+      "key": "Admin/RoleEndpoints:PUT:/api/v{version:apiVersion}/admin/roles/{id:guid}/permissions",
+      "feature": "Admin",
+      "file": "RoleEndpoints",
+      "kind": "http",
+      "verb": "PUT",
+      "route": "/api/v{version:apiVersion}/admin/roles/{id:guid}/permissions",
+      "source_file": "Admin/RoleEndpoints.cs",
+      "source_line": 79
+    },
+    {
+      "key": "Admin/SecureConnectionEndpoints:DELETE:/api/v{version:apiVersion}/admin/connections/{id:guid}",
+      "feature": "Admin",
+      "file": "SecureConnectionEndpoints",
+      "kind": "http",
+      "verb": "DELETE",
+      "route": "/api/v{version:apiVersion}/admin/connections/{id:guid}",
+      "source_file": "Admin/SecureConnectionEndpoints.cs",
+      "source_line": 94
+    },
+    {
+      "key": "Admin/SecureConnectionEndpoints:GET:/api/v{version:apiVersion}/admin/connections/",
+      "feature": "Admin",
+      "file": "SecureConnectionEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/api/v{version:apiVersion}/admin/connections/",
+      "source_file": "Admin/SecureConnectionEndpoints.cs",
+      "source_line": 74
+    },
+    {
+      "key": "Admin/SecureConnectionEndpoints:GET:/api/v{version:apiVersion}/admin/connections/{id:guid}",
+      "feature": "Admin",
+      "file": "SecureConnectionEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/api/v{version:apiVersion}/admin/connections/{id:guid}",
+      "source_file": "Admin/SecureConnectionEndpoints.cs",
+      "source_line": 78
+    },
+    {
+      "key": "Admin/SecureConnectionEndpoints:POST:/api/v{version:apiVersion}/admin/connections/",
+      "feature": "Admin",
+      "file": "SecureConnectionEndpoints",
+      "kind": "http",
+      "verb": "POST",
+      "route": "/api/v{version:apiVersion}/admin/connections/",
+      "source_file": "Admin/SecureConnectionEndpoints.cs",
+      "source_line": 82
+    },
+    {
+      "key": "Admin/SecureConnectionEndpoints:POST:/api/v{version:apiVersion}/admin/connections/encryption/rotate-key",
+      "feature": "Admin",
+      "file": "SecureConnectionEndpoints",
+      "kind": "http",
+      "verb": "POST",
+      "route": "/api/v{version:apiVersion}/admin/connections/encryption/rotate-key",
+      "source_file": "Admin/SecureConnectionEndpoints.cs",
+      "source_line": 108
+    },
+    {
+      "key": "Admin/SecureConnectionEndpoints:POST:/api/v{version:apiVersion}/admin/connections/encryption/validate",
+      "feature": "Admin",
+      "file": "SecureConnectionEndpoints",
+      "kind": "http",
+      "verb": "POST",
+      "route": "/api/v{version:apiVersion}/admin/connections/encryption/validate",
+      "source_file": "Admin/SecureConnectionEndpoints.cs",
+      "source_line": 104
+    },
+    {
+      "key": "Admin/SecureConnectionEndpoints:POST:/api/v{version:apiVersion}/admin/connections/test",
+      "feature": "Admin",
+      "file": "SecureConnectionEndpoints",
+      "kind": "http",
+      "verb": "POST",
+      "route": "/api/v{version:apiVersion}/admin/connections/test",
+      "source_file": "Admin/SecureConnectionEndpoints.cs",
+      "source_line": 86
+    },
+    {
+      "key": "Admin/SecureConnectionEndpoints:POST:/api/v{version:apiVersion}/admin/connections/{id:guid}/test",
+      "feature": "Admin",
+      "file": "SecureConnectionEndpoints",
+      "kind": "http",
+      "verb": "POST",
+      "route": "/api/v{version:apiVersion}/admin/connections/{id:guid}/test",
+      "source_file": "Admin/SecureConnectionEndpoints.cs",
+      "source_line": 99
+    },
+    {
+      "key": "Admin/SecureConnectionEndpoints:PUT:/api/v{version:apiVersion}/admin/connections/{id:guid}",
+      "feature": "Admin",
+      "file": "SecureConnectionEndpoints",
+      "kind": "http",
+      "verb": "PUT",
+      "route": "/api/v{version:apiVersion}/admin/connections/{id:guid}",
+      "source_file": "Admin/SecureConnectionEndpoints.cs",
+      "source_line": 90
+    },
+    {
+      "key": "Admin/ServiceSettingsEndpoints:GET:/api/v{version:apiVersion}/admin/services/",
+      "feature": "Admin",
+      "file": "ServiceSettingsEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/api/v{version:apiVersion}/admin/services/",
+      "source_file": "Admin/ServiceSettingsEndpoints.cs",
+      "source_line": 33
+    },
+    {
+      "key": "Admin/ServiceSettingsEndpoints:GET:/api/v{version:apiVersion}/admin/services/{serviceName}/settings",
+      "feature": "Admin",
+      "file": "ServiceSettingsEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/api/v{version:apiVersion}/admin/services/{serviceName}/settings",
+      "source_file": "Admin/ServiceSettingsEndpoints.cs",
+      "source_line": 37
+    },
+    {
+      "key": "Admin/ServiceSettingsEndpoints:PUT:/api/v{version:apiVersion}/admin/services/{serviceName}/access-policy",
+      "feature": "Admin",
+      "file": "ServiceSettingsEndpoints",
+      "kind": "http",
+      "verb": "PUT",
+      "route": "/api/v{version:apiVersion}/admin/services/{serviceName}/access-policy",
+      "source_file": "Admin/ServiceSettingsEndpoints.cs",
+      "source_line": 49
+    },
+    {
+      "key": "Admin/ServiceSettingsEndpoints:PUT:/api/v{version:apiVersion}/admin/services/{serviceName}/layers/{layerId:int}/metadata",
+      "feature": "Admin",
+      "file": "ServiceSettingsEndpoints",
+      "kind": "http",
+      "verb": "PUT",
+      "route": "/api/v{version:apiVersion}/admin/services/{serviceName}/layers/{layerId:int}/metadata",
+      "source_file": "Admin/ServiceSettingsEndpoints.cs",
+      "source_line": 57
+    },
+    {
+      "key": "Admin/ServiceSettingsEndpoints:PUT:/api/v{version:apiVersion}/admin/services/{serviceName}/mapserver",
+      "feature": "Admin",
+      "file": "ServiceSettingsEndpoints",
+      "kind": "http",
+      "verb": "PUT",
+      "route": "/api/v{version:apiVersion}/admin/services/{serviceName}/mapserver",
+      "source_file": "Admin/ServiceSettingsEndpoints.cs",
+      "source_line": 45
+    },
+    {
+      "key": "Admin/ServiceSettingsEndpoints:PUT:/api/v{version:apiVersion}/admin/services/{serviceName}/protocols",
+      "feature": "Admin",
+      "file": "ServiceSettingsEndpoints",
+      "kind": "http",
+      "verb": "PUT",
+      "route": "/api/v{version:apiVersion}/admin/services/{serviceName}/protocols",
+      "source_file": "Admin/ServiceSettingsEndpoints.cs",
+      "source_line": 41
+    },
+    {
+      "key": "Admin/ServiceSettingsEndpoints:PUT:/api/v{version:apiVersion}/admin/services/{serviceName}/timeinfo",
+      "feature": "Admin",
+      "file": "ServiceSettingsEndpoints",
+      "kind": "http",
+      "verb": "PUT",
+      "route": "/api/v{version:apiVersion}/admin/services/{serviceName}/timeinfo",
+      "source_file": "Admin/ServiceSettingsEndpoints.cs",
+      "source_line": 53
+    },
+    {
+      "key": "Admin/StreamingOperationsEndpoints:DELETE:/api/v{version:apiVersion}/admin/operations/streaming/subscribers/{subscriberId:guid}",
+      "feature": "Admin",
+      "file": "StreamingOperationsEndpoints",
+      "kind": "http",
+      "verb": "DELETE",
+      "route": "/api/v{version:apiVersion}/admin/operations/streaming/subscribers/{subscriberId:guid}",
+      "source_file": "Admin/StreamingOperationsEndpoints.cs",
+      "source_line": 37
+    },
+    {
+      "key": "Admin/StreamingOperationsEndpoints:GET:/api/v{version:apiVersion}/admin/operations/streaming/alerts",
+      "feature": "Admin",
+      "file": "StreamingOperationsEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/api/v{version:apiVersion}/admin/operations/streaming/alerts",
+      "source_file": "Admin/StreamingOperationsEndpoints.cs",
+      "source_line": 32
+    },
+    {
+      "key": "Admin/StreamingOperationsEndpoints:GET:/api/v{version:apiVersion}/admin/operations/streaming/subscribers",
+      "feature": "Admin",
+      "file": "StreamingOperationsEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/api/v{version:apiVersion}/admin/operations/streaming/subscribers",
+      "source_file": "Admin/StreamingOperationsEndpoints.cs",
+      "source_line": 27
+    },
+    {
+      "key": "Admin/TileOperationsEndpoints:GET:/api/v{version:apiVersion}/admin/tile-operations/jobs",
+      "feature": "Admin",
+      "file": "TileOperationsEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/api/v{version:apiVersion}/admin/tile-operations/jobs",
+      "source_file": "Admin/TileOperations/TileOperationsEndpoints.cs",
+      "source_line": 37
+    },
+    {
+      "key": "Admin/TileOperationsEndpoints:GET:/api/v{version:apiVersion}/admin/tile-operations/jobs/{jobId}",
+      "feature": "Admin",
+      "file": "TileOperationsEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/api/v{version:apiVersion}/admin/tile-operations/jobs/{jobId}",
+      "source_file": "Admin/TileOperations/TileOperationsEndpoints.cs",
+      "source_line": 32
+    },
+    {
+      "key": "Admin/TileOperationsEndpoints:POST:/api/v{version:apiVersion}/admin/tile-operations/jobs",
+      "feature": "Admin",
+      "file": "TileOperationsEndpoints",
+      "kind": "http",
+      "verb": "POST",
+      "route": "/api/v{version:apiVersion}/admin/tile-operations/jobs",
+      "source_file": "Admin/TileOperations/TileOperationsEndpoints.cs",
+      "source_line": 27
+    },
+    {
+      "key": "Admin/TileOperationsEndpoints:POST:/api/v{version:apiVersion}/admin/tile-operations/jobs/{jobId}/cancel",
+      "feature": "Admin",
+      "file": "TileOperationsEndpoints",
+      "kind": "http",
+      "verb": "POST",
+      "route": "/api/v{version:apiVersion}/admin/tile-operations/jobs/{jobId}/cancel",
+      "source_file": "Admin/TileOperations/TileOperationsEndpoints.cs",
+      "source_line": 42
+    },
+    {
+      "key": "Admin/TileOperationsEndpoints:POST:/api/v{version:apiVersion}/admin/tile-operations/jobs/{jobId}/retry",
+      "feature": "Admin",
+      "file": "TileOperationsEndpoints",
+      "kind": "http",
+      "verb": "POST",
+      "route": "/api/v{version:apiVersion}/admin/tile-operations/jobs/{jobId}/retry",
+      "source_file": "Admin/TileOperations/TileOperationsEndpoints.cs",
+      "source_line": 47
+    },
+    {
+      "key": "Admin/UserManagementEndpoints:DELETE:/api/v{version:apiVersion}/admin/users/{id}",
+      "feature": "Admin",
+      "file": "UserManagementEndpoints",
+      "kind": "http",
+      "verb": "DELETE",
+      "route": "/api/v{version:apiVersion}/admin/users/{id}",
+      "source_file": "Admin/UserManagementEndpoints.cs",
+      "source_line": 67
+    },
+    {
+      "key": "Admin/UserManagementEndpoints:GET:/api/v{version:apiVersion}/admin/users/",
+      "feature": "Admin",
+      "file": "UserManagementEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/api/v{version:apiVersion}/admin/users/",
+      "source_file": "Admin/UserManagementEndpoints.cs",
+      "source_line": 55
+    },
+    {
+      "key": "Admin/UserManagementEndpoints:GET:/api/v{version:apiVersion}/admin/users/{id}",
+      "feature": "Admin",
+      "file": "UserManagementEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/api/v{version:apiVersion}/admin/users/{id}",
+      "source_file": "Admin/UserManagementEndpoints.cs",
+      "source_line": 59
+    },
+    {
+      "key": "Admin/UserManagementEndpoints:GET:/api/v{version:apiVersion}/admin/users/{id}/effective-permissions",
+      "feature": "Admin",
+      "file": "UserManagementEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/api/v{version:apiVersion}/admin/users/{id}/effective-permissions",
+      "source_file": "Admin/UserManagementEndpoints.cs",
+      "source_line": 71
+    },
+    {
+      "key": "Admin/UserManagementEndpoints:PUT:/api/v{version:apiVersion}/admin/users/{id}/roles",
+      "feature": "Admin",
+      "file": "UserManagementEndpoints",
+      "kind": "http",
+      "verb": "PUT",
+      "route": "/api/v{version:apiVersion}/admin/users/{id}/roles",
+      "source_file": "Admin/UserManagementEndpoints.cs",
+      "source_line": 63
+    },
+    {
+      "key": "Export/ExportEndpoints:GET:/api/v{version:apiVersion}/admin/services/{serviceName}/layers/{layerId:int}/export/",
+      "feature": "Export",
+      "file": "ExportEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/api/v{version:apiVersion}/admin/services/{serviceName}/layers/{layerId:int}/export/",
+      "source_file": "Export/ExportEndpoints.cs",
+      "source_line": 47
+    },
+    {
+      "key": "Geocoding/GeocodingEndpoints:GET:/rest/services/GeocodeServer",
+      "feature": "Geocoding",
+      "file": "GeocodingEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/rest/services/GeocodeServer",
+      "source_file": "Geocoding/GeocodingEndpoints.cs",
+      "source_line": 77
+    },
+    {
+      "key": "Geocoding/GeocodingEndpoints:GET:/rest/services/GeocodeServer/findAddressCandidates",
+      "feature": "Geocoding",
+      "file": "GeocodingEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/rest/services/GeocodeServer/findAddressCandidates",
+      "source_file": "Geocoding/GeocodingEndpoints.cs",
+      "source_line": 83
+    },
+    {
+      "key": "Geocoding/GeocodingEndpoints:GET:/rest/services/GeocodeServer/geocodeAddresses",
+      "feature": "Geocoding",
+      "file": "GeocodingEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/rest/services/GeocodeServer/geocodeAddresses",
+      "source_file": "Geocoding/GeocodingEndpoints.cs",
+      "source_line": 101
+    },
+    {
+      "key": "Geocoding/GeocodingEndpoints:GET:/rest/services/GeocodeServer/reverseGeocode",
+      "feature": "Geocoding",
+      "file": "GeocodingEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/rest/services/GeocodeServer/reverseGeocode",
+      "source_file": "Geocoding/GeocodingEndpoints.cs",
+      "source_line": 89
+    },
+    {
+      "key": "Geocoding/GeocodingEndpoints:GET:/rest/services/GeocodeServer/suggest",
+      "feature": "Geocoding",
+      "file": "GeocodingEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/rest/services/GeocodeServer/suggest",
+      "source_file": "Geocoding/GeocodingEndpoints.cs",
+      "source_line": 95
+    },
+    {
+      "key": "Geocoding/GeocodingEndpoints:GET:/rest/services/{locatorName}/GeocodeServer",
+      "feature": "Geocoding",
+      "file": "GeocodingEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/rest/services/{locatorName}/GeocodeServer",
+      "source_file": "Geocoding/GeocodingEndpoints.cs",
+      "source_line": 14
+    },
+    {
+      "key": "Geocoding/GeocodingEndpoints:GET:/rest/services/{locatorName}/GeocodeServer/findAddressCandidates",
+      "feature": "Geocoding",
+      "file": "GeocodingEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/rest/services/{locatorName}/GeocodeServer/findAddressCandidates",
+      "source_file": "Geocoding/GeocodingEndpoints.cs",
+      "source_line": 21
+    },
+    {
+      "key": "Geocoding/GeocodingEndpoints:GET:/rest/services/{locatorName}/GeocodeServer/geocodeAddresses",
+      "feature": "Geocoding",
+      "file": "GeocodingEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/rest/services/{locatorName}/GeocodeServer/geocodeAddresses",
+      "source_file": "Geocoding/GeocodingEndpoints.cs",
+      "source_line": 63
+    },
+    {
+      "key": "Geocoding/GeocodingEndpoints:GET:/rest/services/{locatorName}/GeocodeServer/reverseGeocode",
+      "feature": "Geocoding",
+      "file": "GeocodingEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/rest/services/{locatorName}/GeocodeServer/reverseGeocode",
+      "source_file": "Geocoding/GeocodingEndpoints.cs",
+      "source_line": 35
+    },
+    {
+      "key": "Geocoding/GeocodingEndpoints:GET:/rest/services/{locatorName}/GeocodeServer/suggest",
+      "feature": "Geocoding",
+      "file": "GeocodingEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/rest/services/{locatorName}/GeocodeServer/suggest",
+      "source_file": "Geocoding/GeocodingEndpoints.cs",
+      "source_line": 49
+    },
+    {
+      "key": "Geocoding/GeocodingEndpoints:POST:/rest/services/{locatorName}/GeocodeServer/findAddressCandidates",
+      "feature": "Geocoding",
+      "file": "GeocodingEndpoints",
+      "kind": "http",
+      "verb": "POST",
+      "route": "/rest/services/{locatorName}/GeocodeServer/findAddressCandidates",
+      "source_file": "Geocoding/GeocodingEndpoints.cs",
+      "source_line": 28
+    },
+    {
+      "key": "Geocoding/GeocodingEndpoints:POST:/rest/services/{locatorName}/GeocodeServer/geocodeAddresses",
+      "feature": "Geocoding",
+      "file": "GeocodingEndpoints",
+      "kind": "http",
+      "verb": "POST",
+      "route": "/rest/services/{locatorName}/GeocodeServer/geocodeAddresses",
+      "source_file": "Geocoding/GeocodingEndpoints.cs",
+      "source_line": 70
+    },
+    {
+      "key": "Geocoding/GeocodingEndpoints:POST:/rest/services/{locatorName}/GeocodeServer/reverseGeocode",
+      "feature": "Geocoding",
+      "file": "GeocodingEndpoints",
+      "kind": "http",
+      "verb": "POST",
+      "route": "/rest/services/{locatorName}/GeocodeServer/reverseGeocode",
+      "source_file": "Geocoding/GeocodingEndpoints.cs",
+      "source_line": 42
+    },
+    {
+      "key": "Geocoding/GeocodingEndpoints:POST:/rest/services/{locatorName}/GeocodeServer/suggest",
+      "feature": "Geocoding",
+      "file": "GeocodingEndpoints",
+      "kind": "http",
+      "verb": "POST",
+      "route": "/rest/services/{locatorName}/GeocodeServer/suggest",
+      "source_file": "Geocoding/GeocodingEndpoints.cs",
+      "source_line": 56
+    },
+    {
+      "key": "HealthCheck/HealthEndpoints:DELETE:/healthz/live",
+      "feature": "HealthCheck",
+      "file": "HealthEndpoints",
+      "kind": "http",
+      "verb": "DELETE",
+      "route": "/healthz/live",
+      "source_file": "HealthCheck/HealthEndpoints.cs",
+      "source_line": 31
+    },
+    {
+      "key": "HealthCheck/HealthEndpoints:DELETE:/healthz/metrics",
+      "feature": "HealthCheck",
+      "file": "HealthEndpoints",
+      "kind": "http",
+      "verb": "DELETE",
+      "route": "/healthz/metrics",
+      "source_file": "HealthCheck/HealthEndpoints.cs",
+      "source_line": 43
+    },
+    {
+      "key": "HealthCheck/HealthEndpoints:DELETE:/healthz/ready",
+      "feature": "HealthCheck",
+      "file": "HealthEndpoints",
+      "kind": "http",
+      "verb": "DELETE",
+      "route": "/healthz/ready",
+      "source_file": "HealthCheck/HealthEndpoints.cs",
+      "source_line": 36
+    },
+    {
+      "key": "HealthCheck/HealthEndpoints:GET:/healthz/live",
+      "feature": "HealthCheck",
+      "file": "HealthEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/healthz/live",
+      "source_file": "HealthCheck/HealthEndpoints.cs",
+      "source_line": 29
+    },
+    {
+      "key": "HealthCheck/HealthEndpoints:GET:/healthz/metrics",
+      "feature": "HealthCheck",
+      "file": "HealthEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/healthz/metrics",
+      "source_file": "HealthCheck/HealthEndpoints.cs",
+      "source_line": 40
+    },
+    {
+      "key": "HealthCheck/HealthEndpoints:GET:/healthz/ready",
+      "feature": "HealthCheck",
+      "file": "HealthEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/healthz/ready",
+      "source_file": "HealthCheck/HealthEndpoints.cs",
+      "source_line": 34
+    },
+    {
+      "key": "HealthCheck/HealthEndpoints:PATCH:/healthz/live",
+      "feature": "HealthCheck",
+      "file": "HealthEndpoints",
+      "kind": "http",
+      "verb": "PATCH",
+      "route": "/healthz/live",
+      "source_file": "HealthCheck/HealthEndpoints.cs",
+      "source_line": 31
+    },
+    {
+      "key": "HealthCheck/HealthEndpoints:PATCH:/healthz/metrics",
+      "feature": "HealthCheck",
+      "file": "HealthEndpoints",
+      "kind": "http",
+      "verb": "PATCH",
+      "route": "/healthz/metrics",
+      "source_file": "HealthCheck/HealthEndpoints.cs",
+      "source_line": 43
+    },
+    {
+      "key": "HealthCheck/HealthEndpoints:PATCH:/healthz/ready",
+      "feature": "HealthCheck",
+      "file": "HealthEndpoints",
+      "kind": "http",
+      "verb": "PATCH",
+      "route": "/healthz/ready",
+      "source_file": "HealthCheck/HealthEndpoints.cs",
+      "source_line": 36
+    },
+    {
+      "key": "HealthCheck/HealthEndpoints:POST:/healthz/live",
+      "feature": "HealthCheck",
+      "file": "HealthEndpoints",
+      "kind": "http",
+      "verb": "POST",
+      "route": "/healthz/live",
+      "source_file": "HealthCheck/HealthEndpoints.cs",
+      "source_line": 31
+    },
+    {
+      "key": "HealthCheck/HealthEndpoints:POST:/healthz/metrics",
+      "feature": "HealthCheck",
+      "file": "HealthEndpoints",
+      "kind": "http",
+      "verb": "POST",
+      "route": "/healthz/metrics",
+      "source_file": "HealthCheck/HealthEndpoints.cs",
+      "source_line": 43
+    },
+    {
+      "key": "HealthCheck/HealthEndpoints:POST:/healthz/ready",
+      "feature": "HealthCheck",
+      "file": "HealthEndpoints",
+      "kind": "http",
+      "verb": "POST",
+      "route": "/healthz/ready",
+      "source_file": "HealthCheck/HealthEndpoints.cs",
+      "source_line": 36
+    },
+    {
+      "key": "HealthCheck/HealthEndpoints:PUT:/healthz/live",
+      "feature": "HealthCheck",
+      "file": "HealthEndpoints",
+      "kind": "http",
+      "verb": "PUT",
+      "route": "/healthz/live",
+      "source_file": "HealthCheck/HealthEndpoints.cs",
+      "source_line": 31
+    },
+    {
+      "key": "HealthCheck/HealthEndpoints:PUT:/healthz/metrics",
+      "feature": "HealthCheck",
+      "file": "HealthEndpoints",
+      "kind": "http",
+      "verb": "PUT",
+      "route": "/healthz/metrics",
+      "source_file": "HealthCheck/HealthEndpoints.cs",
+      "source_line": 43
+    },
+    {
+      "key": "HealthCheck/HealthEndpoints:PUT:/healthz/ready",
+      "feature": "HealthCheck",
+      "file": "HealthEndpoints",
+      "kind": "http",
+      "verb": "PUT",
+      "route": "/healthz/ready",
+      "source_file": "HealthCheck/HealthEndpoints.cs",
+      "source_line": 36
+    },
+    {
+      "key": "Import/GeoServerImportEndpoints:GET:/api/v{version:apiVersion}/admin/import/geoserver/jobs",
+      "feature": "Import",
+      "file": "GeoServerImportEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/api/v{version:apiVersion}/admin/import/geoserver/jobs",
+      "source_file": "Import/GeoServerImportEndpoints.cs",
+      "source_line": 42
+    },
+    {
+      "key": "Import/GeoServerImportEndpoints:GET:/api/v{version:apiVersion}/admin/import/geoserver/jobs/{jobId}",
+      "feature": "Import",
+      "file": "GeoServerImportEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/api/v{version:apiVersion}/admin/import/geoserver/jobs/{jobId}",
+      "source_file": "Import/GeoServerImportEndpoints.cs",
+      "source_line": 47
+    },
+    {
+      "key": "Import/GeoServerImportEndpoints:POST:/api/v{version:apiVersion}/admin/import/geoserver/discover",
+      "feature": "Import",
+      "file": "GeoServerImportEndpoints",
+      "kind": "http",
+      "verb": "POST",
+      "route": "/api/v{version:apiVersion}/admin/import/geoserver/discover",
+      "source_file": "Import/GeoServerImportEndpoints.cs",
+      "source_line": 32
+    },
+    {
+      "key": "Import/GeoServerImportEndpoints:POST:/api/v{version:apiVersion}/admin/import/geoserver/jobs/{jobId}/cancel",
+      "feature": "Import",
+      "file": "GeoServerImportEndpoints",
+      "kind": "http",
+      "verb": "POST",
+      "route": "/api/v{version:apiVersion}/admin/import/geoserver/jobs/{jobId}/cancel",
+      "source_file": "Import/GeoServerImportEndpoints.cs",
+      "source_line": 52
+    },
+    {
+      "key": "Import/GeoServerImportEndpoints:POST:/api/v{version:apiVersion}/admin/import/geoserver/start",
+      "feature": "Import",
+      "file": "GeoServerImportEndpoints",
+      "kind": "http",
+      "verb": "POST",
+      "route": "/api/v{version:apiVersion}/admin/import/geoserver/start",
+      "source_file": "Import/GeoServerImportEndpoints.cs",
+      "source_line": 37
+    },
+    {
+      "key": "Import/GeoservicesImportEndpoints:GET:/api/v{version:apiVersion}/admin/import/geoservices/jobs",
+      "feature": "Import",
+      "file": "GeoservicesImportEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/api/v{version:apiVersion}/admin/import/geoservices/jobs",
+      "source_file": "Import/GeoservicesImportEndpoints.cs",
+      "source_line": 38
+    },
+    {
+      "key": "Import/GeoservicesImportEndpoints:GET:/api/v{version:apiVersion}/admin/import/geoservices/jobs/{jobId}",
+      "feature": "Import",
+      "file": "GeoservicesImportEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/api/v{version:apiVersion}/admin/import/geoservices/jobs/{jobId}",
+      "source_file": "Import/GeoservicesImportEndpoints.cs",
+      "source_line": 43
+    },
+    {
+      "key": "Import/GeoservicesImportEndpoints:POST:/api/v{version:apiVersion}/admin/import/geoservices/discover",
+      "feature": "Import",
+      "file": "GeoservicesImportEndpoints",
+      "kind": "http",
+      "verb": "POST",
+      "route": "/api/v{version:apiVersion}/admin/import/geoservices/discover",
+      "source_file": "Import/GeoservicesImportEndpoints.cs",
+      "source_line": 28
+    },
+    {
+      "key": "Import/GeoservicesImportEndpoints:POST:/api/v{version:apiVersion}/admin/import/geoservices/jobs/{jobId}/cancel",
+      "feature": "Import",
+      "file": "GeoservicesImportEndpoints",
+      "kind": "http",
+      "verb": "POST",
+      "route": "/api/v{version:apiVersion}/admin/import/geoservices/jobs/{jobId}/cancel",
+      "source_file": "Import/GeoservicesImportEndpoints.cs",
+      "source_line": 48
+    },
+    {
+      "key": "Import/GeoservicesImportEndpoints:POST:/api/v{version:apiVersion}/admin/import/geoservices/start",
+      "feature": "Import",
+      "file": "GeoservicesImportEndpoints",
+      "kind": "http",
+      "verb": "POST",
+      "route": "/api/v{version:apiVersion}/admin/import/geoservices/start",
+      "source_file": "Import/GeoservicesImportEndpoints.cs",
+      "source_line": 33
+    },
+    {
+      "key": "Import/MigrationScannerEndpoints:POST:/api/v{version:apiVersion}/admin/import/scan",
+      "feature": "Import",
+      "file": "MigrationScannerEndpoints",
+      "kind": "http",
+      "verb": "POST",
+      "route": "/api/v{version:apiVersion}/admin/import/scan",
+      "source_file": "Import/MigrationScannerEndpoints.cs",
+      "source_line": 27
+    },
+    {
+      "key": "Import/RasterImportEndpoints:GET:/api/v{version:apiVersion}/admin/import/raster/formats",
+      "feature": "Import",
+      "file": "RasterImportEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/api/v{version:apiVersion}/admin/import/raster/formats",
+      "source_file": "Import/RasterImportEndpoints.cs",
+      "source_line": 53
+    },
+    {
+      "key": "Import/RasterImportEndpoints:POST:/api/v{version:apiVersion}/admin/import/raster/",
+      "feature": "Import",
+      "file": "RasterImportEndpoints",
+      "kind": "http",
+      "verb": "POST",
+      "route": "/api/v{version:apiVersion}/admin/import/raster/",
+      "source_file": "Import/RasterImportEndpoints.cs",
+      "source_line": 48
+    },
+    {
+      "key": "Infrastructure/DatabasePerformanceEndpoints:GET:/api/v{version:apiVersion}/admin/performance/database/query-cache/statistics",
+      "feature": "Infrastructure",
+      "file": "DatabasePerformanceEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/api/v{version:apiVersion}/admin/performance/database/query-cache/statistics",
+      "source_file": "Infrastructure/Monitoring/DatabasePerformanceEndpoints.cs",
+      "source_line": 35
+    },
+    {
+      "key": "Infrastructure/EnhancedPerformanceEndpoints:DELETE:/api/v{version:apiVersion}/admin/performance/enhanced/cache/invalidate",
+      "feature": "Infrastructure",
+      "file": "EnhancedPerformanceEndpoints",
+      "kind": "http",
+      "verb": "DELETE",
+      "route": "/api/v{version:apiVersion}/admin/performance/enhanced/cache/invalidate",
+      "source_file": "Infrastructure/Monitoring/EnhancedPerformanceEndpoints.cs",
+      "source_line": 101
+    },
+    {
+      "key": "Infrastructure/EnhancedPerformanceEndpoints:GET:/api/v{version:apiVersion}/admin/performance/enhanced/cache/effectiveness",
+      "feature": "Infrastructure",
+      "file": "EnhancedPerformanceEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/api/v{version:apiVersion}/admin/performance/enhanced/cache/effectiveness",
+      "source_file": "Infrastructure/Monitoring/EnhancedPerformanceEndpoints.cs",
+      "source_line": 94
+    },
+    {
+      "key": "Infrastructure/EnhancedPerformanceEndpoints:GET:/api/v{version:apiVersion}/admin/performance/enhanced/cache/statistics",
+      "feature": "Infrastructure",
+      "file": "EnhancedPerformanceEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/api/v{version:apiVersion}/admin/performance/enhanced/cache/statistics",
+      "source_file": "Infrastructure/Monitoring/EnhancedPerformanceEndpoints.cs",
+      "source_line": 87
+    },
+    {
+      "key": "Infrastructure/EnhancedPerformanceEndpoints:GET:/api/v{version:apiVersion}/admin/performance/enhanced/database/query-performance",
+      "feature": "Infrastructure",
+      "file": "EnhancedPerformanceEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/api/v{version:apiVersion}/admin/performance/enhanced/database/query-performance",
+      "source_file": "Infrastructure/Monitoring/EnhancedPerformanceEndpoints.cs",
+      "source_line": 35
+    },
+    {
+      "key": "Infrastructure/EnhancedPerformanceEndpoints:GET:/api/v{version:apiVersion}/admin/performance/enhanced/database/slow-queries",
+      "feature": "Infrastructure",
+      "file": "EnhancedPerformanceEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/api/v{version:apiVersion}/admin/performance/enhanced/database/slow-queries",
+      "source_file": "Infrastructure/Monitoring/EnhancedPerformanceEndpoints.cs",
+      "source_line": 42
+    },
+    {
+      "key": "Infrastructure/EnhancedPerformanceEndpoints:GET:/api/v{version:apiVersion}/admin/performance/enhanced/exceptions/recent",
+      "feature": "Infrastructure",
+      "file": "EnhancedPerformanceEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/api/v{version:apiVersion}/admin/performance/enhanced/exceptions/recent",
+      "source_file": "Infrastructure/Monitoring/EnhancedPerformanceEndpoints.cs",
+      "source_line": 79
+    },
+    {
+      "key": "Infrastructure/EnhancedPerformanceEndpoints:GET:/api/v{version:apiVersion}/admin/performance/enhanced/exceptions/statistics",
+      "feature": "Infrastructure",
+      "file": "EnhancedPerformanceEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/api/v{version:apiVersion}/admin/performance/enhanced/exceptions/statistics",
+      "source_file": "Infrastructure/Monitoring/EnhancedPerformanceEndpoints.cs",
+      "source_line": 72
+    },
+    {
+      "key": "Infrastructure/EnhancedPerformanceEndpoints:GET:/api/v{version:apiVersion}/admin/performance/enhanced/resources/potential-leaks",
+      "feature": "Infrastructure",
+      "file": "EnhancedPerformanceEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/api/v{version:apiVersion}/admin/performance/enhanced/resources/potential-leaks",
+      "source_file": "Infrastructure/Monitoring/EnhancedPerformanceEndpoints.cs",
+      "source_line": 57
+    },
+    {
+      "key": "Infrastructure/EnhancedPerformanceEndpoints:GET:/api/v{version:apiVersion}/admin/performance/enhanced/resources/tracking",
+      "feature": "Infrastructure",
+      "file": "EnhancedPerformanceEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/api/v{version:apiVersion}/admin/performance/enhanced/resources/tracking",
+      "source_file": "Infrastructure/Monitoring/EnhancedPerformanceEndpoints.cs",
+      "source_line": 50
+    },
+    {
+      "key": "Infrastructure/EnhancedPerformanceEndpoints:GET:/api/v{version:apiVersion}/admin/performance/enhanced/summary",
+      "feature": "Infrastructure",
+      "file": "EnhancedPerformanceEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/api/v{version:apiVersion}/admin/performance/enhanced/summary",
+      "source_file": "Infrastructure/Monitoring/EnhancedPerformanceEndpoints.cs",
+      "source_line": 110
+    },
+    {
+      "key": "Infrastructure/EnhancedPerformanceEndpoints:POST:/api/v{version:apiVersion}/admin/performance/enhanced/resources/scan-leaks",
+      "feature": "Infrastructure",
+      "file": "EnhancedPerformanceEndpoints",
+      "kind": "http",
+      "verb": "POST",
+      "route": "/api/v{version:apiVersion}/admin/performance/enhanced/resources/scan-leaks",
+      "source_file": "Infrastructure/Monitoring/EnhancedPerformanceEndpoints.cs",
+      "source_line": 65
+    },
+    {
+      "key": "Infrastructure/MetricsEndpoints:GET:/api/v{version:apiVersion}/metrics/cache",
+      "feature": "Infrastructure",
+      "file": "MetricsEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/api/v{version:apiVersion}/metrics/cache",
+      "source_file": "Infrastructure/Monitoring/MetricsEndpoints.cs",
+      "source_line": 49
+    },
+    {
+      "key": "Infrastructure/MetricsEndpoints:GET:/api/v{version:apiVersion}/metrics/database",
+      "feature": "Infrastructure",
+      "file": "MetricsEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/api/v{version:apiVersion}/metrics/database",
+      "source_file": "Infrastructure/Monitoring/MetricsEndpoints.cs",
+      "source_line": 44
+    },
+    {
+      "key": "Infrastructure/MetricsEndpoints:GET:/api/v{version:apiVersion}/metrics/health",
+      "feature": "Infrastructure",
+      "file": "MetricsEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/api/v{version:apiVersion}/metrics/health",
+      "source_file": "Infrastructure/Monitoring/MetricsEndpoints.cs",
+      "source_line": 34
+    },
+    {
+      "key": "Infrastructure/MetricsEndpoints:GET:/api/v{version:apiVersion}/metrics/memory",
+      "feature": "Infrastructure",
+      "file": "MetricsEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/api/v{version:apiVersion}/metrics/memory",
+      "source_file": "Infrastructure/Monitoring/MetricsEndpoints.cs",
+      "source_line": 54
+    },
+    {
+      "key": "Infrastructure/MetricsEndpoints:GET:/api/v{version:apiVersion}/metrics/performance",
+      "feature": "Infrastructure",
+      "file": "MetricsEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/api/v{version:apiVersion}/metrics/performance",
+      "source_file": "Infrastructure/Monitoring/MetricsEndpoints.cs",
+      "source_line": 39
+    },
+    {
+      "key": "Infrastructure/MetricsEndpoints:GET:/api/v{version:apiVersion}/metrics/streaming",
+      "feature": "Infrastructure",
+      "file": "MetricsEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/api/v{version:apiVersion}/metrics/streaming",
+      "source_file": "Infrastructure/Monitoring/MetricsEndpoints.cs",
+      "source_line": 59
+    },
+    {
+      "key": "Infrastructure/ProductionMonitoringEndpoints:GET:/monitoring/alerts",
+      "feature": "Infrastructure",
+      "file": "ProductionMonitoringEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/monitoring/alerts",
+      "source_file": "Infrastructure/Monitoring/ProductionMonitoringEndpoints.cs",
+      "source_line": 55
+    },
+    {
+      "key": "Infrastructure/ProductionMonitoringEndpoints:GET:/monitoring/health/comprehensive",
+      "feature": "Infrastructure",
+      "file": "ProductionMonitoringEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/monitoring/health/comprehensive",
+      "source_file": "Infrastructure/Monitoring/ProductionMonitoringEndpoints.cs",
+      "source_line": 67
+    },
+    {
+      "key": "Infrastructure/ProductionMonitoringEndpoints:GET:/monitoring/health/production",
+      "feature": "Infrastructure",
+      "file": "ProductionMonitoringEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/monitoring/health/production",
+      "source_file": "Infrastructure/Monitoring/ProductionMonitoringEndpoints.cs",
+      "source_line": 31
+    },
+    {
+      "key": "Infrastructure/ProductionMonitoringEndpoints:GET:/monitoring/metrics/cache",
+      "feature": "Infrastructure",
+      "file": "ProductionMonitoringEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/monitoring/metrics/cache",
+      "source_file": "Infrastructure/Monitoring/ProductionMonitoringEndpoints.cs",
+      "source_line": 43
+    },
+    {
+      "key": "Infrastructure/ProductionMonitoringEndpoints:GET:/monitoring/metrics/connection-pool",
+      "feature": "Infrastructure",
+      "file": "ProductionMonitoringEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/monitoring/metrics/connection-pool",
+      "source_file": "Infrastructure/Monitoring/ProductionMonitoringEndpoints.cs",
+      "source_line": 37
+    },
+    {
+      "key": "Infrastructure/ProductionMonitoringEndpoints:GET:/monitoring/metrics/database-resilience",
+      "feature": "Infrastructure",
+      "file": "ProductionMonitoringEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/monitoring/metrics/database-resilience",
+      "source_file": "Infrastructure/Monitoring/ProductionMonitoringEndpoints.cs",
+      "source_line": 73
+    },
+    {
+      "key": "Infrastructure/ProductionMonitoringEndpoints:GET:/monitoring/metrics/resources",
+      "feature": "Infrastructure",
+      "file": "ProductionMonitoringEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/monitoring/metrics/resources",
+      "source_file": "Infrastructure/Monitoring/ProductionMonitoringEndpoints.cs",
+      "source_line": 49
+    },
+    {
+      "key": "Infrastructure/ProductionMonitoringEndpoints:GET:/monitoring/metrics/upload-queue",
+      "feature": "Infrastructure",
+      "file": "ProductionMonitoringEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/monitoring/metrics/upload-queue",
+      "source_file": "Infrastructure/Monitoring/ProductionMonitoringEndpoints.cs",
+      "source_line": 61
+    },
+    {
+      "key": "Infrastructure/StyleEndpoints:GET:/api/styles/{layerId:int}.json",
+      "feature": "Infrastructure",
+      "file": "StyleEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/api/styles/{layerId:int}.json",
+      "source_file": "Infrastructure/Styling/StyleEndpoints.cs",
+      "source_line": 17
+    },
+    {
+      "key": "PrintingTools/PrintingToolsEndpoints:GET:/rest/services/Utilities/PrintingTools/GPServer/Export Web Map Task/execute",
+      "feature": "PrintingTools",
+      "file": "PrintingToolsEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/rest/services/Utilities/PrintingTools/GPServer/Export Web Map Task/execute",
+      "source_file": "PrintingTools/PrintingToolsEndpoints.cs",
+      "source_line": 55
+    },
+    {
+      "key": "PrintingTools/PrintingToolsEndpoints:GET:/rest/services/Utilities/PrintingTools/GPServer/Export Web Map Task/jobs/{{jobId}}",
+      "feature": "PrintingTools",
+      "file": "PrintingToolsEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/rest/services/Utilities/PrintingTools/GPServer/Export Web Map Task/jobs/{{jobId}}",
+      "source_file": "PrintingTools/PrintingToolsEndpoints.cs",
+      "source_line": 81
+    },
+    {
+      "key": "PrintingTools/PrintingToolsEndpoints:GET:/rest/services/Utilities/PrintingTools/GPServer/Export Web Map Task/jobs/{{jobId}}/results/Output_File",
+      "feature": "PrintingTools",
+      "file": "PrintingToolsEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/rest/services/Utilities/PrintingTools/GPServer/Export Web Map Task/jobs/{{jobId}}/results/Output_File",
+      "source_file": "PrintingTools/PrintingToolsEndpoints.cs",
+      "source_line": 90
+    },
+    {
+      "key": "PrintingTools/PrintingToolsEndpoints:GET:/rest/services/Utilities/PrintingTools/GPServer/Export Web Map Task/submitJob",
+      "feature": "PrintingTools",
+      "file": "PrintingToolsEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/rest/services/Utilities/PrintingTools/GPServer/Export Web Map Task/submitJob",
+      "source_file": "PrintingTools/PrintingToolsEndpoints.cs",
+      "source_line": 72
+    },
+    {
+      "key": "PrintingTools/PrintingToolsEndpoints:GET:/rest/services/Utilities/PrintingTools/GPServer/Get Layout Templates Info Task/execute",
+      "feature": "PrintingTools",
+      "file": "PrintingToolsEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/rest/services/Utilities/PrintingTools/GPServer/Get Layout Templates Info Task/execute",
+      "source_file": "PrintingTools/PrintingToolsEndpoints.cs",
+      "source_line": 99
+    },
+    {
+      "key": "PrintingTools/PrintingToolsEndpoints:POST:/rest/services/Utilities/PrintingTools/GPServer/Export Web Map Task/execute",
+      "feature": "PrintingTools",
+      "file": "PrintingToolsEndpoints",
+      "kind": "http",
+      "verb": "POST",
+      "route": "/rest/services/Utilities/PrintingTools/GPServer/Export Web Map Task/execute",
+      "source_file": "PrintingTools/PrintingToolsEndpoints.cs",
+      "source_line": 47
+    },
+    {
+      "key": "PrintingTools/PrintingToolsEndpoints:POST:/rest/services/Utilities/PrintingTools/GPServer/Export Web Map Task/submitJob",
+      "feature": "PrintingTools",
+      "file": "PrintingToolsEndpoints",
+      "kind": "http",
+      "verb": "POST",
+      "route": "/rest/services/Utilities/PrintingTools/GPServer/Export Web Map Task/submitJob",
+      "source_file": "PrintingTools/PrintingToolsEndpoints.cs",
+      "source_line": 64
+    },
+    {
+      "key": "Protocols/AttachmentEndpoints:GET:/rest/services/{serviceId}/FeatureServer/{layerId:int}/{featureId:long}/attachments",
+      "feature": "Protocols",
+      "file": "AttachmentEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/rest/services/{serviceId}/FeatureServer/{layerId:int}/{featureId:long}/attachments",
+      "source_file": "Protocols/GeoServices/FeatureServer/AttachmentEndpoints.cs",
+      "source_line": 63
+    },
+    {
+      "key": "Protocols/AttachmentEndpoints:POST:/rest/services/{serviceId}/FeatureServer/{layerId:int}/{featureId:long}/addAttachment",
+      "feature": "Protocols",
+      "file": "AttachmentEndpoints",
+      "kind": "http",
+      "verb": "POST",
+      "route": "/rest/services/{serviceId}/FeatureServer/{layerId:int}/{featureId:long}/addAttachment",
+      "source_file": "Protocols/GeoServices/FeatureServer/AttachmentEndpoints.cs",
+      "source_line": 70
+    },
+    {
+      "key": "Protocols/AttachmentEndpoints:POST:/rest/services/{serviceId}/FeatureServer/{layerId:int}/{featureId:long}/deleteAttachments",
+      "feature": "Protocols",
+      "file": "AttachmentEndpoints",
+      "kind": "http",
+      "verb": "POST",
+      "route": "/rest/services/{serviceId}/FeatureServer/{layerId:int}/{featureId:long}/deleteAttachments",
+      "source_file": "Protocols/GeoServices/FeatureServer/AttachmentEndpoints.cs",
+      "source_line": 87
+    },
+    {
+      "key": "Protocols/AttachmentEndpoints:POST:/rest/services/{serviceId}/FeatureServer/{layerId:int}/{featureId:long}/updateAttachment",
+      "feature": "Protocols",
+      "file": "AttachmentEndpoints",
+      "kind": "http",
+      "verb": "POST",
+      "route": "/rest/services/{serviceId}/FeatureServer/{layerId:int}/{featureId:long}/updateAttachment",
+      "source_file": "Protocols/GeoServices/FeatureServer/AttachmentEndpoints.cs",
+      "source_line": 79
+    },
+    {
+      "key": "Protocols/CatalogEndpoints:GET:/stac",
+      "feature": "Protocols",
+      "file": "CatalogEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/stac",
+      "source_file": "Protocols/Stac/CatalogEndpoints.cs",
+      "source_line": 27
+    },
+    {
+      "key": "Protocols/CogEndpoints:DELETE:/api/v{version:apiVersion}/admin/cloud-rasters/{id:long}",
+      "feature": "Protocols",
+      "file": "CogEndpoints",
+      "kind": "http",
+      "verb": "DELETE",
+      "route": "/api/v{version:apiVersion}/admin/cloud-rasters/{id:long}",
+      "source_file": "Protocols/Cog/CogEndpoints.cs",
+      "source_line": 53
+    },
+    {
+      "key": "Protocols/CogEndpoints:GET:/api/v{version:apiVersion}/admin/cloud-rasters/",
+      "feature": "Protocols",
+      "file": "CogEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/api/v{version:apiVersion}/admin/cloud-rasters/",
+      "source_file": "Protocols/Cog/CogEndpoints.cs",
+      "source_line": 45
+    },
+    {
+      "key": "Protocols/CogEndpoints:GET:/api/v{version:apiVersion}/admin/cloud-rasters/{id:long}",
+      "feature": "Protocols",
+      "file": "CogEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/api/v{version:apiVersion}/admin/cloud-rasters/{id:long}",
+      "source_file": "Protocols/Cog/CogEndpoints.cs",
+      "source_line": 49
+    },
+    {
+      "key": "Protocols/CogEndpoints:POST:/api/v{version:apiVersion}/admin/cloud-rasters/",
+      "feature": "Protocols",
+      "file": "CogEndpoints",
+      "kind": "http",
+      "verb": "POST",
+      "route": "/api/v{version:apiVersion}/admin/cloud-rasters/",
+      "source_file": "Protocols/Cog/CogEndpoints.cs",
+      "source_line": 41
+    },
+    {
+      "key": "Protocols/CogEndpoints:POST:/api/v{version:apiVersion}/admin/cloud-rasters/{id:long}/refresh",
+      "feature": "Protocols",
+      "file": "CogEndpoints",
+      "kind": "http",
+      "verb": "POST",
+      "route": "/api/v{version:apiVersion}/admin/cloud-rasters/{id:long}/refresh",
+      "source_file": "Protocols/Cog/CogEndpoints.cs",
+      "source_line": 57
+    },
+    {
+      "key": "Protocols/CollectionEndpoints:GET:/stac/collections",
+      "feature": "Protocols",
+      "file": "CollectionEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/stac/collections",
+      "source_file": "Protocols/Stac/CollectionEndpoints.cs",
+      "source_line": 31
+    },
+    {
+      "key": "Protocols/CollectionEndpoints:GET:/stac/collections/{collectionId}",
+      "feature": "Protocols",
+      "file": "CollectionEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/stac/collections/{collectionId}",
+      "source_file": "Protocols/Stac/CollectionEndpoints.cs",
+      "source_line": 42
+    },
+    {
+      "key": "Protocols/CollectionsEndpoints:GET:/ogc/features/collections",
+      "feature": "Protocols",
+      "file": "CollectionsEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/ogc/features/collections",
+      "source_file": "Protocols/Ogc/Api/Features/CollectionsEndpoints.cs",
+      "source_line": 52
+    },
+    {
+      "key": "Protocols/CollectionsEndpoints:GET:/ogc/features/collections/{collectionId}",
+      "feature": "Protocols",
+      "file": "CollectionsEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/ogc/features/collections/{collectionId}",
+      "source_file": "Protocols/Ogc/Api/Features/CollectionsEndpoints.cs",
+      "source_line": 63
+    },
+    {
+      "key": "Protocols/CollectionsEndpoints:GET:/ogc/features/collections/{collectionId}/queryables",
+      "feature": "Protocols",
+      "file": "CollectionsEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/ogc/features/collections/{collectionId}/queryables",
+      "source_file": "Protocols/Ogc/Api/Features/CollectionsEndpoints.cs",
+      "source_line": 74
+    },
+    {
+      "key": "Protocols/CollectionsEndpoints:GET:/ogc/tiles/collections",
+      "feature": "Protocols",
+      "file": "CollectionsEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/ogc/tiles/collections",
+      "source_file": "Protocols/Ogc/Api/Tiles/CollectionsEndpoints.cs",
+      "source_line": 28
+    },
+    {
+      "key": "Protocols/CollectionsEndpoints:GET:/ogc/tiles/collections/{collectionId}",
+      "feature": "Protocols",
+      "file": "CollectionsEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/ogc/tiles/collections/{collectionId}",
+      "source_file": "Protocols/Ogc/Api/Tiles/CollectionsEndpoints.cs",
+      "source_line": 38
+    },
+    {
+      "key": "Protocols/CoreEndpoints:GET:/ogc/features",
+      "feature": "Protocols",
+      "file": "CoreEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/ogc/features",
+      "source_file": "Protocols/Ogc/Api/Features/CoreEndpoints.cs",
+      "source_line": 25
+    },
+    {
+      "key": "Protocols/CoreEndpoints:GET:/ogc/features/api",
+      "feature": "Protocols",
+      "file": "CoreEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/ogc/features/api",
+      "source_file": "Protocols/Ogc/Api/Features/CoreEndpoints.cs",
+      "source_line": 58
+    },
+    {
+      "key": "Protocols/CoreEndpoints:GET:/ogc/features/conformance",
+      "feature": "Protocols",
+      "file": "CoreEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/ogc/features/conformance",
+      "source_file": "Protocols/Ogc/Api/Features/CoreEndpoints.cs",
+      "source_line": 36
+    },
+    {
+      "key": "Protocols/CoreEndpoints:GET:/ogc/processes/conformance",
+      "feature": "Protocols",
+      "file": "CoreEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/ogc/processes/conformance",
+      "source_file": "Protocols/Ogc/Api/Processes/CoreEndpoints.cs",
+      "source_line": 46
+    },
+    {
+      "key": "Protocols/CoreEndpoints:GET:/ogc/processes/openapi.json",
+      "feature": "Protocols",
+      "file": "CoreEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/ogc/processes/openapi.json",
+      "source_file": "Protocols/Ogc/Api/Processes/CoreEndpoints.cs",
+      "source_line": 55
+    },
+    {
+      "key": "Protocols/CoreEndpoints:GET:/ogc/tiles",
+      "feature": "Protocols",
+      "file": "CoreEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/ogc/tiles",
+      "source_file": "Protocols/Ogc/Api/Tiles/CoreEndpoints.cs",
+      "source_line": 16
+    },
+    {
+      "key": "Protocols/CoreEndpoints:GET:/ogc/tiles/conformance",
+      "feature": "Protocols",
+      "file": "CoreEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/ogc/tiles/conformance",
+      "source_file": "Protocols/Ogc/Api/Tiles/CoreEndpoints.cs",
+      "source_line": 26
+    },
+    {
+      "key": "Protocols/CoreEndpoints:GET:/ogc/tiles/openapi.json",
+      "feature": "Protocols",
+      "file": "CoreEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/ogc/tiles/openapi.json",
+      "source_file": "Protocols/Ogc/Api/Tiles/CoreEndpoints.cs",
+      "source_line": 36
+    },
+    {
+      "key": "Protocols/CoreEndpoints:GET:/openapi.json",
+      "feature": "Protocols",
+      "file": "CoreEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/openapi.json",
+      "source_file": "Protocols/Ogc/Api/Features/CoreEndpoints.cs",
+      "source_line": 47
+    },
+    {
+      "key": "Protocols/FeatureServerEndpoints:GET:/rest/services/{serviceId}/FeatureServer",
+      "feature": "Protocols",
+      "file": "FeatureServerEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/rest/services/{serviceId}/FeatureServer",
+      "source_file": "Protocols/GeoServices/FeatureServer/FeatureServerEndpoints.cs",
+      "source_line": 20
+    },
+    {
+      "key": "Protocols/FeatureServerEndpoints:GET:/rest/services/{serviceId}/FeatureServer/getEstimates",
+      "feature": "Protocols",
+      "file": "FeatureServerEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/rest/services/{serviceId}/FeatureServer/getEstimates",
+      "source_file": "Protocols/GeoServices/FeatureServer/FeatureServerEndpoints.cs",
+      "source_line": 304
+    },
+    {
+      "key": "Protocols/FeatureServerEndpoints:GET:/rest/services/{serviceId}/FeatureServer/query",
+      "feature": "Protocols",
+      "file": "FeatureServerEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/rest/services/{serviceId}/FeatureServer/query",
+      "source_file": "Protocols/GeoServices/FeatureServer/FeatureServerEndpoints.cs",
+      "source_line": 76
+    },
+    {
+      "key": "Protocols/FeatureServerEndpoints:GET:/rest/services/{serviceId}/FeatureServer/queryDomains",
+      "feature": "Protocols",
+      "file": "FeatureServerEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/rest/services/{serviceId}/FeatureServer/queryDomains",
+      "source_file": "Protocols/GeoServices/FeatureServer/FeatureServerEndpoints.cs",
+      "source_line": 362
+    },
+    {
+      "key": "Protocols/FeatureServerEndpoints:GET:/rest/services/{serviceId}/FeatureServer/relationships",
+      "feature": "Protocols",
+      "file": "FeatureServerEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/rest/services/{serviceId}/FeatureServer/relationships",
+      "source_file": "Protocols/GeoServices/FeatureServer/FeatureServerEndpoints.cs",
+      "source_line": 372
+    },
+    {
+      "key": "Protocols/FeatureServerEndpoints:GET:/rest/services/{serviceId}/FeatureServer/replicas",
+      "feature": "Protocols",
+      "file": "FeatureServerEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/rest/services/{serviceId}/FeatureServer/replicas",
+      "source_file": "Protocols/GeoServices/FeatureServer/FeatureServerEndpoints.cs",
+      "source_line": 187
+    },
+    {
+      "key": "Protocols/FeatureServerEndpoints:GET:/rest/services/{serviceId}/FeatureServer/replicas/{replicaId}",
+      "feature": "Protocols",
+      "file": "FeatureServerEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/rest/services/{serviceId}/FeatureServer/replicas/{replicaId}",
+      "source_file": "Protocols/GeoServices/FeatureServer/FeatureServerEndpoints.cs",
+      "source_line": 197
+    },
+    {
+      "key": "Protocols/FeatureServerEndpoints:GET:/rest/services/{serviceId}/FeatureServer/{layerId:int}",
+      "feature": "Protocols",
+      "file": "FeatureServerEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/rest/services/{serviceId}/FeatureServer/{layerId:int}",
+      "source_file": "Protocols/GeoServices/FeatureServer/FeatureServerEndpoints.cs",
+      "source_line": 31
+    },
+    {
+      "key": "Protocols/FeatureServerEndpoints:GET:/rest/services/{serviceId}/FeatureServer/{layerId:int}/calculate",
+      "feature": "Protocols",
+      "file": "FeatureServerEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/rest/services/{serviceId}/FeatureServer/{layerId:int}/calculate",
+      "source_file": "Protocols/GeoServices/FeatureServer/FeatureServerEndpoints.cs",
+      "source_line": 275
+    },
+    {
+      "key": "Protocols/FeatureServerEndpoints:GET:/rest/services/{serviceId}/FeatureServer/{layerId:int}/generateRenderer",
+      "feature": "Protocols",
+      "file": "FeatureServerEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/rest/services/{serviceId}/FeatureServer/{layerId:int}/generateRenderer",
+      "source_file": "Protocols/GeoServices/FeatureServer/FeatureServerEndpoints.cs",
+      "source_line": 87
+    },
+    {
+      "key": "Protocols/FeatureServerEndpoints:GET:/rest/services/{serviceId}/FeatureServer/{layerId:int}/getEstimates",
+      "feature": "Protocols",
+      "file": "FeatureServerEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/rest/services/{serviceId}/FeatureServer/{layerId:int}/getEstimates",
+      "source_file": "Protocols/GeoServices/FeatureServer/FeatureServerEndpoints.cs",
+      "source_line": 297
+    },
+    {
+      "key": "Protocols/FeatureServerEndpoints:GET:/rest/services/{serviceId}/FeatureServer/{layerId:int}/query",
+      "feature": "Protocols",
+      "file": "FeatureServerEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/rest/services/{serviceId}/FeatureServer/{layerId:int}/query",
+      "source_file": "Protocols/GeoServices/FeatureServer/FeatureServerEndpoints.cs",
+      "source_line": 42
+    },
+    {
+      "key": "Protocols/FeatureServerEndpoints:GET:/rest/services/{serviceId}/FeatureServer/{layerId:int}/queryBins",
+      "feature": "Protocols",
+      "file": "FeatureServerEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/rest/services/{serviceId}/FeatureServer/{layerId:int}/queryBins",
+      "source_file": "Protocols/GeoServices/FeatureServer/FeatureServerEndpoints.cs",
+      "source_line": 346
+    },
+    {
+      "key": "Protocols/FeatureServerEndpoints:GET:/rest/services/{serviceId}/FeatureServer/{layerId:int}/queryDateBins",
+      "feature": "Protocols",
+      "file": "FeatureServerEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/rest/services/{serviceId}/FeatureServer/{layerId:int}/queryDateBins",
+      "source_file": "Protocols/GeoServices/FeatureServer/FeatureServerEndpoints.cs",
+      "source_line": 330
+    },
+    {
+      "key": "Protocols/FeatureServerEndpoints:GET:/rest/services/{serviceId}/FeatureServer/{layerId:int}/queryH3",
+      "feature": "Protocols",
+      "file": "FeatureServerEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/rest/services/{serviceId}/FeatureServer/{layerId:int}/queryH3",
+      "source_file": "Protocols/GeoServices/FeatureServer/FeatureServerEndpoints.cs",
+      "source_line": 389
+    },
+    {
+      "key": "Protocols/FeatureServerEndpoints:GET:/rest/services/{serviceId}/FeatureServer/{layerId:int}/queryRelatedRecords",
+      "feature": "Protocols",
+      "file": "FeatureServerEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/rest/services/{serviceId}/FeatureServer/{layerId:int}/queryRelatedRecords",
+      "source_file": "Protocols/GeoServices/FeatureServer/FeatureServerEndpoints.cs",
+      "source_line": 152
+    },
+    {
+      "key": "Protocols/FeatureServerEndpoints:GET:/rest/services/{serviceId}/FeatureServer/{layerId:int}/queryTopFeatures",
+      "feature": "Protocols",
+      "file": "FeatureServerEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/rest/services/{serviceId}/FeatureServer/{layerId:int}/queryTopFeatures",
+      "source_file": "Protocols/GeoServices/FeatureServer/FeatureServerEndpoints.cs",
+      "source_line": 314
+    },
+    {
+      "key": "Protocols/FeatureServerEndpoints:GET:/rest/services/{serviceId}/FeatureServer/{layerId:int}/validateSQL",
+      "feature": "Protocols",
+      "file": "FeatureServerEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/rest/services/{serviceId}/FeatureServer/{layerId:int}/validateSQL",
+      "source_file": "Protocols/GeoServices/FeatureServer/FeatureServerEndpoints.cs",
+      "source_line": 382
+    },
+    {
+      "key": "Protocols/FeatureServerEndpoints:GET:/tiles/{layerId:int}/h3/{z:int}/{x:int}/{y:int}.mvt",
+      "feature": "Protocols",
+      "file": "FeatureServerEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/tiles/{layerId:int}/h3/{z:int}/{x:int}/{y:int}.mvt",
+      "source_file": "Protocols/GeoServices/FeatureServer/FeatureServerEndpoints.cs",
+      "source_line": 405
+    },
+    {
+      "key": "Protocols/FeatureServerEndpoints:GET:/tiles/{layerId:int}/{z:int}/{x:int}/{y:int}.mvt",
+      "feature": "Protocols",
+      "file": "FeatureServerEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/tiles/{layerId:int}/{z:int}/{x:int}/{y:int}.mvt",
+      "source_file": "Protocols/GeoServices/FeatureServer/FeatureServerEndpoints.cs",
+      "source_line": 174
+    },
+    {
+      "key": "Protocols/FeatureServerEndpoints:POST:/rest/services/{serviceId}/FeatureServer/append",
+      "feature": "Protocols",
+      "file": "FeatureServerEndpoints",
+      "kind": "http",
+      "verb": "POST",
+      "route": "/rest/services/{serviceId}/FeatureServer/append",
+      "source_file": "Protocols/GeoServices/FeatureServer/FeatureServerEndpoints.cs",
+      "source_line": 253
+    },
+    {
+      "key": "Protocols/FeatureServerEndpoints:POST:/rest/services/{serviceId}/FeatureServer/applyEdits",
+      "feature": "Protocols",
+      "file": "FeatureServerEndpoints",
+      "kind": "http",
+      "verb": "POST",
+      "route": "/rest/services/{serviceId}/FeatureServer/applyEdits",
+      "source_file": "Protocols/GeoServices/FeatureServer/FeatureServerEndpoints.cs",
+      "source_line": 97
+    },
+    {
+      "key": "Protocols/FeatureServerEndpoints:POST:/rest/services/{serviceId}/FeatureServer/createReplica",
+      "feature": "Protocols",
+      "file": "FeatureServerEndpoints",
+      "kind": "http",
+      "verb": "POST",
+      "route": "/rest/services/{serviceId}/FeatureServer/createReplica",
+      "source_file": "Protocols/GeoServices/FeatureServer/FeatureServerEndpoints.cs",
+      "source_line": 207
+    },
+    {
+      "key": "Protocols/FeatureServerEndpoints:POST:/rest/services/{serviceId}/FeatureServer/extractChanges",
+      "feature": "Protocols",
+      "file": "FeatureServerEndpoints",
+      "kind": "http",
+      "verb": "POST",
+      "route": "/rest/services/{serviceId}/FeatureServer/extractChanges",
+      "source_file": "Protocols/GeoServices/FeatureServer/FeatureServerEndpoints.cs",
+      "source_line": 219
+    },
+    {
+      "key": "Protocols/FeatureServerEndpoints:POST:/rest/services/{serviceId}/FeatureServer/synchronizeReplica",
+      "feature": "Protocols",
+      "file": "FeatureServerEndpoints",
+      "kind": "http",
+      "verb": "POST",
+      "route": "/rest/services/{serviceId}/FeatureServer/synchronizeReplica",
+      "source_file": "Protocols/GeoServices/FeatureServer/FeatureServerEndpoints.cs",
+      "source_line": 230
+    },
+    {
+      "key": "Protocols/FeatureServerEndpoints:POST:/rest/services/{serviceId}/FeatureServer/unRegisterReplica",
+      "feature": "Protocols",
+      "file": "FeatureServerEndpoints",
+      "kind": "http",
+      "verb": "POST",
+      "route": "/rest/services/{serviceId}/FeatureServer/unRegisterReplica",
+      "source_file": "Protocols/GeoServices/FeatureServer/FeatureServerEndpoints.cs",
+      "source_line": 241
+    },
+    {
+      "key": "Protocols/FeatureServerEndpoints:POST:/rest/services/{serviceId}/FeatureServer/{layerId:int}/addFeatures",
+      "feature": "Protocols",
+      "file": "FeatureServerEndpoints",
+      "kind": "http",
+      "verb": "POST",
+      "route": "/rest/services/{serviceId}/FeatureServer/{layerId:int}/addFeatures",
+      "source_file": "Protocols/GeoServices/FeatureServer/FeatureServerEndpoints.cs",
+      "source_line": 119
+    },
+    {
+      "key": "Protocols/FeatureServerEndpoints:POST:/rest/services/{serviceId}/FeatureServer/{layerId:int}/append",
+      "feature": "Protocols",
+      "file": "FeatureServerEndpoints",
+      "kind": "http",
+      "verb": "POST",
+      "route": "/rest/services/{serviceId}/FeatureServer/{layerId:int}/append",
+      "source_file": "Protocols/GeoServices/FeatureServer/FeatureServerEndpoints.cs",
+      "source_line": 264
+    },
+    {
+      "key": "Protocols/FeatureServerEndpoints:POST:/rest/services/{serviceId}/FeatureServer/{layerId:int}/applyEdits",
+      "feature": "Protocols",
+      "file": "FeatureServerEndpoints",
+      "kind": "http",
+      "verb": "POST",
+      "route": "/rest/services/{serviceId}/FeatureServer/{layerId:int}/applyEdits",
+      "source_file": "Protocols/GeoServices/FeatureServer/FeatureServerEndpoints.cs",
+      "source_line": 108
+    },
+    {
+      "key": "Protocols/FeatureServerEndpoints:POST:/rest/services/{serviceId}/FeatureServer/{layerId:int}/calculate",
+      "feature": "Protocols",
+      "file": "FeatureServerEndpoints",
+      "kind": "http",
+      "verb": "POST",
+      "route": "/rest/services/{serviceId}/FeatureServer/{layerId:int}/calculate",
+      "source_file": "Protocols/GeoServices/FeatureServer/FeatureServerEndpoints.cs",
+      "source_line": 286
+    },
+    {
+      "key": "Protocols/FeatureServerEndpoints:POST:/rest/services/{serviceId}/FeatureServer/{layerId:int}/deleteFeatures",
+      "feature": "Protocols",
+      "file": "FeatureServerEndpoints",
+      "kind": "http",
+      "verb": "POST",
+      "route": "/rest/services/{serviceId}/FeatureServer/{layerId:int}/deleteFeatures",
+      "source_file": "Protocols/GeoServices/FeatureServer/FeatureServerEndpoints.cs",
+      "source_line": 141
+    },
+    {
+      "key": "Protocols/FeatureServerEndpoints:POST:/rest/services/{serviceId}/FeatureServer/{layerId:int}/query",
+      "feature": "Protocols",
+      "file": "FeatureServerEndpoints",
+      "kind": "http",
+      "verb": "POST",
+      "route": "/rest/services/{serviceId}/FeatureServer/{layerId:int}/query",
+      "source_file": "Protocols/GeoServices/FeatureServer/FeatureServerEndpoints.cs",
+      "source_line": 59
+    },
+    {
+      "key": "Protocols/FeatureServerEndpoints:POST:/rest/services/{serviceId}/FeatureServer/{layerId:int}/queryBins",
+      "feature": "Protocols",
+      "file": "FeatureServerEndpoints",
+      "kind": "http",
+      "verb": "POST",
+      "route": "/rest/services/{serviceId}/FeatureServer/{layerId:int}/queryBins",
+      "source_file": "Protocols/GeoServices/FeatureServer/FeatureServerEndpoints.cs",
+      "source_line": 354
+    },
+    {
+      "key": "Protocols/FeatureServerEndpoints:POST:/rest/services/{serviceId}/FeatureServer/{layerId:int}/queryDateBins",
+      "feature": "Protocols",
+      "file": "FeatureServerEndpoints",
+      "kind": "http",
+      "verb": "POST",
+      "route": "/rest/services/{serviceId}/FeatureServer/{layerId:int}/queryDateBins",
+      "source_file": "Protocols/GeoServices/FeatureServer/FeatureServerEndpoints.cs",
+      "source_line": 338
+    },
+    {
+      "key": "Protocols/FeatureServerEndpoints:POST:/rest/services/{serviceId}/FeatureServer/{layerId:int}/queryH3",
+      "feature": "Protocols",
+      "file": "FeatureServerEndpoints",
+      "kind": "http",
+      "verb": "POST",
+      "route": "/rest/services/{serviceId}/FeatureServer/{layerId:int}/queryH3",
+      "source_file": "Protocols/GeoServices/FeatureServer/FeatureServerEndpoints.cs",
+      "source_line": 397
+    },
+    {
+      "key": "Protocols/FeatureServerEndpoints:POST:/rest/services/{serviceId}/FeatureServer/{layerId:int}/queryRelatedRecords",
+      "feature": "Protocols",
+      "file": "FeatureServerEndpoints",
+      "kind": "http",
+      "verb": "POST",
+      "route": "/rest/services/{serviceId}/FeatureServer/{layerId:int}/queryRelatedRecords",
+      "source_file": "Protocols/GeoServices/FeatureServer/FeatureServerEndpoints.cs",
+      "source_line": 163
+    },
+    {
+      "key": "Protocols/FeatureServerEndpoints:POST:/rest/services/{serviceId}/FeatureServer/{layerId:int}/queryTopFeatures",
+      "feature": "Protocols",
+      "file": "FeatureServerEndpoints",
+      "kind": "http",
+      "verb": "POST",
+      "route": "/rest/services/{serviceId}/FeatureServer/{layerId:int}/queryTopFeatures",
+      "source_file": "Protocols/GeoServices/FeatureServer/FeatureServerEndpoints.cs",
+      "source_line": 322
+    },
+    {
+      "key": "Protocols/FeatureServerEndpoints:POST:/rest/services/{serviceId}/FeatureServer/{layerId:int}/updateFeatures",
+      "feature": "Protocols",
+      "file": "FeatureServerEndpoints",
+      "kind": "http",
+      "verb": "POST",
+      "route": "/rest/services/{serviceId}/FeatureServer/{layerId:int}/updateFeatures",
+      "source_file": "Protocols/GeoServices/FeatureServer/FeatureServerEndpoints.cs",
+      "source_line": 130
+    },
+    {
+      "key": "Protocols/FeaturesEndpoints:DELETE:/ogc/features/collections/{collectionId}/items/{featureId}",
+      "feature": "Protocols",
+      "file": "FeaturesEndpoints",
+      "kind": "http",
+      "verb": "DELETE",
+      "route": "/ogc/features/collections/{collectionId}/items/{featureId}",
+      "source_file": "Protocols/Ogc/Api/Features/FeaturesEndpoints.cs",
+      "source_line": 94
+    },
+    {
+      "key": "Protocols/FeaturesEndpoints:GET:/ogc/features/collections/{collectionId}/items",
+      "feature": "Protocols",
+      "file": "FeaturesEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/ogc/features/collections/{collectionId}/items",
+      "source_file": "Protocols/Ogc/Api/Features/FeaturesEndpoints.cs",
+      "source_line": 24
+    },
+    {
+      "key": "Protocols/FeaturesEndpoints:GET:/ogc/features/collections/{collectionId}/items/{featureId}",
+      "feature": "Protocols",
+      "file": "FeaturesEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/ogc/features/collections/{collectionId}/items/{featureId}",
+      "source_file": "Protocols/Ogc/Api/Features/FeaturesEndpoints.cs",
+      "source_line": 38
+    },
+    {
+      "key": "Protocols/FeaturesEndpoints:POST:/ogc/features/collections/{collectionId}/items",
+      "feature": "Protocols",
+      "file": "FeaturesEndpoints",
+      "kind": "http",
+      "verb": "POST",
+      "route": "/ogc/features/collections/{collectionId}/items",
+      "source_file": "Protocols/Ogc/Api/Features/FeaturesEndpoints.cs",
+      "source_line": 52
+    },
+    {
+      "key": "Protocols/FeaturesEndpoints:POST:/ogc/features/collections/{collectionId}/items/batch",
+      "feature": "Protocols",
+      "file": "FeaturesEndpoints",
+      "kind": "http",
+      "verb": "POST",
+      "route": "/ogc/features/collections/{collectionId}/items/batch",
+      "source_file": "Protocols/Ogc/Api/Features/FeaturesEndpoints.cs",
+      "source_line": 105
+    },
+    {
+      "key": "Protocols/FeaturesEndpoints:PUT:/ogc/features/collections/{collectionId}/items/{featureId}",
+      "feature": "Protocols",
+      "file": "FeaturesEndpoints",
+      "kind": "http",
+      "verb": "PUT",
+      "route": "/ogc/features/collections/{collectionId}/items/{featureId}",
+      "source_file": "Protocols/Ogc/Api/Features/FeaturesEndpoints.cs",
+      "source_line": 65
+    },
+    {
+      "key": "Protocols/GPServerEndpoints:GET:/rest/services/{serviceId}/GPServer/{{taskName}}",
+      "feature": "Protocols",
+      "file": "GPServerEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/rest/services/{serviceId}/GPServer/{{taskName}}",
+      "source_file": "Protocols/GeoServices/GPServer/GPServerEndpoints.cs",
+      "source_line": 50
+    },
+    {
+      "key": "Protocols/GPServerEndpoints:GET:/rest/services/{serviceId}/GPServer/{{taskName}}/jobs/{{jobId}}",
+      "feature": "Protocols",
+      "file": "GPServerEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/rest/services/{serviceId}/GPServer/{{taskName}}/jobs/{{jobId}}",
+      "source_file": "Protocols/GeoServices/GPServer/GPServerEndpoints.cs",
+      "source_line": 84
+    },
+    {
+      "key": "Protocols/GPServerEndpoints:GET:/rest/services/{serviceId}/GPServer/{{taskName}}/jobs/{{jobId}}/cancel",
+      "feature": "Protocols",
+      "file": "GPServerEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/rest/services/{serviceId}/GPServer/{{taskName}}/jobs/{{jobId}}/cancel",
+      "source_file": "Protocols/GeoServices/GPServer/GPServerEndpoints.cs",
+      "source_line": 102
+    },
+    {
+      "key": "Protocols/GPServerEndpoints:GET:/rest/services/{serviceId}/GPServer/{{taskName}}/jobs/{{jobId}}/results/{{paramName}}",
+      "feature": "Protocols",
+      "file": "GPServerEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/rest/services/{serviceId}/GPServer/{{taskName}}/jobs/{{jobId}}/results/{{paramName}}",
+      "source_file": "Protocols/GeoServices/GPServer/GPServerEndpoints.cs",
+      "source_line": 93
+    },
+    {
+      "key": "Protocols/GPServerEndpoints:GET:/rest/services/{serviceId}/GPServer/{{taskName}}/submitJob",
+      "feature": "Protocols",
+      "file": "GPServerEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/rest/services/{serviceId}/GPServer/{{taskName}}/submitJob",
+      "source_file": "Protocols/GeoServices/GPServer/GPServerEndpoints.cs",
+      "source_line": 75
+    },
+    {
+      "key": "Protocols/GPServerEndpoints:POST:/rest/services/{serviceId}/GPServer/{{taskName}}",
+      "feature": "Protocols",
+      "file": "GPServerEndpoints",
+      "kind": "http",
+      "verb": "POST",
+      "route": "/rest/services/{serviceId}/GPServer/{{taskName}}",
+      "source_file": "Protocols/GeoServices/GPServer/GPServerEndpoints.cs",
+      "source_line": 58
+    },
+    {
+      "key": "Protocols/GPServerEndpoints:POST:/rest/services/{serviceId}/GPServer/{{taskName}}/jobs/{{jobId}}/cancel",
+      "feature": "Protocols",
+      "file": "GPServerEndpoints",
+      "kind": "http",
+      "verb": "POST",
+      "route": "/rest/services/{serviceId}/GPServer/{{taskName}}/jobs/{{jobId}}/cancel",
+      "source_file": "Protocols/GeoServices/GPServer/GPServerEndpoints.cs",
+      "source_line": 110
+    },
+    {
+      "key": "Protocols/GPServerEndpoints:POST:/rest/services/{serviceId}/GPServer/{{taskName}}/submitJob",
+      "feature": "Protocols",
+      "file": "GPServerEndpoints",
+      "kind": "http",
+      "verb": "POST",
+      "route": "/rest/services/{serviceId}/GPServer/{{taskName}}/submitJob",
+      "source_file": "Protocols/GeoServices/GPServer/GPServerEndpoints.cs",
+      "source_line": 67
+    },
+    {
+      "key": "Protocols/GeometryServiceEndpoints:GET:/rest/services/Utilities/Geometry/GeometryServer/areasAndLengths",
+      "feature": "Protocols",
+      "file": "GeometryServiceEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/rest/services/Utilities/Geometry/GeometryServer/areasAndLengths",
+      "source_file": "Protocols/GeoServices/GeometryService/GeometryServiceEndpoints.cs",
+      "source_line": 101
+    },
+    {
+      "key": "Protocols/GeometryServiceEndpoints:GET:/rest/services/Utilities/Geometry/GeometryServer/buffer",
+      "feature": "Protocols",
+      "file": "GeometryServiceEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/rest/services/Utilities/Geometry/GeometryServer/buffer",
+      "source_file": "Protocols/GeoServices/GeometryService/GeometryServiceEndpoints.cs",
+      "source_line": 31
+    },
+    {
+      "key": "Protocols/GeometryServiceEndpoints:GET:/rest/services/Utilities/Geometry/GeometryServer/clip",
+      "feature": "Protocols",
+      "file": "GeometryServiceEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/rest/services/Utilities/Geometry/GeometryServer/clip",
+      "source_file": "Protocols/GeoServices/GeometryService/GeometryServiceEndpoints.cs",
+      "source_line": 81
+    },
+    {
+      "key": "Protocols/GeometryServiceEndpoints:GET:/rest/services/Utilities/Geometry/GeometryServer/difference",
+      "feature": "Protocols",
+      "file": "GeometryServiceEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/rest/services/Utilities/Geometry/GeometryServer/difference",
+      "source_file": "Protocols/GeoServices/GeometryService/GeometryServiceEndpoints.cs",
+      "source_line": 91
+    },
+    {
+      "key": "Protocols/GeometryServiceEndpoints:GET:/rest/services/Utilities/Geometry/GeometryServer/intersect",
+      "feature": "Protocols",
+      "file": "GeometryServiceEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/rest/services/Utilities/Geometry/GeometryServer/intersect",
+      "source_file": "Protocols/GeoServices/GeometryService/GeometryServiceEndpoints.cs",
+      "source_line": 61
+    },
+    {
+      "key": "Protocols/GeometryServiceEndpoints:GET:/rest/services/Utilities/Geometry/GeometryServer/lengths",
+      "feature": "Protocols",
+      "file": "GeometryServiceEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/rest/services/Utilities/Geometry/GeometryServer/lengths",
+      "source_file": "Protocols/GeoServices/GeometryService/GeometryServiceEndpoints.cs",
+      "source_line": 111
+    },
+    {
+      "key": "Protocols/GeometryServiceEndpoints:GET:/rest/services/Utilities/Geometry/GeometryServer/project",
+      "feature": "Protocols",
+      "file": "GeometryServiceEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/rest/services/Utilities/Geometry/GeometryServer/project",
+      "source_file": "Protocols/GeoServices/GeometryService/GeometryServiceEndpoints.cs",
+      "source_line": 51
+    },
+    {
+      "key": "Protocols/GeometryServiceEndpoints:GET:/rest/services/Utilities/Geometry/GeometryServer/simplify",
+      "feature": "Protocols",
+      "file": "GeometryServiceEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/rest/services/Utilities/Geometry/GeometryServer/simplify",
+      "source_file": "Protocols/GeoServices/GeometryService/GeometryServiceEndpoints.cs",
+      "source_line": 41
+    },
+    {
+      "key": "Protocols/GeometryServiceEndpoints:GET:/rest/services/Utilities/Geometry/GeometryServer/union",
+      "feature": "Protocols",
+      "file": "GeometryServiceEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/rest/services/Utilities/Geometry/GeometryServer/union",
+      "source_file": "Protocols/GeoServices/GeometryService/GeometryServiceEndpoints.cs",
+      "source_line": 71
+    },
+    {
+      "key": "Protocols/GeometryServiceEndpoints:POST:/rest/services/Utilities/Geometry/GeometryServer/areasAndLengths",
+      "feature": "Protocols",
+      "file": "GeometryServiceEndpoints",
+      "kind": "http",
+      "verb": "POST",
+      "route": "/rest/services/Utilities/Geometry/GeometryServer/areasAndLengths",
+      "source_file": "Protocols/GeoServices/GeometryService/GeometryServiceEndpoints.cs",
+      "source_line": 106
+    },
+    {
+      "key": "Protocols/GeometryServiceEndpoints:POST:/rest/services/Utilities/Geometry/GeometryServer/buffer",
+      "feature": "Protocols",
+      "file": "GeometryServiceEndpoints",
+      "kind": "http",
+      "verb": "POST",
+      "route": "/rest/services/Utilities/Geometry/GeometryServer/buffer",
+      "source_file": "Protocols/GeoServices/GeometryService/GeometryServiceEndpoints.cs",
+      "source_line": 36
+    },
+    {
+      "key": "Protocols/GeometryServiceEndpoints:POST:/rest/services/Utilities/Geometry/GeometryServer/clip",
+      "feature": "Protocols",
+      "file": "GeometryServiceEndpoints",
+      "kind": "http",
+      "verb": "POST",
+      "route": "/rest/services/Utilities/Geometry/GeometryServer/clip",
+      "source_file": "Protocols/GeoServices/GeometryService/GeometryServiceEndpoints.cs",
+      "source_line": 86
+    },
+    {
+      "key": "Protocols/GeometryServiceEndpoints:POST:/rest/services/Utilities/Geometry/GeometryServer/difference",
+      "feature": "Protocols",
+      "file": "GeometryServiceEndpoints",
+      "kind": "http",
+      "verb": "POST",
+      "route": "/rest/services/Utilities/Geometry/GeometryServer/difference",
+      "source_file": "Protocols/GeoServices/GeometryService/GeometryServiceEndpoints.cs",
+      "source_line": 96
+    },
+    {
+      "key": "Protocols/GeometryServiceEndpoints:POST:/rest/services/Utilities/Geometry/GeometryServer/intersect",
+      "feature": "Protocols",
+      "file": "GeometryServiceEndpoints",
+      "kind": "http",
+      "verb": "POST",
+      "route": "/rest/services/Utilities/Geometry/GeometryServer/intersect",
+      "source_file": "Protocols/GeoServices/GeometryService/GeometryServiceEndpoints.cs",
+      "source_line": 66
+    },
+    {
+      "key": "Protocols/GeometryServiceEndpoints:POST:/rest/services/Utilities/Geometry/GeometryServer/lengths",
+      "feature": "Protocols",
+      "file": "GeometryServiceEndpoints",
+      "kind": "http",
+      "verb": "POST",
+      "route": "/rest/services/Utilities/Geometry/GeometryServer/lengths",
+      "source_file": "Protocols/GeoServices/GeometryService/GeometryServiceEndpoints.cs",
+      "source_line": 116
+    },
+    {
+      "key": "Protocols/GeometryServiceEndpoints:POST:/rest/services/Utilities/Geometry/GeometryServer/project",
+      "feature": "Protocols",
+      "file": "GeometryServiceEndpoints",
+      "kind": "http",
+      "verb": "POST",
+      "route": "/rest/services/Utilities/Geometry/GeometryServer/project",
+      "source_file": "Protocols/GeoServices/GeometryService/GeometryServiceEndpoints.cs",
+      "source_line": 56
+    },
+    {
+      "key": "Protocols/GeometryServiceEndpoints:POST:/rest/services/Utilities/Geometry/GeometryServer/simplify",
+      "feature": "Protocols",
+      "file": "GeometryServiceEndpoints",
+      "kind": "http",
+      "verb": "POST",
+      "route": "/rest/services/Utilities/Geometry/GeometryServer/simplify",
+      "source_file": "Protocols/GeoServices/GeometryService/GeometryServiceEndpoints.cs",
+      "source_line": 46
+    },
+    {
+      "key": "Protocols/GeometryServiceEndpoints:POST:/rest/services/Utilities/Geometry/GeometryServer/union",
+      "feature": "Protocols",
+      "file": "GeometryServiceEndpoints",
+      "kind": "http",
+      "verb": "POST",
+      "route": "/rest/services/Utilities/Geometry/GeometryServer/union",
+      "source_file": "Protocols/GeoServices/GeometryService/GeometryServiceEndpoints.cs",
+      "source_line": 76
+    },
+    {
+      "key": "Protocols/GeoservicesCatalogEndpoints:GET:/rest/info",
+      "feature": "Protocols",
+      "file": "GeoservicesCatalogEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/rest/info",
+      "source_file": "Protocols/GeoServices/Catalog/GeoservicesCatalogEndpoints.cs",
+      "source_line": 38
+    },
+    {
+      "key": "Protocols/GeoservicesCatalogEndpoints:GET:/rest/services",
+      "feature": "Protocols",
+      "file": "GeoservicesCatalogEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/rest/services",
+      "source_file": "Protocols/GeoServices/Catalog/GeoservicesCatalogEndpoints.cs",
+      "source_line": 28
+    },
+    {
+      "key": "Protocols/H3Endpoints:GET:/ogc/features/collections/{collectionId}/h3",
+      "feature": "Protocols",
+      "file": "H3Endpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/ogc/features/collections/{collectionId}/h3",
+      "source_file": "Protocols/Ogc/Api/Features/H3Endpoints.cs",
+      "source_line": 31
+    },
+    {
+      "key": "Protocols/ImageServerEndpoints:GET:/rest/services/{id:int}/ImageServer/",
+      "feature": "Protocols",
+      "file": "ImageServerEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/rest/services/{id:int}/ImageServer/",
+      "source_file": "Protocols/GeoServices/ImageServer/ImageServerEndpoints.cs",
+      "source_line": 37
+    },
+    {
+      "key": "Protocols/ImageServerEndpoints:GET:/rest/services/{id:int}/ImageServer/computeClassStatistics",
+      "feature": "Protocols",
+      "file": "ImageServerEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/rest/services/{id:int}/ImageServer/computeClassStatistics",
+      "source_file": "Protocols/GeoServices/ImageServer/ImageServerEndpoints.cs",
+      "source_line": 153
+    },
+    {
+      "key": "Protocols/ImageServerEndpoints:GET:/rest/services/{id:int}/ImageServer/computeStatisticsHistograms",
+      "feature": "Protocols",
+      "file": "ImageServerEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/rest/services/{id:int}/ImageServer/computeStatisticsHistograms",
+      "source_file": "Protocols/GeoServices/ImageServer/ImageServerEndpoints.cs",
+      "source_line": 122
+    },
+    {
+      "key": "Protocols/ImageServerEndpoints:GET:/rest/services/{id:int}/ImageServer/exportImage",
+      "feature": "Protocols",
+      "file": "ImageServerEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/rest/services/{id:int}/ImageServer/exportImage",
+      "source_file": "Protocols/GeoServices/ImageServer/ImageServerEndpoints.cs",
+      "source_line": 47
+    },
+    {
+      "key": "Protocols/ImageServerEndpoints:GET:/rest/services/{id:int}/ImageServer/identify",
+      "feature": "Protocols",
+      "file": "ImageServerEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/rest/services/{id:int}/ImageServer/identify",
+      "source_file": "Protocols/GeoServices/ImageServer/ImageServerEndpoints.cs",
+      "source_line": 73
+    },
+    {
+      "key": "Protocols/ImageServerEndpoints:GET:/rest/services/{id:int}/ImageServer/legend",
+      "feature": "Protocols",
+      "file": "ImageServerEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/rest/services/{id:int}/ImageServer/legend",
+      "source_file": "Protocols/GeoServices/ImageServer/ImageServerEndpoints.cs",
+      "source_line": 141
+    },
+    {
+      "key": "Protocols/ImageServerEndpoints:GET:/rest/services/{id:int}/ImageServer/query",
+      "feature": "Protocols",
+      "file": "ImageServerEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/rest/services/{id:int}/ImageServer/query",
+      "source_file": "Protocols/GeoServices/ImageServer/ImageServerEndpoints.cs",
+      "source_line": 103
+    },
+    {
+      "key": "Protocols/ImageServerEndpoints:GET:/rest/services/{id:int}/ImageServer/tile/{level}/{row}/{col}",
+      "feature": "Protocols",
+      "file": "ImageServerEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/rest/services/{id:int}/ImageServer/tile/{level}/{row}/{col}",
+      "source_file": "Protocols/GeoServices/ImageServer/ImageServerEndpoints.cs",
+      "source_line": 91
+    },
+    {
+      "key": "Protocols/ImageServerEndpoints:GET:/rest/services/{serviceId:regex(^(?!\\\\d\u002B$).\u002B$)}/ImageServer/",
+      "feature": "Protocols",
+      "file": "ImageServerEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/rest/services/{serviceId:regex(^(?!\\\\d\u002B$).\u002B$)}/ImageServer/",
+      "source_file": "Protocols/GeoServices/ImageServer/ImageServerEndpoints.cs",
+      "source_line": 174
+    },
+    {
+      "key": "Protocols/ImageServerEndpoints:GET:/rest/services/{serviceId:regex(^(?!\\\\d\u002B$).\u002B$)}/ImageServer/computeClassStatistics",
+      "feature": "Protocols",
+      "file": "ImageServerEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/rest/services/{serviceId:regex(^(?!\\\\d\u002B$).\u002B$)}/ImageServer/computeClassStatistics",
+      "source_file": "Protocols/GeoServices/ImageServer/ImageServerEndpoints.cs",
+      "source_line": 269
+    },
+    {
+      "key": "Protocols/ImageServerEndpoints:GET:/rest/services/{serviceId:regex(^(?!\\\\d\u002B$).\u002B$)}/ImageServer/computeStatisticsHistograms",
+      "feature": "Protocols",
+      "file": "ImageServerEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/rest/services/{serviceId:regex(^(?!\\\\d\u002B$).\u002B$)}/ImageServer/computeStatisticsHistograms",
+      "source_file": "Protocols/GeoServices/ImageServer/ImageServerEndpoints.cs",
+      "source_line": 246
+    },
+    {
+      "key": "Protocols/ImageServerEndpoints:GET:/rest/services/{serviceId:regex(^(?!\\\\d\u002B$).\u002B$)}/ImageServer/exportImage",
+      "feature": "Protocols",
+      "file": "ImageServerEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/rest/services/{serviceId:regex(^(?!\\\\d\u002B$).\u002B$)}/ImageServer/exportImage",
+      "source_file": "Protocols/GeoServices/ImageServer/ImageServerEndpoints.cs",
+      "source_line": 183
+    },
+    {
+      "key": "Protocols/ImageServerEndpoints:GET:/rest/services/{serviceId:regex(^(?!\\\\d\u002B$).\u002B$)}/ImageServer/identify",
+      "feature": "Protocols",
+      "file": "ImageServerEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/rest/services/{serviceId:regex(^(?!\\\\d\u002B$).\u002B$)}/ImageServer/identify",
+      "source_file": "Protocols/GeoServices/ImageServer/ImageServerEndpoints.cs",
+      "source_line": 206
+    },
+    {
+      "key": "Protocols/ImageServerEndpoints:GET:/rest/services/{serviceId:regex(^(?!\\\\d\u002B$).\u002B$)}/ImageServer/legend",
+      "feature": "Protocols",
+      "file": "ImageServerEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/rest/services/{serviceId:regex(^(?!\\\\d\u002B$).\u002B$)}/ImageServer/legend",
+      "source_file": "Protocols/GeoServices/ImageServer/ImageServerEndpoints.cs",
+      "source_line": 261
+    },
+    {
+      "key": "Protocols/ImageServerEndpoints:GET:/rest/services/{serviceId:regex(^(?!\\\\d\u002B$).\u002B$)}/ImageServer/query",
+      "feature": "Protocols",
+      "file": "ImageServerEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/rest/services/{serviceId:regex(^(?!\\\\d\u002B$).\u002B$)}/ImageServer/query",
+      "source_file": "Protocols/GeoServices/ImageServer/ImageServerEndpoints.cs",
+      "source_line": 231
+    },
+    {
+      "key": "Protocols/ImageServerEndpoints:GET:/rest/services/{serviceId:regex(^(?!\\\\d\u002B$).\u002B$)}/ImageServer/tile/{level}/{row}/{col}",
+      "feature": "Protocols",
+      "file": "ImageServerEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/rest/services/{serviceId:regex(^(?!\\\\d\u002B$).\u002B$)}/ImageServer/tile/{level}/{row}/{col}",
+      "source_file": "Protocols/GeoServices/ImageServer/ImageServerEndpoints.cs",
+      "source_line": 221
+    },
+    {
+      "key": "Protocols/ImageServerEndpoints:POST:/rest/services/{id:int}/ImageServer/computeClassStatistics",
+      "feature": "Protocols",
+      "file": "ImageServerEndpoints",
+      "kind": "http",
+      "verb": "POST",
+      "route": "/rest/services/{id:int}/ImageServer/computeClassStatistics",
+      "source_file": "Protocols/GeoServices/ImageServer/ImageServerEndpoints.cs",
+      "source_line": 162
+    },
+    {
+      "key": "Protocols/ImageServerEndpoints:POST:/rest/services/{id:int}/ImageServer/computeStatisticsHistograms",
+      "feature": "Protocols",
+      "file": "ImageServerEndpoints",
+      "kind": "http",
+      "verb": "POST",
+      "route": "/rest/services/{id:int}/ImageServer/computeStatisticsHistograms",
+      "source_file": "Protocols/GeoServices/ImageServer/ImageServerEndpoints.cs",
+      "source_line": 131
+    },
+    {
+      "key": "Protocols/ImageServerEndpoints:POST:/rest/services/{id:int}/ImageServer/exportImage",
+      "feature": "Protocols",
+      "file": "ImageServerEndpoints",
+      "kind": "http",
+      "verb": "POST",
+      "route": "/rest/services/{id:int}/ImageServer/exportImage",
+      "source_file": "Protocols/GeoServices/ImageServer/ImageServerEndpoints.cs",
+      "source_line": 59
+    },
+    {
+      "key": "Protocols/ImageServerEndpoints:POST:/rest/services/{id:int}/ImageServer/identify",
+      "feature": "Protocols",
+      "file": "ImageServerEndpoints",
+      "kind": "http",
+      "verb": "POST",
+      "route": "/rest/services/{id:int}/ImageServer/identify",
+      "source_file": "Protocols/GeoServices/ImageServer/ImageServerEndpoints.cs",
+      "source_line": 81
+    },
+    {
+      "key": "Protocols/ImageServerEndpoints:POST:/rest/services/{id:int}/ImageServer/query",
+      "feature": "Protocols",
+      "file": "ImageServerEndpoints",
+      "kind": "http",
+      "verb": "POST",
+      "route": "/rest/services/{id:int}/ImageServer/query",
+      "source_file": "Protocols/GeoServices/ImageServer/ImageServerEndpoints.cs",
+      "source_line": 112
+    },
+    {
+      "key": "Protocols/ImageServerEndpoints:POST:/rest/services/{serviceId:regex(^(?!\\\\d\u002B$).\u002B$)}/ImageServer/computeClassStatistics",
+      "feature": "Protocols",
+      "file": "ImageServerEndpoints",
+      "kind": "http",
+      "verb": "POST",
+      "route": "/rest/services/{serviceId:regex(^(?!\\\\d\u002B$).\u002B$)}/ImageServer/computeClassStatistics",
+      "source_file": "Protocols/GeoServices/ImageServer/ImageServerEndpoints.cs",
+      "source_line": 276
+    },
+    {
+      "key": "Protocols/ImageServerEndpoints:POST:/rest/services/{serviceId:regex(^(?!\\\\d\u002B$).\u002B$)}/ImageServer/computeStatisticsHistograms",
+      "feature": "Protocols",
+      "file": "ImageServerEndpoints",
+      "kind": "http",
+      "verb": "POST",
+      "route": "/rest/services/{serviceId:regex(^(?!\\\\d\u002B$).\u002B$)}/ImageServer/computeStatisticsHistograms",
+      "source_file": "Protocols/GeoServices/ImageServer/ImageServerEndpoints.cs",
+      "source_line": 253
+    },
+    {
+      "key": "Protocols/ImageServerEndpoints:POST:/rest/services/{serviceId:regex(^(?!\\\\d\u002B$).\u002B$)}/ImageServer/exportImage",
+      "feature": "Protocols",
+      "file": "ImageServerEndpoints",
+      "kind": "http",
+      "verb": "POST",
+      "route": "/rest/services/{serviceId:regex(^(?!\\\\d\u002B$).\u002B$)}/ImageServer/exportImage",
+      "source_file": "Protocols/GeoServices/ImageServer/ImageServerEndpoints.cs",
+      "source_line": 194
+    },
+    {
+      "key": "Protocols/ImageServerEndpoints:POST:/rest/services/{serviceId:regex(^(?!\\\\d\u002B$).\u002B$)}/ImageServer/identify",
+      "feature": "Protocols",
+      "file": "ImageServerEndpoints",
+      "kind": "http",
+      "verb": "POST",
+      "route": "/rest/services/{serviceId:regex(^(?!\\\\d\u002B$).\u002B$)}/ImageServer/identify",
+      "source_file": "Protocols/GeoServices/ImageServer/ImageServerEndpoints.cs",
+      "source_line": 213
+    },
+    {
+      "key": "Protocols/ImageServerEndpoints:POST:/rest/services/{serviceId:regex(^(?!\\\\d\u002B$).\u002B$)}/ImageServer/query",
+      "feature": "Protocols",
+      "file": "ImageServerEndpoints",
+      "kind": "http",
+      "verb": "POST",
+      "route": "/rest/services/{serviceId:regex(^(?!\\\\d\u002B$).\u002B$)}/ImageServer/query",
+      "source_file": "Protocols/GeoServices/ImageServer/ImageServerEndpoints.cs",
+      "source_line": 238
+    },
+    {
+      "key": "Protocols/ItemEndpoints:GET:/stac/collections/{collectionId}/items",
+      "feature": "Protocols",
+      "file": "ItemEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/stac/collections/{collectionId}/items",
+      "source_file": "Protocols/Stac/ItemEndpoints.cs",
+      "source_line": 32
+    },
+    {
+      "key": "Protocols/ItemEndpoints:GET:/stac/collections/{collectionId}/items/{itemId}",
+      "feature": "Protocols",
+      "file": "ItemEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/stac/collections/{collectionId}/items/{itemId}",
+      "source_file": "Protocols/Stac/ItemEndpoints.cs",
+      "source_line": 41
+    },
+    {
+      "key": "Protocols/JobEndpoints:DELETE:/ogc/processes/jobs/{{jobId}}",
+      "feature": "Protocols",
+      "file": "JobEndpoints",
+      "kind": "http",
+      "verb": "DELETE",
+      "route": "/ogc/processes/jobs/{{jobId}}",
+      "source_file": "Protocols/Ogc/Api/Processes/JobEndpoints.cs",
+      "source_line": 57
+    },
+    {
+      "key": "Protocols/JobEndpoints:GET:/ogc/processes/jobs",
+      "feature": "Protocols",
+      "file": "JobEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/ogc/processes/jobs",
+      "source_file": "Protocols/Ogc/Api/Processes/JobEndpoints.cs",
+      "source_line": 34
+    },
+    {
+      "key": "Protocols/JobEndpoints:GET:/ogc/processes/jobs/{{jobId}}",
+      "feature": "Protocols",
+      "file": "JobEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/ogc/processes/jobs/{{jobId}}",
+      "source_file": "Protocols/Ogc/Api/Processes/JobEndpoints.cs",
+      "source_line": 41
+    },
+    {
+      "key": "Protocols/JobEndpoints:GET:/ogc/processes/jobs/{{jobId}}/results",
+      "feature": "Protocols",
+      "file": "JobEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/ogc/processes/jobs/{{jobId}}/results",
+      "source_file": "Protocols/Ogc/Api/Processes/JobEndpoints.cs",
+      "source_line": 49
+    },
+    {
+      "key": "Protocols/MapServerEndpoints:GET:/rest/services/{serviceId}/MapServer",
+      "feature": "Protocols",
+      "file": "MapServerEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/rest/services/{serviceId}/MapServer",
+      "source_file": "Protocols/GeoServices/MapServer/MapServerEndpoints.cs",
+      "source_line": 16
+    },
+    {
+      "key": "Protocols/MapServerEndpoints:GET:/rest/services/{serviceId}/MapServer/export",
+      "feature": "Protocols",
+      "file": "MapServerEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/rest/services/{serviceId}/MapServer/export",
+      "source_file": "Protocols/GeoServices/MapServer/MapServerEndpoints.cs",
+      "source_line": 34
+    },
+    {
+      "key": "Protocols/MapServerEndpoints:GET:/rest/services/{serviceId}/MapServer/find",
+      "feature": "Protocols",
+      "file": "MapServerEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/rest/services/{serviceId}/MapServer/find",
+      "source_file": "Protocols/GeoServices/MapServer/MapServerEndpoints.cs",
+      "source_line": 91
+    },
+    {
+      "key": "Protocols/MapServerEndpoints:GET:/rest/services/{serviceId}/MapServer/generateKml",
+      "feature": "Protocols",
+      "file": "MapServerEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/rest/services/{serviceId}/MapServer/generateKml",
+      "source_file": "Protocols/GeoServices/MapServer/MapServerEndpoints.cs",
+      "source_line": 50
+    },
+    {
+      "key": "Protocols/MapServerEndpoints:GET:/rest/services/{serviceId}/MapServer/identify",
+      "feature": "Protocols",
+      "file": "MapServerEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/rest/services/{serviceId}/MapServer/identify",
+      "source_file": "Protocols/GeoServices/MapServer/MapServerEndpoints.cs",
+      "source_line": 66
+    },
+    {
+      "key": "Protocols/MapServerEndpoints:GET:/rest/services/{serviceId}/MapServer/legend",
+      "feature": "Protocols",
+      "file": "MapServerEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/rest/services/{serviceId}/MapServer/legend",
+      "source_file": "Protocols/GeoServices/MapServer/MapServerEndpoints.cs",
+      "source_line": 82
+    },
+    {
+      "key": "Protocols/MapServerEndpoints:GET:/rest/services/{serviceId}/MapServer/query",
+      "feature": "Protocols",
+      "file": "MapServerEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/rest/services/{serviceId}/MapServer/query",
+      "source_file": "Protocols/GeoServices/MapServer/MapServerEndpoints.cs",
+      "source_line": 121
+    },
+    {
+      "key": "Protocols/MapServerEndpoints:GET:/rest/services/{serviceId}/MapServer/tile/{z:int}/{y:int}/{x:int}",
+      "feature": "Protocols",
+      "file": "MapServerEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/rest/services/{serviceId}/MapServer/tile/{z:int}/{y:int}/{x:int}",
+      "source_file": "Protocols/GeoServices/MapServer/MapServerEndpoints.cs",
+      "source_line": 135
+    },
+    {
+      "key": "Protocols/MapServerEndpoints:GET:/rest/services/{serviceId}/MapServer/{layerId:int}",
+      "feature": "Protocols",
+      "file": "MapServerEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/rest/services/{serviceId}/MapServer/{layerId:int}",
+      "source_file": "Protocols/GeoServices/MapServer/MapServerEndpoints.cs",
+      "source_line": 25
+    },
+    {
+      "key": "Protocols/MapServerEndpoints:GET:/rest/services/{serviceId}/MapServer/{layerId:int}/query",
+      "feature": "Protocols",
+      "file": "MapServerEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/rest/services/{serviceId}/MapServer/{layerId:int}/query",
+      "source_file": "Protocols/GeoServices/MapServer/MapServerEndpoints.cs",
+      "source_line": 107
+    },
+    {
+      "key": "Protocols/MapServerEndpoints:POST:/rest/services/{serviceId}/MapServer/export",
+      "feature": "Protocols",
+      "file": "MapServerEndpoints",
+      "kind": "http",
+      "verb": "POST",
+      "route": "/rest/services/{serviceId}/MapServer/export",
+      "source_file": "Protocols/GeoServices/MapServer/MapServerEndpoints.cs",
+      "source_line": 42
+    },
+    {
+      "key": "Protocols/MapServerEndpoints:POST:/rest/services/{serviceId}/MapServer/find",
+      "feature": "Protocols",
+      "file": "MapServerEndpoints",
+      "kind": "http",
+      "verb": "POST",
+      "route": "/rest/services/{serviceId}/MapServer/find",
+      "source_file": "Protocols/GeoServices/MapServer/MapServerEndpoints.cs",
+      "source_line": 99
+    },
+    {
+      "key": "Protocols/MapServerEndpoints:POST:/rest/services/{serviceId}/MapServer/generateKml",
+      "feature": "Protocols",
+      "file": "MapServerEndpoints",
+      "kind": "http",
+      "verb": "POST",
+      "route": "/rest/services/{serviceId}/MapServer/generateKml",
+      "source_file": "Protocols/GeoServices/MapServer/MapServerEndpoints.cs",
+      "source_line": 58
+    },
+    {
+      "key": "Protocols/MapServerEndpoints:POST:/rest/services/{serviceId}/MapServer/identify",
+      "feature": "Protocols",
+      "file": "MapServerEndpoints",
+      "kind": "http",
+      "verb": "POST",
+      "route": "/rest/services/{serviceId}/MapServer/identify",
+      "source_file": "Protocols/GeoServices/MapServer/MapServerEndpoints.cs",
+      "source_line": 74
+    },
+    {
+      "key": "Protocols/MapServerEndpoints:POST:/rest/services/{serviceId}/MapServer/query",
+      "feature": "Protocols",
+      "file": "MapServerEndpoints",
+      "kind": "http",
+      "verb": "POST",
+      "route": "/rest/services/{serviceId}/MapServer/query",
+      "source_file": "Protocols/GeoServices/MapServer/MapServerEndpoints.cs",
+      "source_line": 128
+    },
+    {
+      "key": "Protocols/MapServerEndpoints:POST:/rest/services/{serviceId}/MapServer/{layerId:int}/query",
+      "feature": "Protocols",
+      "file": "MapServerEndpoints",
+      "kind": "http",
+      "verb": "POST",
+      "route": "/rest/services/{serviceId}/MapServer/{layerId:int}/query",
+      "source_file": "Protocols/GeoServices/MapServer/MapServerEndpoints.cs",
+      "source_line": 114
+    },
+    {
+      "key": "Protocols/ODataEndpoints:DELETE:/odata/Features(LayerId={layerId:int},ObjectId={objectId:long})",
+      "feature": "Protocols",
+      "file": "ODataEndpoints",
+      "kind": "http",
+      "verb": "DELETE",
+      "route": "/odata/Features(LayerId={layerId:int},ObjectId={objectId:long})",
+      "source_file": "Protocols/OData/ODataEndpoints.cs",
+      "source_line": 411
+    },
+    {
+      "key": "Protocols/ODataEndpoints:DELETE:/odata/Features({layerId:int},{objectId:long})",
+      "feature": "Protocols",
+      "file": "ODataEndpoints",
+      "kind": "http",
+      "verb": "DELETE",
+      "route": "/odata/Features({layerId:int},{objectId:long})",
+      "source_file": "Protocols/OData/ODataEndpoints.cs",
+      "source_line": 433
+    },
+    {
+      "key": "Protocols/ODataEndpoints:DELETE:/odata/Layers({layerId:int})/Features({objectId:long})",
+      "feature": "Protocols",
+      "file": "ODataEndpoints",
+      "kind": "http",
+      "verb": "DELETE",
+      "route": "/odata/Layers({layerId:int})/Features({objectId:long})",
+      "source_file": "Protocols/OData/ODataEndpoints.cs",
+      "source_line": 422
+    },
+    {
+      "key": "Protocols/ODataEndpoints:GET:/odata",
+      "feature": "Protocols",
+      "file": "ODataEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/odata",
+      "source_file": "Protocols/OData/ODataEndpoints.cs",
+      "source_line": 21
+    },
+    {
+      "key": "Protocols/ODataEndpoints:GET:/odata/$metadata",
+      "feature": "Protocols",
+      "file": "ODataEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/odata/$metadata",
+      "source_file": "Protocols/OData/ODataEndpoints.cs",
+      "source_line": 31
+    },
+    {
+      "key": "Protocols/ODataEndpoints:GET:/odata/Features",
+      "feature": "Protocols",
+      "file": "ODataEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/odata/Features",
+      "source_file": "Protocols/OData/ODataEndpoints.cs",
+      "source_line": 96
+    },
+    {
+      "key": "Protocols/ODataEndpoints:GET:/odata/Features(LayerId={layerId:int},ObjectId={objectId:long})",
+      "feature": "Protocols",
+      "file": "ODataEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/odata/Features(LayerId={layerId:int},ObjectId={objectId:long})",
+      "source_file": "Protocols/OData/ODataEndpoints.cs",
+      "source_line": 261
+    },
+    {
+      "key": "Protocols/ODataEndpoints:GET:/odata/Features(LayerId={layerId:int},ObjectId={objectId:long})/$ref",
+      "feature": "Protocols",
+      "file": "ODataEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/odata/Features(LayerId={layerId:int},ObjectId={objectId:long})/$ref",
+      "source_file": "Protocols/OData/ODataEndpoints.cs",
+      "source_line": 276
+    },
+    {
+      "key": "Protocols/ODataEndpoints:GET:/odata/Features(LayerId={layerId:int},ObjectId={objectId:long})/$value",
+      "feature": "Protocols",
+      "file": "ODataEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/odata/Features(LayerId={layerId:int},ObjectId={objectId:long})/$value",
+      "source_file": "Protocols/OData/ODataEndpoints.cs",
+      "source_line": 290
+    },
+    {
+      "key": "Protocols/ODataEndpoints:GET:/odata/Features({layerId:int})",
+      "feature": "Protocols",
+      "file": "ODataEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/odata/Features({layerId:int})",
+      "source_file": "Protocols/OData/ODataEndpoints.cs",
+      "source_line": 203
+    },
+    {
+      "key": "Protocols/ODataEndpoints:GET:/odata/Features({layerId:int})/$apply",
+      "feature": "Protocols",
+      "file": "ODataEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/odata/Features({layerId:int})/$apply",
+      "source_file": "Protocols/OData/ODataEndpoints.cs",
+      "source_line": 460
+    },
+    {
+      "key": "Protocols/ODataEndpoints:GET:/odata/Features({layerId:int})/$count",
+      "feature": "Protocols",
+      "file": "ODataEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/odata/Features({layerId:int})/$count",
+      "source_file": "Protocols/OData/ODataEndpoints.cs",
+      "source_line": 187
+    },
+    {
+      "key": "Protocols/ODataEndpoints:GET:/odata/Features({layerId:int})/$search",
+      "feature": "Protocols",
+      "file": "ODataEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/odata/Features({layerId:int})/$search",
+      "source_file": "Protocols/OData/ODataEndpoints.cs",
+      "source_line": 476
+    },
+    {
+      "key": "Protocols/ODataEndpoints:GET:/odata/Features({layerId:int},{objectId:long})",
+      "feature": "Protocols",
+      "file": "ODataEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/odata/Features({layerId:int},{objectId:long})",
+      "source_file": "Protocols/OData/ODataEndpoints.cs",
+      "source_line": 321
+    },
+    {
+      "key": "Protocols/ODataEndpoints:GET:/odata/Features/$count",
+      "feature": "Protocols",
+      "file": "ODataEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/odata/Features/$count",
+      "source_file": "Protocols/OData/ODataEndpoints.cs",
+      "source_line": 126
+    },
+    {
+      "key": "Protocols/ODataEndpoints:GET:/odata/Layers",
+      "feature": "Protocols",
+      "file": "ODataEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/odata/Layers",
+      "source_file": "Protocols/OData/ODataEndpoints.cs",
+      "source_line": 42
+    },
+    {
+      "key": "Protocols/ODataEndpoints:GET:/odata/Layers({layerId:int})",
+      "feature": "Protocols",
+      "file": "ODataEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/odata/Layers({layerId:int})",
+      "source_file": "Protocols/OData/ODataEndpoints.cs",
+      "source_line": 81
+    },
+    {
+      "key": "Protocols/ODataEndpoints:GET:/odata/Layers({layerId:int})/Features",
+      "feature": "Protocols",
+      "file": "ODataEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/odata/Layers({layerId:int})/Features",
+      "source_file": "Protocols/OData/ODataEndpoints.cs",
+      "source_line": 141
+    },
+    {
+      "key": "Protocols/ODataEndpoints:GET:/odata/Layers({layerId:int})/Features({objectId:long})",
+      "feature": "Protocols",
+      "file": "ODataEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/odata/Layers({layerId:int})/Features({objectId:long})",
+      "source_file": "Protocols/OData/ODataEndpoints.cs",
+      "source_line": 305
+    },
+    {
+      "key": "Protocols/ODataEndpoints:GET:/odata/Layers({layerId:int})/Features/$count",
+      "feature": "Protocols",
+      "file": "ODataEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/odata/Layers({layerId:int})/Features/$count",
+      "source_file": "Protocols/OData/ODataEndpoints.cs",
+      "source_line": 172
+    },
+    {
+      "key": "Protocols/ODataEndpoints:GET:/odata/Layers/$count",
+      "feature": "Protocols",
+      "file": "ODataEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/odata/Layers/$count",
+      "source_file": "Protocols/OData/ODataEndpoints.cs",
+      "source_line": 66
+    },
+    {
+      "key": "Protocols/ODataEndpoints:PATCH:/odata/Features(LayerId={layerId:int},ObjectId={objectId:long})",
+      "feature": "Protocols",
+      "file": "ODataEndpoints",
+      "kind": "http",
+      "verb": "PATCH",
+      "route": "/odata/Features(LayerId={layerId:int},ObjectId={objectId:long})",
+      "source_file": "Protocols/OData/ODataEndpoints.cs",
+      "source_line": 337
+    },
+    {
+      "key": "Protocols/ODataEndpoints:PATCH:/odata/Features({layerId:int},{objectId:long})",
+      "feature": "Protocols",
+      "file": "ODataEndpoints",
+      "kind": "http",
+      "verb": "PATCH",
+      "route": "/odata/Features({layerId:int},{objectId:long})",
+      "source_file": "Protocols/OData/ODataEndpoints.cs",
+      "source_line": 361
+    },
+    {
+      "key": "Protocols/ODataEndpoints:PATCH:/odata/Layers({layerId:int})/Features({objectId:long})",
+      "feature": "Protocols",
+      "file": "ODataEndpoints",
+      "kind": "http",
+      "verb": "PATCH",
+      "route": "/odata/Layers({layerId:int})/Features({objectId:long})",
+      "source_file": "Protocols/OData/ODataEndpoints.cs",
+      "source_line": 349
+    },
+    {
+      "key": "Protocols/ODataEndpoints:POST:/odata/$batch",
+      "feature": "Protocols",
+      "file": "ODataEndpoints",
+      "kind": "http",
+      "verb": "POST",
+      "route": "/odata/$batch",
+      "source_file": "Protocols/OData/ODataEndpoints.cs",
+      "source_line": 447
+    },
+    {
+      "key": "Protocols/ODataEndpoints:POST:/odata/Features",
+      "feature": "Protocols",
+      "file": "ODataEndpoints",
+      "kind": "http",
+      "verb": "POST",
+      "route": "/odata/Features",
+      "source_file": "Protocols/OData/ODataEndpoints.cs",
+      "source_line": 235
+    },
+    {
+      "key": "Protocols/ODataEndpoints:POST:/odata/Layers({layerId:int})/Features",
+      "feature": "Protocols",
+      "file": "ODataEndpoints",
+      "kind": "http",
+      "verb": "POST",
+      "route": "/odata/Layers({layerId:int})/Features",
+      "source_file": "Protocols/OData/ODataEndpoints.cs",
+      "source_line": 248
+    },
+    {
+      "key": "Protocols/ODataEndpoints:PUT:/odata/Features(LayerId={layerId:int},ObjectId={objectId:long})",
+      "feature": "Protocols",
+      "file": "ODataEndpoints",
+      "kind": "http",
+      "verb": "PUT",
+      "route": "/odata/Features(LayerId={layerId:int},ObjectId={objectId:long})",
+      "source_file": "Protocols/OData/ODataEndpoints.cs",
+      "source_line": 374
+    },
+    {
+      "key": "Protocols/ODataEndpoints:PUT:/odata/Features({layerId:int},{objectId:long})",
+      "feature": "Protocols",
+      "file": "ODataEndpoints",
+      "kind": "http",
+      "verb": "PUT",
+      "route": "/odata/Features({layerId:int},{objectId:long})",
+      "source_file": "Protocols/OData/ODataEndpoints.cs",
+      "source_line": 398
+    },
+    {
+      "key": "Protocols/ODataEndpoints:PUT:/odata/Layers({layerId:int})/Features({objectId:long})",
+      "feature": "Protocols",
+      "file": "ODataEndpoints",
+      "kind": "http",
+      "verb": "PUT",
+      "route": "/odata/Layers({layerId:int})/Features({objectId:long})",
+      "source_file": "Protocols/OData/ODataEndpoints.cs",
+      "source_line": 386
+    },
+    {
+      "key": "Protocols/OgcClassicEndpoints:GET:/ogc/services/{serviceId}/wms",
+      "feature": "Protocols",
+      "file": "OgcClassicEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/ogc/services/{serviceId}/wms",
+      "source_file": "Protocols/Ogc/Classic/OgcClassicEndpoints.cs",
+      "source_line": 56
+    },
+    {
+      "key": "Protocols/OgcClassicEndpoints:GET:/ogc/services/{serviceId}/wmts",
+      "feature": "Protocols",
+      "file": "OgcClassicEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/ogc/services/{serviceId}/wmts",
+      "source_file": "Protocols/Ogc/Classic/OgcClassicEndpoints.cs",
+      "source_line": 39
+    },
+    {
+      "key": "Protocols/OgcClassicEndpoints:GET:/rest/services/{serviceId}/MapServer/WMS",
+      "feature": "Protocols",
+      "file": "OgcClassicEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/rest/services/{serviceId}/MapServer/WMS",
+      "source_file": "Protocols/Ogc/Classic/OgcClassicEndpoints.cs",
+      "source_line": 48
+    },
+    {
+      "key": "Protocols/OgcClassicEndpoints:GET:/rest/services/{serviceId}/MapServer/WMTS",
+      "feature": "Protocols",
+      "file": "OgcClassicEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/rest/services/{serviceId}/MapServer/WMTS",
+      "source_file": "Protocols/Ogc/Classic/OgcClassicEndpoints.cs",
+      "source_line": 21
+    },
+    {
+      "key": "Protocols/OgcClassicEndpoints:GET:/rest/services/{serviceId}/MapServer/WMTS/{**restPath}",
+      "feature": "Protocols",
+      "file": "OgcClassicEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/rest/services/{serviceId}/MapServer/WMTS/{**restPath}",
+      "source_file": "Protocols/Ogc/Classic/OgcClassicEndpoints.cs",
+      "source_line": 30
+    },
+    {
+      "key": "Protocols/OgcMapsEndpoints:GET:/ogc/maps/collections/{collectionId}/map",
+      "feature": "Protocols",
+      "file": "OgcMapsEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/ogc/maps/collections/{collectionId}/map",
+      "source_file": "Protocols/Ogc/Api/Maps/OgcMapsEndpoints.cs",
+      "source_line": 63
+    },
+    {
+      "key": "Protocols/OgcMapsEndpoints:GET:/ogc/maps/collections/{collectionId}/map/tiles",
+      "feature": "Protocols",
+      "file": "OgcMapsEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/ogc/maps/collections/{collectionId}/map/tiles",
+      "source_file": "Protocols/Ogc/Api/Maps/OgcMapsEndpoints.cs",
+      "source_line": 87
+    },
+    {
+      "key": "Protocols/OgcMapsEndpoints:GET:/ogc/maps/collections/{collectionId}/map/tiles/{tileMatrixSetId}",
+      "feature": "Protocols",
+      "file": "OgcMapsEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/ogc/maps/collections/{collectionId}/map/tiles/{tileMatrixSetId}",
+      "source_file": "Protocols/Ogc/Api/Maps/OgcMapsEndpoints.cs",
+      "source_line": 95
+    },
+    {
+      "key": "Protocols/OgcMapsEndpoints:GET:/ogc/maps/collections/{collectionId}/styles/{styleId}/map",
+      "feature": "Protocols",
+      "file": "OgcMapsEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/ogc/maps/collections/{collectionId}/styles/{styleId}/map",
+      "source_file": "Protocols/Ogc/Api/Maps/OgcMapsEndpoints.cs",
+      "source_line": 74
+    },
+    {
+      "key": "Protocols/OgcMapsEndpoints:GET:/ogc/maps/conformance",
+      "feature": "Protocols",
+      "file": "OgcMapsEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/ogc/maps/conformance",
+      "source_file": "Protocols/Ogc/Api/Maps/OgcMapsEndpoints.cs",
+      "source_line": 45
+    },
+    {
+      "key": "Protocols/OgcMapsEndpoints:GET:/ogc/maps/map",
+      "feature": "Protocols",
+      "file": "OgcMapsEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/ogc/maps/map",
+      "source_file": "Protocols/Ogc/Api/Maps/OgcMapsEndpoints.cs",
+      "source_line": 104
+    },
+    {
+      "key": "Protocols/OgcMapsEndpoints:GET:/ogc/maps/openapi.json",
+      "feature": "Protocols",
+      "file": "OgcMapsEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/ogc/maps/openapi.json",
+      "source_file": "Protocols/Ogc/Api/Maps/OgcMapsEndpoints.cs",
+      "source_line": 53
+    },
+    {
+      "key": "Protocols/ProcessEndpoints:GET:/ogc/processes/processes",
+      "feature": "Protocols",
+      "file": "ProcessEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/ogc/processes/processes",
+      "source_file": "Protocols/Ogc/Api/Processes/ProcessEndpoints.cs",
+      "source_line": 70
+    },
+    {
+      "key": "Protocols/ProcessEndpoints:GET:/ogc/processes/processes/{{processId}}",
+      "feature": "Protocols",
+      "file": "ProcessEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/ogc/processes/processes/{{processId}}",
+      "source_file": "Protocols/Ogc/Api/Processes/ProcessEndpoints.cs",
+      "source_line": 77
+    },
+    {
+      "key": "Protocols/ProcessEndpoints:POST:/ogc/processes/processes/{{processId}}/execution",
+      "feature": "Protocols",
+      "file": "ProcessEndpoints",
+      "kind": "http",
+      "verb": "POST",
+      "route": "/ogc/processes/processes/{{processId}}/execution",
+      "source_file": "Protocols/Ogc/Api/Processes/ProcessEndpoints.cs",
+      "source_line": 85
+    },
+    {
+      "key": "Protocols/SearchEndpoints:GET:/stac/search",
+      "feature": "Protocols",
+      "file": "SearchEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/stac/search",
+      "source_file": "Protocols/Stac/SearchEndpoints.cs",
+      "source_line": 39
+    },
+    {
+      "key": "Protocols/SearchEndpoints:POST:/stac/search",
+      "feature": "Protocols",
+      "file": "SearchEndpoints",
+      "kind": "http",
+      "verb": "POST",
+      "route": "/stac/search",
+      "source_file": "Protocols/Stac/SearchEndpoints.cs",
+      "source_line": 48
+    },
+    {
+      "key": "Protocols/TileJsonEndpoints:GET:/tiles/{layerId:int}/tile.json",
+      "feature": "Protocols",
+      "file": "TileJsonEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/tiles/{layerId:int}/tile.json",
+      "source_file": "Protocols/Tiles/TileJsonEndpoints.cs",
+      "source_line": 27
+    },
+    {
+      "key": "Protocols/TileMatrixSetEndpoints:GET:/ogc/tiles/tileMatrixSets",
+      "feature": "Protocols",
+      "file": "TileMatrixSetEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/ogc/tiles/tileMatrixSets",
+      "source_file": "Protocols/Ogc/Api/Tiles/TileMatrixSetEndpoints.cs",
+      "source_line": 20
+    },
+    {
+      "key": "Protocols/TileMatrixSetEndpoints:GET:/ogc/tiles/tileMatrixSets/{tileMatrixSetId}",
+      "feature": "Protocols",
+      "file": "TileMatrixSetEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/ogc/tiles/tileMatrixSets/{tileMatrixSetId}",
+      "source_file": "Protocols/Ogc/Api/Tiles/TileMatrixSetEndpoints.cs",
+      "source_line": 30
+    },
+    {
+      "key": "Protocols/TilesEndpoints:GET:/ogc/tiles/collections/{collectionId}/tiles",
+      "feature": "Protocols",
+      "file": "TilesEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/ogc/tiles/collections/{collectionId}/tiles",
+      "source_file": "Protocols/Ogc/Api/Tiles/TilesEndpoints.cs",
+      "source_line": 70
+    },
+    {
+      "key": "Protocols/TilesEndpoints:GET:/ogc/tiles/collections/{collectionId}/tiles/{tileMatrixSetId}",
+      "feature": "Protocols",
+      "file": "TilesEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/ogc/tiles/collections/{collectionId}/tiles/{tileMatrixSetId}",
+      "source_file": "Protocols/Ogc/Api/Tiles/TilesEndpoints.cs",
+      "source_line": 80
+    },
+    {
+      "key": "Protocols/TilesEndpoints:GET:/ogc/tiles/collections/{collectionId}/tiles/{tileMatrixSetId}/{tileMatrix}/{tileRow:int}/{tileCol:int}",
+      "feature": "Protocols",
+      "file": "TilesEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/ogc/tiles/collections/{collectionId}/tiles/{tileMatrixSetId}/{tileMatrix}/{tileRow:int}/{tileCol:int}",
+      "source_file": "Protocols/Ogc/Api/Tiles/TilesEndpoints.cs",
+      "source_line": 90
+    },
+    {
+      "key": "Protocols/TilesEndpoints:GET:/ogc/tiles/tiles",
+      "feature": "Protocols",
+      "file": "TilesEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/ogc/tiles/tiles",
+      "source_file": "Protocols/Ogc/Api/Tiles/TilesEndpoints.cs",
+      "source_line": 42
+    },
+    {
+      "key": "Protocols/TilesEndpoints:GET:/ogc/tiles/tiles/{tileMatrixSetId}",
+      "feature": "Protocols",
+      "file": "TilesEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/ogc/tiles/tiles/{tileMatrixSetId}",
+      "source_file": "Protocols/Ogc/Api/Tiles/TilesEndpoints.cs",
+      "source_line": 52
+    },
+    {
+      "key": "Protocols/TilesEndpoints:GET:/ogc/tiles/tiles/{tileMatrixSetId}/{tileMatrix}/{tileRow:int}/{tileCol:int}",
+      "feature": "Protocols",
+      "file": "TilesEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/ogc/tiles/tiles/{tileMatrixSetId}/{tileMatrix}/{tileRow:int}/{tileCol:int}",
+      "source_file": "Protocols/Ogc/Api/Tiles/TilesEndpoints.cs",
+      "source_line": 62
+    },
+    {
+      "key": "Spec/SpecEndpoints:GET:/v1/spec/artifact/{hash}",
+      "feature": "Spec",
+      "file": "SpecEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/v1/spec/artifact/{hash}",
+      "source_file": "Spec/SpecEndpoints.cs",
+      "source_line": 51
+    },
+    {
+      "key": "Spec/SpecEndpoints:POST:/v1/spec/apply",
+      "feature": "Spec",
+      "file": "SpecEndpoints",
+      "kind": "http",
+      "verb": "POST",
+      "route": "/v1/spec/apply",
+      "source_file": "Spec/SpecEndpoints.cs",
+      "source_line": 38
+    },
+    {
+      "key": "Spec/SpecEndpoints:POST:/v1/spec/cancel",
+      "feature": "Spec",
+      "file": "SpecEndpoints",
+      "kind": "http",
+      "verb": "POST",
+      "route": "/v1/spec/cancel",
+      "source_file": "Spec/SpecEndpoints.cs",
+      "source_line": 44
+    },
+    {
+      "key": "Spec/SpecEndpoints:POST:/v1/spec/plan",
+      "feature": "Spec",
+      "file": "SpecEndpoints",
+      "kind": "http",
+      "verb": "POST",
+      "route": "/v1/spec/plan",
+      "source_file": "Spec/SpecEndpoints.cs",
+      "source_line": 31
+    },
+    {
+      "key": "StaticMap/StaticMapEndpoints:GET:/static/{serviceId}/bbox/{bbox}/{dimensions}.{format}",
+      "feature": "StaticMap",
+      "file": "StaticMapEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/static/{serviceId}/bbox/{bbox}/{dimensions}.{format}",
+      "source_file": "StaticMap/StaticMapEndpoints.cs",
+      "source_line": 27
+    },
+    {
+      "key": "StaticMap/StaticMapEndpoints:GET:/static/{serviceId}/{center}/{dimensions}.{format}",
+      "feature": "StaticMap",
+      "file": "StaticMapEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/static/{serviceId}/{center}/{dimensions}.{format}",
+      "source_file": "StaticMap/StaticMapEndpoints.cs",
+      "source_line": 18
+    },
+    {
+      "key": "Streaming/FeatureStreamEndpoints:DELETE:/api/v{version:apiVersion}/admin/streaming/features/sessions/{sessionId:guid}",
+      "feature": "Streaming",
+      "file": "FeatureStreamEndpoints",
+      "kind": "http",
+      "verb": "DELETE",
+      "route": "/api/v{version:apiVersion}/admin/streaming/features/sessions/{sessionId:guid}",
+      "source_file": "Streaming/FeatureStreamEndpoints.cs",
+      "source_line": 59
+    },
+    {
+      "key": "Streaming/FeatureStreamEndpoints:GET:/api/v{version:apiVersion}/admin/streaming/features/sessions",
+      "feature": "Streaming",
+      "file": "FeatureStreamEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/api/v{version:apiVersion}/admin/streaming/features/sessions",
+      "source_file": "Streaming/FeatureStreamEndpoints.cs",
+      "source_line": 54
+    },
+    {
+      "key": "Streaming/FeatureStreamEndpoints:GET:/api/v{version:apiVersion}/streaming/features",
+      "feature": "Streaming",
+      "file": "FeatureStreamEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/api/v{version:apiVersion}/streaming/features",
+      "source_file": "Streaming/FeatureStreamEndpoints.cs",
+      "source_line": 38
+    }
+  ]
+}
