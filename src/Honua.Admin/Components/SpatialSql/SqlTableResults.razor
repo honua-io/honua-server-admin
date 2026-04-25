@@ -1,5 +1,7 @@
 @* Tabular renderer for SQL results. Columns and types come from the server-supplied
-   metadata so the geometry column can be marked without client-side guessing. *@
+   metadata so the geometry column can be marked without client-side guessing.
+   Uses MudDataGrid (per the approved design) with TemplateColumns generated from
+   Result.Columns so the grid stays dynamic across arbitrary SELECT shapes. *@
 @using Honua.Admin.Models.SpatialSql
 
 <div class="sql-table-results" data-testid="sql-table-results">
@@ -47,31 +49,37 @@
         }
         else
         {
-            <MudTable T="SqlRow" Items="@Result.Rows" Hover="true" Dense="true" Striped="true" data-testid="sql-table-grid">
-                <HeaderContent>
-                    @for (var i = 0; i < Result.Columns.Count; i++)
-                    {
-                        var column = Result.Columns[i];
-                        <MudTh>
-                            <MudStack Row Spacing="1" AlignItems="AlignItems.Center">
-                                <MudText Typo="Typo.body2"><strong>@column.Name</strong></MudText>
-                                @if (column.IsGeometry)
-                                {
-                                    <MudChip T="string" Color="Color.Primary" Variant="Variant.Outlined" Size="Size.Small">geom</MudChip>
-                                }
-                                <MudText Typo="Typo.caption" Color="Color.Secondary">@column.Type</MudText>
-                            </MudStack>
-                        </MudTh>
-                    }
-                </HeaderContent>
-                <RowTemplate>
+            <MudDataGrid T="SqlRow"
+                         Items="@Result.Rows"
+                         Hover="true"
+                         Dense="true"
+                         Striped="true"
+                         data-testid="sql-table-grid">
+                <Columns>
                     @for (var i = 0; i < Result.Columns.Count; i++)
                     {
                         var index = i;
-                        <MudTd data-testid="@($"sql-table-cell-{index}")">@(index < context.Cells.Count ? context.Cells[index] ?? string.Empty : string.Empty)</MudTd>
+                        var column = Result.Columns[i];
+                        <TemplateColumn T="SqlRow" Title="@column.Name" Sortable="false" Filterable="false">
+                            <HeaderTemplate>
+                                <MudStack Row Spacing="1" AlignItems="AlignItems.Center">
+                                    <MudText Typo="Typo.body2"><strong>@column.Name</strong></MudText>
+                                    @if (column.IsGeometry)
+                                    {
+                                        <MudChip T="string" Color="Color.Primary" Variant="Variant.Outlined" Size="Size.Small">geom</MudChip>
+                                    }
+                                    <MudText Typo="Typo.caption" Color="Color.Secondary">@column.Type</MudText>
+                                </MudStack>
+                            </HeaderTemplate>
+                            <CellTemplate>
+                                <span data-testid="@($"sql-table-cell-{index}")">
+                                    @(index < context.Item.Cells.Count ? context.Item.Cells[index] ?? string.Empty : string.Empty)
+                                </span>
+                            </CellTemplate>
+                        </TemplateColumn>
                     }
-                </RowTemplate>
-            </MudTable>
+                </Columns>
+            </MudDataGrid>
         }
     }
 </div>
