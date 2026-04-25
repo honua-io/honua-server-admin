@@ -22,6 +22,17 @@ public sealed class LicenseDiagnosticClassifierTests
         Assert.Equal(LicenseDiagnostic.Expired, LicenseDiagnosticClassifier.Classify(status));
     }
 
+    [Fact]
+    public void Valid_but_expired_earlier_today_classifies_as_expired()
+    {
+        // Boundary: server reports IsValid=true and the expiry is earlier on
+        // the same UTC day. The UTC-date-truncated day delta is 0, so the
+        // diagnostic must still resolve to Expired via the precise-instant
+        // guard rather than slipping back to Valid.
+        var status = StubLicenseWorkspaceClient.BuildHealthyEnterprise(DateTimeOffset.UtcNow.AddHours(-2));
+        Assert.Equal(LicenseDiagnostic.Expired, LicenseDiagnosticClassifier.Classify(status));
+    }
+
     [Theory]
     [InlineData("expired")]
     [InlineData("EXPIRED")]

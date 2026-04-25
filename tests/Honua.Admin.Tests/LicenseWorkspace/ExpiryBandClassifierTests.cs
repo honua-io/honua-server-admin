@@ -20,6 +20,20 @@ public sealed class ExpiryBandClassifierTests
         Assert.Equal(ExpiryBand.Expired, ExpiryBandClassifier.Classify(Now.AddDays(-1), Now));
     }
 
+    [Fact]
+    public void Same_day_earlier_than_now_classifies_as_expired()
+    {
+        // Expiry earlier today (UTC) — date-truncated days remaining is 0,
+        // but the precise instant has already passed.
+        Assert.Equal(ExpiryBand.Expired, ExpiryBandClassifier.Classify(Now.AddHours(-2), Now));
+    }
+
+    [Fact]
+    public void Exact_now_instant_classifies_as_expired()
+    {
+        Assert.Equal(ExpiryBand.Expired, ExpiryBandClassifier.Classify(Now, Now));
+    }
+
     [Theory]
     [InlineData(0, ExpiryBand.Warn1)]
     [InlineData(1, ExpiryBand.Warn1)]
@@ -33,10 +47,11 @@ public sealed class ExpiryBandClassifierTests
     [InlineData(365, ExpiryBand.Healthy)]
     public void Days_remaining_drives_band(int daysRemaining, ExpiryBand expected)
     {
-        // ComputeDaysRemaining truncates to date, so add 1h to keep both
-        // sides on the same UTC day after rounding.
-        var expiry = Now.UtcDateTime.Date.AddDays(daysRemaining).AddHours(1);
-        Assert.Equal(expected, ExpiryBandClassifier.Classify(new DateTimeOffset(expiry, TimeSpan.Zero), Now));
+        // Anchor expiry one hour after Now so daysRemaining=0 means "later
+        // today" (a future same-UTC-day instant), without colliding with the
+        // same-day-already-expired short-circuit.
+        var expiry = Now.AddDays(daysRemaining).AddHours(1);
+        Assert.Equal(expected, ExpiryBandClassifier.Classify(expiry, Now));
     }
 
     [Fact]

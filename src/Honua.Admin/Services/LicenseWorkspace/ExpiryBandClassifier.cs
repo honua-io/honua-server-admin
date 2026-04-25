@@ -20,12 +20,16 @@ public static class ExpiryBandClassifier
             return ExpiryBand.Perpetual;
         }
 
-        var days = ComputeDaysRemaining(expiresAt.Value, nowUtc);
-
-        if (days < 0)
+        // Precise-instant check first: a license that already expired earlier
+        // today (same UTC day) would otherwise truncate to days=0 and be
+        // misreported as Warn1.
+        if (expiresAt.Value <= nowUtc)
         {
             return ExpiryBand.Expired;
         }
+
+        var days = ComputeDaysRemaining(expiresAt.Value, nowUtc);
+
         if (days <= 1)
         {
             return ExpiryBand.Warn1;
