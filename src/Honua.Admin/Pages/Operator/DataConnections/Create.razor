@@ -101,14 +101,23 @@
         State.OnChanged += HandleChanged;
         var providerId = ResolveProviderId(Nav.Uri);
 
-        if (State.Draft is null || !string.Equals(State.Draft.ProviderId, providerId, StringComparison.OrdinalIgnoreCase))
-        {
-            State.BeginCreateDraft(providerId);
-        }
-
+        // Resolve the provider before priming the draft. BeginCreateDraft
+        // throws InvalidOperationException for unknown ids, which would
+        // otherwise crash this page before the missing-provider alert can
+        // render for `/new?provider=bogus`.
         if (State.ProviderRegistry.TryGet(providerId, out var registration))
         {
             _provider = registration;
+            if (State.Draft is null || !string.Equals(State.Draft.ProviderId, providerId, StringComparison.OrdinalIgnoreCase))
+            {
+                State.BeginCreateDraft(providerId);
+            }
+        }
+        else if (State.Draft is not null)
+        {
+            // Bogus provider — drop any leftover draft so the warning alert
+            // does not silently keep the prior provider's in-flight values.
+            State.ClearDraft();
         }
 
         _crumbs = new()

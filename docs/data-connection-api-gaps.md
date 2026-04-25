@@ -166,3 +166,24 @@ typed `ConnectionOperationError(Auth)` and a banner alert.
   isHealthy ? Healthy : Unhealthy, RequestAborted)`) plus update
   `last_health_check`, so the wire-of-truth and the UI agree without
   the workaround.
+
+### 11. `UpdateSecureConnectionRequest` has no Name / SecretReference / SecretType slots
+
+- **Today:** the server's PUT contract only accepts `Description`,
+  `Host`, `Port`, `DatabaseName`, `Username`, `Password`, `SslRequired`,
+  `SslMode`, `IsActive`. Renaming a connection, switching credential
+  modes, or rotating an external secret reference are not addressable
+  through the existing endpoint.
+- **Workaround:** `PostgresConnectionForm` renders Display name and
+  the credential-mode radio group as read-only in edit mode (`IsEdit`),
+  hides the secret-type field, and surfaces a "Credential mode is fixed
+  after creation. Delete and recreate to switch." caption. The state
+  store's `SubmitEditAsync` already maps only the supported fields; the
+  form gating closes the operator-facing half so saves never appear to
+  succeed for fields the server would silently drop.
+- **Server change wanted:** broaden `UpdateSecureConnectionRequest` to
+  accept (at minimum) `Name`, and either add a separate "rotate
+  secret-reference" endpoint or extend PUT with `SecretReference` /
+  `SecretType` so external secrets can be re-pointed without a delete /
+  recreate cycle. Tracked alongside gap #4 since both want richer
+  credential-management on the wire.

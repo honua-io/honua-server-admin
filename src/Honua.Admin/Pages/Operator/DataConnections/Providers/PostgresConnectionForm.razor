@@ -3,6 +3,9 @@
 @using Honua.Admin.Models.DataConnections
 
 <MudGrid>
+    @* Display name is fixed once a connection is created — the server's
+       UpdateSecureConnectionRequest has no Name field, so we render it
+       read-only in edit mode rather than silently dropping operator input. *@
     <MudItem xs="12" md="6">
         <MudTextField T="string"
                       Label="Display name"
@@ -10,6 +13,9 @@
                       ValueChanged="@(v => Update(d => d.Name = v ?? string.Empty))"
                       Required="true"
                       Immediate="true"
+                      ReadOnly="@IsEdit"
+                      Disabled="@IsEdit"
+                      HelperText="@(IsEdit ? "Display name is fixed after creation." : null)"
                       data-testid="conn-name" />
     </MudItem>
     <MudItem xs="12" md="6">
@@ -54,13 +60,28 @@
                       data-testid="conn-username" />
     </MudItem>
 
+    @* Credential mode and external-secret bindings are creation-only:
+       the server's UpdateSecureConnectionRequest accepts a new Password
+       (re-encryption) but has no SecretReference / SecretType fields, so
+       switching modes or rotating an external reference is not honored
+       on PUT. Lock the radio group in edit mode and only expose the
+       managed-credential rotate field. Operators who need to switch
+       modes today must delete and recreate. *@
     <MudItem xs="12">
         <MudRadioGroup T="CredentialMode"
                        Value="@Draft.CredentialMode"
-                       ValueChanged="@(m => Update(d => d.CredentialMode = m))">
+                       ValueChanged="@(m => Update(d => d.CredentialMode = m))"
+                       ReadOnly="@IsEdit"
+                       Disabled="@IsEdit">
             <MudRadio Value="@CredentialMode.Managed" data-testid="conn-mode-managed">Managed (encrypted at rest)</MudRadio>
             <MudRadio Value="@CredentialMode.External" data-testid="conn-mode-external">External secret reference</MudRadio>
         </MudRadioGroup>
+        @if (IsEdit)
+        {
+            <MudText Typo="Typo.caption" Class="text-secondary" data-testid="conn-mode-edit-help">
+                Credential mode is fixed after creation. Delete and recreate to switch.
+            </MudText>
+        }
     </MudItem>
 
     @if (Draft.CredentialMode == CredentialMode.Managed)
@@ -74,7 +95,7 @@
                                TestId="conn-password" />
         </MudItem>
     }
-    else
+    else if (!IsEdit)
     {
         <MudItem xs="12" md="8">
             <MudTextField T="string"
@@ -91,6 +112,22 @@
                           ValueChanged="@(v => Update(d => d.SecretType = v))"
                           HelperText="aws | azure | vault"
                           data-testid="conn-secret-type" />
+        </MudItem>
+    }
+    else
+    {
+        @* External-mode edit: the secret reference is set at creation and
+           cannot be rotated through the current update contract. Display
+           it read-only so operators see what is stored without having a
+           Save button that silently drops the change. *@
+        <MudItem xs="12" md="8">
+            <MudTextField T="string"
+                          Label="Secret reference"
+                          Value="@Draft.SecretReference"
+                          ReadOnly="true"
+                          Disabled="true"
+                          HelperText="Stored secret reference is fixed after creation."
+                          data-testid="conn-secret-ref" />
         </MudItem>
     }
 

@@ -154,7 +154,23 @@
     {
         if (State.SelectedDetail?.ConnectionId != Id)
         {
+            // Blazor reuses this component when the route id changes. Drop
+            // any in-flight edit state and any draft tied to the previous
+            // connection before loading the new detail — otherwise SubmitEdit
+            // would PUT the prior connection's draft against the new id.
+            ResetEditState();
             await State.LoadDetailAsync(Id);
+        }
+    }
+
+    private void ResetEditState()
+    {
+        _editing = false;
+        _editProvider = null;
+        _savingEdit = false;
+        if (State.Draft is { } draft && draft.ConnectionId != Id)
+        {
+            State.ClearDraft();
         }
     }
 

@@ -240,6 +240,49 @@ public sealed class HttpDataConnectionClientTests
 
         Assert.False(result.IsSuccess);
         Assert.Equal(ConnectionErrorKind.Validation, result.Error!.Kind);
+        // honua-server returns 4xx as ApiResponse<object>.Failure(message);
+        // the operator-actionable message must survive into the typed error
+        // detail rather than getting dropped by the ProblemDetails parser.
+        Assert.Equal("Invalid SSL mode", result.Error.Detail);
+    }
+
+    [Fact]
+    public async Task DeleteAsync_returns_conflict_with_envelope_message_on_409()
+    {
+        var handler = new FakeHttpMessageHandler();
+        handler.Enqueue(_ => new HttpResponseMessage(HttpStatusCode.Conflict)
+        {
+            Content = new StringContent(
+                "{\"success\":false,\"message\":\"Connection is in use by services\"}",
+                Encoding.UTF8, "application/json")
+        });
+
+        var client = MakeClient(handler);
+        var result = await client.DeleteAsync(Guid.NewGuid(), CancellationToken.None);
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal(ConnectionErrorKind.Conflict, result.Error!.Kind);
+        Assert.Equal("Connection is in use by services", result.Error.Detail);
+    }
+
+    [Fact]
+    public async Task ParseProblemAsync_prefers_problem_details_when_both_shapes_could_match()
+    {
+        // ProblemDetails-shaped 5xx body should still take precedence over
+        // a coincidentally parseable envelope shape.
+        var handler = new FakeHttpMessageHandler();
+        handler.Enqueue(_ => new HttpResponseMessage(HttpStatusCode.InternalServerError)
+        {
+            Content = new StringContent(
+                "{\"type\":\"about:blank\",\"title\":\"boom\",\"status\":500,\"detail\":\"engine failure\"}",
+                Encoding.UTF8, "application/problem+json")
+        });
+
+        var client = MakeClient(handler);
+        var result = await client.ListAsync(CancellationToken.None);
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal("engine failure", result.Error!.Detail);
     }
 
     [Fact]

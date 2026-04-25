@@ -397,7 +397,13 @@ Pages:
   delete a saved connection. Soft-disable maps to
   `PUT /api/v1/admin/connections/{id}` with `{ isActive: false }` (no
   dedicated disable endpoint); delete is gated behind a typed-name
-  confirm dialog and removes audit history server-side.
+  confirm dialog and removes audit history server-side. The edit form
+  is narrower than the create form: Display name and credential mode /
+  external secret reference are rendered read-only because the server's
+  `UpdateSecureConnectionRequest` has no slots for them — see gap #11.
+  Navigating between connection ids while editing clears the in-flight
+  draft so a Save never PUTs the prior connection's body against the new
+  route id.
 - `Pages/Operator/DataConnections/Diagnostics.razor`
   (`/operator/data-connections/{id}/diagnostics`) — six-row preflight
   grid (`Dns → Tcp → Auth → Ssl → Capability → Version`) plus a
@@ -450,7 +456,14 @@ duplicate the policy check; `401` / `403` map to a
 error kinds are `Network`, `Auth`, `Validation`, `Server`, `Conflict`,
 `NotFound`; the typed copy-keys it raises are `error.network`,
 `error.timeout`, `error.malformed_response`, `error.empty_response`,
-plus the kind-specific `error.{kind}` keys parsed from `ProblemDetails`.
+plus the kind-specific `error.{kind}` keys parsed from the response
+body. honua-server returns 4xx admin failures as
+`ApiResponse<object>.Failure(message)` (e.g., `"Invalid SSL mode"`,
+`"Connection is in use by services"`) rather than RFC7807
+`ProblemDetails`, so `HttpDataConnectionClient.ParseProblemAsync` reads
+the body once and tries both shapes — `ProblemDetails.Detail`/`.Title`
+first, then the failure-envelope `Message` — so the operator-actionable
+message survives into the banner alert.
 
 Diagnostic contract. Preflight always renders a six-row grid in
 deterministic order (`Dns → Tcp → Auth → Ssl → Capability → Version`).

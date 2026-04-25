@@ -153,18 +153,56 @@ public sealed class HttpDataConnectionClient : IDataConnectionClient
             HttpStatusCode.BadRequest or HttpStatusCode.UnprocessableEntity => ConnectionErrorKind.Validation,
             _ => ConnectionErrorKind.Server
         };
+        var copyKey = $"error.{kind.ToString().ToLowerInvariant()}";
 
+        // honua-server returns 4xx data-connection failures as
+        // ApiResponse<object>.Failure(message), e.g. "Invalid SSL mode" or
+        // "Connection is in use by services". A few paths still emit
+        // application/problem+json (e.g., 5xx routed through middleware).
+        // Read the body once and try both shapes so we never drop the
+        // operator-actionable message on the floor.
+        string? body;
         try
         {
-            var problem = await response.Content
-                .ReadFromJsonAsync(DataConnectionsJsonContext.Default.ProblemDetailsPayload, cancellationToken)
-                .ConfigureAwait(false);
-            var detail = problem?.Detail ?? problem?.Title;
-            return new ConnectionOperationError(kind, $"error.{kind.ToString().ToLowerInvariant()}", detail);
+            body = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
         }
         catch
         {
-            return new ConnectionOperationError(kind, $"error.{kind.ToString().ToLowerInvariant()}");
+            return new ConnectionOperationError(kind, copyKey);
+        }
+
+        if (string.IsNullOrWhiteSpace(body))
+        {
+            return new ConnectionOperationError(kind, copyKey);
+        }
+
+        var detail = TryReadProblemDetail(body) ?? TryReadEnvelopeMessage(body);
+        return new ConnectionOperationError(kind, copyKey, detail);
+    }
+
+    private static string? TryReadProblemDetail(string body)
+    {
+        try
+        {
+            var problem = JsonSerializer.Deserialize(body, DataConnectionsJsonContext.Default.ProblemDetailsPayload);
+            return problem?.Detail ?? problem?.Title;
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
+    }
+
+    private static string? TryReadEnvelopeMessage(string body)
+    {
+        try
+        {
+            var envelope = JsonSerializer.Deserialize(body, DataConnectionsJsonContext.Default.ApiResponseObject);
+            return string.IsNullOrWhiteSpace(envelope?.Message) ? null : envelope!.Message;
+        }
+        catch (JsonException)
+        {
+            return null;
         }
     }
 }

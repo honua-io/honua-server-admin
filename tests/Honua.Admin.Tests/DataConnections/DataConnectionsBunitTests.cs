@@ -3,9 +3,13 @@ using System.Threading.Tasks;
 using Bunit;
 using Honua.Admin.Models.DataConnections;
 using Honua.Admin.Pages.Operator.DataConnections;
+using Honua.Admin.Pages.Operator.DataConnections.Providers;
 using Honua.Admin.Services.DataConnections;
 using Honua.Admin.Services.DataConnections.Providers;
+using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Components.Rendering;
 using Microsoft.Extensions.DependencyInjection;
+using MudBlazor;
 using MudBlazor.Services;
 using Xunit;
 
@@ -128,6 +132,78 @@ public sealed class DataConnectionsBunitTests : IDisposable
         await state.LoadDetailAsync(newId);
         Assert.NotNull(state.SelectedDetail);
         Assert.False(state.SelectedDetail!.IsActive);
+    }
+
+    [Fact]
+    public void PostgresConnectionForm_in_edit_mode_locks_fields_outside_the_update_contract()
+    {
+        // honua-server's UpdateSecureConnectionRequest has no Name,
+        // SecretReference, or SecretType slots. The form must render those
+        // controls read-only / hidden in edit mode so the operator never
+        // believes a Save will persist them.
+        var draft = new ConnectionDraft
+        {
+            ConnectionId = Guid.NewGuid(),
+            ProviderId = "postgres",
+            Name = "primary",
+            Host = "db.example.com",
+            DatabaseName = "honua",
+            Username = "honua",
+            CredentialMode = CredentialMode.External,
+            SecretReference = "aws:secretsmanager:prod-db-creds",
+            SecretType = "aws"
+        };
+
+        var cut = RenderFormWithPopoverHost(draft, isEdit: true);
+
+        // Display name input is read-only / disabled — MudTextField puts
+        // data-testid on the wrapping element, so look at the markup
+        // around the testid.
+        var nameMarkup = cut.Find("[data-testid='conn-name']").OuterHtml;
+        Assert.Contains("readonly", nameMarkup, StringComparison.OrdinalIgnoreCase);
+
+        // Credential-mode helper appears only in edit mode.
+        cut.Find("[data-testid='conn-mode-edit-help']");
+
+        // External-mode secret reference is rendered read-only; the secret
+        // type input must not be present (rotating the type is impossible
+        // through the current update contract).
+        var secretRefMarkup = cut.Find("[data-testid='conn-secret-ref']").OuterHtml;
+        Assert.Contains("readonly", secretRefMarkup, StringComparison.OrdinalIgnoreCase);
+        Assert.Empty(cut.FindAll("[data-testid='conn-secret-type']"));
+    }
+
+    [Fact]
+    public void PostgresConnectionForm_in_create_mode_keeps_credential_mode_editable()
+    {
+        // Sanity check the IsEdit gate cuts only the edit path: a fresh
+        // create-mode draft starting in External mode must keep the
+        // secret-type input live (operator can rotate before save).
+        var draft = new ConnectionDraft
+        {
+            ProviderId = "postgres",
+            CredentialMode = CredentialMode.External
+        };
+
+        var cut = RenderFormWithPopoverHost(draft, isEdit: false);
+
+        Assert.Empty(cut.FindAll("[data-testid='conn-mode-edit-help']"));
+        cut.Find("[data-testid='conn-secret-type']");
+    }
+
+    private IRenderedFragment RenderFormWithPopoverHost(ConnectionDraft draft, bool isEdit)
+    {
+        // MudSelect (used for SSL mode) requires a MudPopoverProvider in
+        // the render tree. Wrap the form in a host that supplies one.
+        return _ctx.Render(builder =>
+        {
+            builder.OpenComponent<MudPopoverProvider>(0);
+            builder.CloseComponent();
+            builder.OpenComponent<PostgresConnectionForm>(1);
+            builder.AddAttribute(2, nameof(PostgresConnectionForm.Draft), draft);
+            builder.AddAttribute(3, nameof(PostgresConnectionForm.IsEdit), isEdit);
+            builder.CloseComponent();
+        });
     }
 
     public void Dispose()

@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Honua.Admin.Models.DataConnections;
@@ -174,6 +175,22 @@ public sealed class DataConnectionsStateTests
     }
 
     [Fact]
+    public void BeginCreateDraft_throws_for_unknown_provider_so_callers_must_TryGet_first()
+    {
+        // Pin the contract Create.razor relies on: BeginCreateDraft is the
+        // strict path and throws for unknown ids. The page must consult the
+        // registry's TryGet first or it will crash before the
+        // missing-provider alert can render.
+        var stub = new StubDataConnectionClient();
+        var (state, _) = BuildState(stub);
+
+        var registry = state.ProviderRegistry;
+        Assert.False(registry.TryGet("bogus", out _));
+
+        Assert.Throws<InvalidOperationException>(() => state.BeginCreateDraft("bogus"));
+    }
+
+    [Fact]
     public async Task SubmitEditAsync_updates_existing_connection_and_records_event()
     {
         var seed = Sample("primary", isActive: true);
@@ -308,6 +325,71 @@ public sealed class DataConnectionsStateTests
     }
 
     [Fact]
+    public async Task ClearDraft_when_navigating_to_another_connection_drops_stale_edit_buffer()
+    {
+        // Sibling invariant for Detail.razor's route-change reset: editing
+        // connection A and then navigating to connection B must clear the
+        // draft so SubmitEdit cannot fire B's id with A's wire body. The
+        // page-level reset (ResetEditState) calls ClearDraft only when
+        // Draft.ConnectionId differs from the new route id; pin the
+        // state-store contract that supports it.
+        var first = Sample("first", isActive: true);
+        var second = Sample("second", isActive: true);
+        var stub = new StubDataConnectionClient(new[] { first, second });
+        var (state, _) = BuildState(stub);
+
+        await state.RefreshListAsync();
+        await state.LoadDetailAsync(first.ConnectionId);
+
+        var draft = state.BeginEditDraft(state.SelectedDetail!);
+        Assert.Equal(first.ConnectionId, draft.ConnectionId);
+
+        // Simulate the page-level route-change reset condition.
+        if (state.Draft is { } current && current.ConnectionId != second.ConnectionId)
+        {
+            state.ClearDraft();
+        }
+
+        Assert.Null(state.Draft);
+    }
+
+    [Fact]
+    public async Task SubmitEditAsync_does_not_send_Name_or_SecretReference_to_match_server_contract()
+    {
+        // honua-server's UpdateSecureConnectionRequest has no Name,
+        // SecretReference, or SecretType fields. The edit form is gated on
+        // IsEdit so the operator never sees those fields, but pin the
+        // SubmitEditAsync wire shape too so a future form change cannot
+        // silently start sending values the server will drop.
+        var seed = Sample("primary", isActive: true);
+        var stub = new RecordingUpdateStubClient(seed);
+        var (state, _) = BuildState(stub);
+
+        await state.RefreshListAsync();
+        await state.LoadDetailAsync(seed.ConnectionId);
+
+        var draft = state.BeginEditDraft(state.SelectedDetail!);
+        // Operator-edited values that the form locks down — even if a future
+        // form regression lets them through, SubmitEditAsync must not forward
+        // them to the server.
+        draft.Name = "renamed-but-ignored";
+        draft.SecretReference = "vault:bogus";
+        draft.SecretType = "vault";
+        draft.Description = "primary OLAP";
+
+        await state.SubmitEditAsync();
+
+        Assert.NotNull(stub.LastUpdateRequest);
+        Assert.Equal("primary OLAP", stub.LastUpdateRequest!.Description);
+        // The wire shape has no Name / SecretReference / SecretType slots,
+        // so the values cannot be forwarded — assert the request type itself
+        // does not expose them.
+        Assert.DoesNotContain(typeof(UpdateConnectionRequest).GetProperties(), p => p.Name == "Name");
+        Assert.DoesNotContain(typeof(UpdateConnectionRequest).GetProperties(), p => p.Name == "SecretReference");
+        Assert.DoesNotContain(typeof(UpdateConnectionRequest).GetProperties(), p => p.Name == "SecretType");
+    }
+
+    [Fact]
     public void GetCapabilityMatrix_marks_every_check_not_assessed_until_server_endpoint_lands()
     {
         var stub = new StubDataConnectionClient();
@@ -335,6 +417,48 @@ public sealed class DataConnectionsStateTests
             new PostgresProviderRegistration(),
             new SqlServerStubProviderRegistration()
         });
+    }
+
+    private sealed class RecordingUpdateStubClient : IDataConnectionClient
+    {
+        private readonly StubDataConnectionClient _inner;
+
+        public RecordingUpdateStubClient(DataConnectionDetail seed)
+        {
+            _inner = new StubDataConnectionClient(new[] { seed });
+        }
+
+        public UpdateConnectionRequest? LastUpdateRequest { get; private set; }
+
+        public Task<ConnectionResult<IReadOnlyList<DataConnectionSummary>>> ListAsync(System.Threading.CancellationToken cancellationToken = default) =>
+            _inner.ListAsync(cancellationToken);
+
+        public Task<ConnectionResult<DataConnectionDetail>> GetAsync(Guid id, System.Threading.CancellationToken cancellationToken = default) =>
+            _inner.GetAsync(id, cancellationToken);
+
+        public Task<ConnectionResult<DataConnectionSummary>> CreateAsync(CreateConnectionRequest request, System.Threading.CancellationToken cancellationToken = default) =>
+            _inner.CreateAsync(request, cancellationToken);
+
+        public Task<ConnectionResult<DataConnectionSummary>> UpdateAsync(Guid id, UpdateConnectionRequest request, System.Threading.CancellationToken cancellationToken = default)
+        {
+            LastUpdateRequest = request;
+            return _inner.UpdateAsync(id, request, cancellationToken);
+        }
+
+        public Task<ConnectionResult<DataConnectionSummary>> DisableAsync(Guid id, System.Threading.CancellationToken cancellationToken = default) =>
+            _inner.DisableAsync(id, cancellationToken);
+
+        public Task<ConnectionResult<DataConnectionSummary>> EnableAsync(Guid id, System.Threading.CancellationToken cancellationToken = default) =>
+            _inner.EnableAsync(id, cancellationToken);
+
+        public Task<ConnectionResult<bool>> DeleteAsync(Guid id, System.Threading.CancellationToken cancellationToken = default) =>
+            _inner.DeleteAsync(id, cancellationToken);
+
+        public Task<ConnectionResult<ConnectionTestOutcome>> TestDraftAsync(CreateConnectionRequest request, System.Threading.CancellationToken cancellationToken = default) =>
+            _inner.TestDraftAsync(request, cancellationToken);
+
+        public Task<ConnectionResult<ConnectionTestOutcome>> TestExistingAsync(Guid id, System.Threading.CancellationToken cancellationToken = default) =>
+            _inner.TestExistingAsync(id, cancellationToken);
     }
 
     private sealed class ThrowOnGetStubClient : IDataConnectionClient
