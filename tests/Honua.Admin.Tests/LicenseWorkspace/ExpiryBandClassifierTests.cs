@@ -64,4 +64,34 @@ public sealed class ExpiryBandClassifierTests
         var nowInLocal = new DateTimeOffset(2026, 4, 25, 12, 0, 0, TimeSpan.FromHours(-10));
         Assert.Equal(ExpiryBand.Warn1, ExpiryBandClassifier.Classify(expiry, nowInLocal));
     }
+
+    [Fact]
+    public void Format_relative_day_expired_same_utc_day_says_earlier_today()
+    {
+        // Date-truncated days = 0 paired with the Expired band must render as
+        // "earlier today" so the headline ("License expired") and the detail
+        // copy stay consistent.
+        Assert.Equal("earlier today", ExpiryBandClassifier.FormatRelativeDay(ExpiryBand.Expired, 0));
+    }
+
+    [Fact]
+    public void Format_relative_day_expired_prior_day_renders_days_ago()
+    {
+        Assert.Equal("3 day(s) ago", ExpiryBandClassifier.FormatRelativeDay(ExpiryBand.Expired, -3));
+    }
+
+    [Fact]
+    public void Format_relative_day_future_same_utc_day_says_later_today()
+    {
+        Assert.Equal("later today", ExpiryBandClassifier.FormatRelativeDay(ExpiryBand.Warn1, 0));
+    }
+
+    [Theory]
+    [InlineData(ExpiryBand.Warn1, 1, "in 1 day(s)")]
+    [InlineData(ExpiryBand.Warn7, 5, "in 5 day(s)")]
+    [InlineData(ExpiryBand.Healthy, 180, "in 180 day(s)")]
+    public void Format_relative_day_future_renders_in_n_days(ExpiryBand band, int days, string expected)
+    {
+        Assert.Equal(expected, ExpiryBandClassifier.FormatRelativeDay(band, days));
+    }
 }

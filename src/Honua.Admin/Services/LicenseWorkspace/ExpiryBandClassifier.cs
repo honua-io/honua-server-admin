@@ -61,4 +61,22 @@ public static class ExpiryBandClassifier
         var todayUtcDate = nowUtc.UtcDateTime.Date;
         return (int)(expiryUtcDate - todayUtcDate).TotalDays;
     }
+
+    /// <summary>
+    /// Relative-day phrase for the expiry detail copy. Switches direction off
+    /// the band so a same-UTC-day expired instant (date-truncated days = 0)
+    /// renders as "earlier today" rather than the misleading "in 0 day(s)".
+    /// </summary>
+    public static string FormatRelativeDay(ExpiryBand band, int daysRemaining)
+    {
+        if (band == ExpiryBand.Expired)
+        {
+            return daysRemaining < 0
+                ? $"{Math.Abs(daysRemaining)} day(s) ago"
+                : "earlier today";
+        }
+        return daysRemaining <= 0
+            ? "later today"
+            : $"in {daysRemaining} day(s)";
+    }
 }
