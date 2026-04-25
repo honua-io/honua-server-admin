@@ -1,0 +1,121 @@
+@page "/operator/data-connections"
+@using Microsoft.AspNetCore.Authorization
+@using MudBlazor
+@using Honua.Admin.Models.DataConnections
+@using Honua.Admin.Services.DataConnections
+@using Honua.Admin.Services.DataConnections.Providers
+@attribute [Authorize]
+@inject DataConnectionsState State
+@inject NavigationManager Nav
+@implements IDisposable
+
+<PageTitle>Data connections</PageTitle>
+
+<MudStack Spacing="3">
+    <MudStack Row="true" AlignItems="AlignItems.Center">
+        <MudText Typo="Typo.h4">Data connections</MudText>
+        <MudSpacer />
+        <MudMenu Label="New connection"
+                 Icon="@Icons.Material.Filled.Add"
+                 Color="Color.Primary"
+                 Variant="Variant.Filled"
+                 EndIcon="@Icons.Material.Filled.ArrowDropDown"
+                 data-testid="new-connection-menu">
+            @foreach (var provider in State.ProviderRegistry.All)
+            {
+                <MudMenuItem OnClick="@(() => StartCreate(provider.ProviderId))"
+                             data-testid="@($"new-connection-{provider.ProviderId}")">
+                    @provider.DisplayName
+                    @if (provider.IsStub)
+                    {
+                        <MudChip T="string" Size="Size.Small" Color="Color.Default" Class="ml-2">stub</MudChip>
+                    }
+                </MudMenuItem>
+            }
+        </MudMenu>
+    </MudStack>
+
+    @if (State.LastError is { } err)
+    {
+        <MudAlert Severity="Severity.Error" data-testid="list-error">
+            @err.CopyKey @(err.Detail is null ? string.Empty : $" — {err.Detail}")
+        </MudAlert>
+    }
+
+    @if (State.Status == WorkspaceListStatus.Loading)
+    {
+        <MudProgressCircular Indeterminate="true" Size="Size.Small" data-testid="list-loading" />
+    }
+    else if (State.Connections.Count == 0)
+    {
+        <MudPaper Class="pa-6" Outlined="true" data-testid="empty-list">
+            <MudText Typo="Typo.h6">No data connections yet</MudText>
+            <MudText Typo="Typo.body2" Class="text-secondary">
+                Pick a provider from <em>New connection</em> to register the first one.
+            </MudText>
+        </MudPaper>
+    }
+    else
+    {
+        <MudTable Items="State.Connections" Hover="true" Dense="true" data-testid="connections-table">
+            <HeaderContent>
+                <MudTh>Name</MudTh>
+                <MudTh>Provider</MudTh>
+                <MudTh>Host</MudTh>
+                <MudTh>Status</MudTh>
+                <MudTh>Last checked</MudTh>
+                <MudTh></MudTh>
+            </HeaderContent>
+            <RowTemplate>
+                <MudTd data-testid="@($"row-name-{context.ConnectionId}")">
+                    <MudLink OnClick="@(() => OpenDetail(context.ConnectionId))">@context.Name</MudLink>
+                    @if (!context.IsActive)
+                    {
+                        <MudChip T="string" Size="Size.Small" Color="Color.Warning" Class="ml-2">disabled</MudChip>
+                    }
+                </MudTd>
+                <MudTd>@context.ProviderId</MudTd>
+                <MudTd>@context.Host:@context.Port</MudTd>
+                <MudTd>
+                    <MudChip T="string"
+                             Color="@(context.HealthStatus == "healthy" ? Color.Success : context.HealthStatus == "unhealthy" ? Color.Error : Color.Default)"
+                             Size="Size.Small">
+                        @context.HealthStatus
+                    </MudChip>
+                </MudTd>
+                <MudTd>@(context.LastHealthCheck?.ToString("u") ?? "—")</MudTd>
+                <MudTd>
+                    <MudIconButton Icon="@Icons.Material.Filled.Science"
+                                   aria-label="Open diagnostics"
+                                   OnClick="@(() => OpenDiagnostics(context.ConnectionId))"
+                                   data-testid="@($"row-diag-{context.ConnectionId}")" />
+                </MudTd>
+            </RowTemplate>
+        </MudTable>
+    }
+</MudStack>
+
+@code {
+    protected override async Task OnInitializedAsync()
+    {
+        State.OnChanged += HandleChanged;
+        await State.RefreshListAsync();
+    }
+
+    private void HandleChanged() => InvokeAsync(StateHasChanged);
+
+    private void StartCreate(string providerId)
+    {
+        State.BeginCreateDraft(providerId);
+        Nav.NavigateTo($"/operator/data-connections/new?provider={providerId}");
+    }
+
+    private void OpenDetail(Guid id) => Nav.NavigateTo($"/operator/data-connections/{id}");
+
+    private void OpenDiagnostics(Guid id) => Nav.NavigateTo($"/operator/data-connections/{id}/diagnostics");
+
+    public void Dispose()
+    {
+        State.OnChanged -= HandleChanged;
+    }
+}

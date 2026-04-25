@@ -1,0 +1,18 @@
+@using MudBlazor
+@using Honua.Admin.Models.DataConnections
+
+<MudAlert Severity="Severity.Info" Variant="Variant.Outlined" data-testid="stub-provider-form">
+    <MudText Typo="Typo.h6">@DisplayName provider is registered but not yet available</MudText>
+    <MudText Typo="Typo.body2">
+        The pluggable registration is wired so the workspace recognizes
+        @DisplayName today. Concrete create-form support arrives when
+        <code>honua-server#362</code> ships server-side multi-database support.
+    </MudText>
+</MudAlert>
+
+@code {
+    [Parameter] public string DisplayName { get; set; } = "this provider";
+    [Parameter] public ConnectionDraft? Draft { get; set; }
+    [Parameter] public EventCallback<ConnectionDraft> DraftChanged { get; set; }
+    [Parameter] public bool IsEdit { get; set; }
+}

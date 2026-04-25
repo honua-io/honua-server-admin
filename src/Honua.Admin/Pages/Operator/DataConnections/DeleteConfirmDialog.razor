@@ -1,0 +1,38 @@
+@using MudBlazor
+
+<MudDialog>
+    <DialogContent>
+        <MudText>@ContentText</MudText>
+        <MudTextField T="string"
+                      Value="@_typed"
+                      ValueChanged="@(v => _typed = v ?? string.Empty)"
+                      Label="Type the connection name"
+                      Immediate="true"
+                      data-testid="delete-confirm-input" />
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel" data-testid="delete-cancel">Cancel</MudButton>
+        <MudButton Color="@Color"
+                   Variant="Variant.Filled"
+                   OnClick="Confirm"
+                   Disabled="@(!string.Equals(_typed, ConfirmName, StringComparison.Ordinal))"
+                   data-testid="delete-confirm">
+            @ButtonText
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    private string _typed = string.Empty;
+
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = default!;
+
+    [Parameter] public string ContentText { get; set; } = string.Empty;
+    [Parameter] public string ButtonText { get; set; } = "Confirm";
+    [Parameter] public Color Color { get; set; } = Color.Error;
+    [Parameter] public string ConfirmName { get; set; } = string.Empty;
+
+    private void Cancel() => MudDialog.Cancel();
+
+    private void Confirm() => MudDialog.Close(DialogResult.Ok(true));
+}

@@ -1,0 +1,58 @@
+@using MudBlazor
+@using Honua.Admin.Models.DataConnections
+
+<MudPaper Class="pa-3" Outlined="true" data-testid="capability-matrix-postgres">
+    <MudText Typo="Typo.h6">Managed Postgres certification matrix</MudText>
+    <MudText Typo="Typo.body2" Class="text-secondary mb-3">
+        Aurora &amp; Azure DB checks. Cells marked <em>Not assessed</em> need
+        <code>honua-server#644</code> to land before they can render a verdict.
+    </MudText>
+    <MudSimpleTable Dense="true" Hover="true">
+        <thead>
+            <tr>
+                <th>Check</th>
+                <th>Category</th>
+                <th>Status</th>
+                <th>Detail</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var check in Matrix.Checks)
+            {
+                <tr data-testid="@($"capability-row-{check.CheckId}")">
+                    <td>@check.DisplayName</td>
+                    <td>@check.Category</td>
+                    <td>
+                        <MudChip T="string" Color="@StatusColor(check.Status)" Size="Size.Small">
+                            @StatusLabel(check.Status)
+                        </MudChip>
+                    </td>
+                    <td>@(check.Detail ?? RemediationCopy(check))</td>
+                </tr>
+            }
+        </tbody>
+    </MudSimpleTable>
+</MudPaper>
+
+@code {
+    [Parameter, EditorRequired] public ProviderCapabilityMatrix Matrix { get; set; } = default!;
+
+    private static Color StatusColor(DiagnosticStatus status) => status switch
+    {
+        DiagnosticStatus.Ok => Color.Success,
+        DiagnosticStatus.Failed => Color.Error,
+        _ => Color.Default
+    };
+
+    private static string StatusLabel(DiagnosticStatus status) => status switch
+    {
+        DiagnosticStatus.Ok => "Pass",
+        DiagnosticStatus.Failed => "Fail",
+        _ => "Not assessed"
+    };
+
+    private static string RemediationCopy(CapabilityCheck check) =>
+        check.Status == DiagnosticStatus.NotAssessed
+            ? "Awaiting honua-server#644 — server does not yet expose this signal."
+            : check.RemediationKey;
+}

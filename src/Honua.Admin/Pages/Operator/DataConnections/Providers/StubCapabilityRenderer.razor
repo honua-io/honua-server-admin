@@ -1,0 +1,11 @@
+@using MudBlazor
+@using Honua.Admin.Models.DataConnections
+
+<MudAlert Severity="Severity.Info" Variant="Variant.Outlined" data-testid="stub-capability-renderer">
+    Capability matrix for <strong>@(Matrix?.ProviderId ?? "this provider")</strong>
+    is empty until concrete server support ships.
+</MudAlert>
+
+@code {
+    [Parameter] public ProviderCapabilityMatrix? Matrix { get; set; }
+}
