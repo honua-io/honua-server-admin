@@ -37,7 +37,13 @@ public sealed class StubDataConnectionClient : IDataConnectionClient
 
     public Task<ConnectionResult<IReadOnlyList<DataConnectionSummary>>> ListAsync(CancellationToken cancellationToken = default)
     {
+        // Mirror PostgresSecureConnectionRegistry.GetActiveConnectionsAsync's
+        // `WHERE is_active = true` clause: the production list endpoint hides
+        // disabled connections. Disabled rows are still retrievable by id via
+        // GetAsync (server keeps them, just doesn't list them) — see the gap
+        // report for the operator-UX implication of this asymmetry.
         var snapshot = _store.Values
+            .Where(c => c.IsActive)
             .OrderBy(c => c.Name, StringComparer.Ordinal)
             .Select(ToSummary)
             .ToArray();

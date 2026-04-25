@@ -197,6 +197,117 @@ public sealed class DataConnectionsStateTests
     }
 
     [Fact]
+    public async Task LoadDetailAsync_failure_for_new_id_clears_prior_selection()
+    {
+        // Bug-fix invariant: when the route id changes, a failed Detail load
+        // must not leave SelectedDetail pointing at the previous connection.
+        var first = Sample("primary", isActive: true);
+        var stub = new ThrowOnGetStubClient(seed: first);
+        var (state, _) = BuildState(stub);
+
+        await state.RefreshListAsync();
+        await state.LoadDetailAsync(first.ConnectionId);
+        Assert.NotNull(state.SelectedDetail);
+        Assert.Equal(first.ConnectionId, state.SelectedDetail!.ConnectionId);
+
+        var unknownId = Guid.NewGuid();
+        stub.FailNextGet = true;
+        await state.LoadDetailAsync(unknownId);
+
+        Assert.Null(state.SelectedDetail);
+        Assert.Equal(WorkspaceListStatus.Error, state.Status);
+        Assert.NotNull(state.LastError);
+    }
+
+    [Fact]
+    public async Task LoadDetailAsync_failure_for_same_id_preserves_selection_for_retry()
+    {
+        // Same-id reloads (a transient blip while staying on the same Detail
+        // page) should keep the previously-loaded value so the page does not
+        // blank between retries.
+        var seed = Sample("primary", isActive: true);
+        var stub = new ThrowOnGetStubClient(seed: seed);
+        var (state, _) = BuildState(stub);
+
+        await state.RefreshListAsync();
+        await state.LoadDetailAsync(seed.ConnectionId);
+        Assert.NotNull(state.SelectedDetail);
+
+        stub.FailNextGet = true;
+        await state.LoadDetailAsync(seed.ConnectionId);
+
+        Assert.NotNull(state.SelectedDetail);
+        Assert.Equal(seed.ConnectionId, state.SelectedDetail!.ConnectionId);
+        Assert.Equal(WorkspaceListStatus.Error, state.Status);
+    }
+
+    [Fact]
+    public async Task RunExistingPreflightAsync_success_reconciles_health_in_selected_detail_and_list()
+    {
+        // The server's test endpoint does not persist HealthStatus to the
+        // row, so the state store must derive the refreshed health locally
+        // from the test outcome — otherwise the Detail page and list view
+        // keep showing stale "unknown" until the operator re-creates the
+        // connection.
+        var seed = Sample("primary", isActive: true);
+        var stub = new StubDataConnectionClient(new[] { seed });
+        var (state, _) = BuildState(stub);
+
+        await state.RefreshListAsync();
+        await state.LoadDetailAsync(seed.ConnectionId);
+        Assert.Equal("unknown", state.SelectedDetail!.HealthStatus);
+
+        var diagnostic = await state.RunExistingPreflightAsync(seed.ConnectionId);
+
+        Assert.NotNull(diagnostic);
+        Assert.False(diagnostic!.AnyFailed);
+        Assert.Equal("Healthy", state.SelectedDetail!.HealthStatus);
+        Assert.NotNull(state.SelectedDetail.LastHealthCheck);
+
+        var listEntry = state.Connections.Single(c => c.ConnectionId == seed.ConnectionId);
+        Assert.Equal("Healthy", listEntry.HealthStatus);
+        Assert.NotNull(listEntry.LastHealthCheck);
+    }
+
+    [Fact]
+    public async Task RunExistingPreflightAsync_failed_outcome_marks_unhealthy_locally()
+    {
+        var seed = Sample("primary", isActive: true);
+        var stub = new StubDataConnectionClient(new[] { seed })
+        {
+            FailureMessageForHost = host => host == seed.Host ? "DNS lookup failed" : null
+        };
+        var (state, _) = BuildState(stub);
+
+        await state.RefreshListAsync();
+        await state.LoadDetailAsync(seed.ConnectionId);
+
+        var diagnostic = await state.RunExistingPreflightAsync(seed.ConnectionId);
+
+        Assert.NotNull(diagnostic);
+        Assert.True(diagnostic!.AnyFailed);
+        Assert.Equal("Unhealthy", state.SelectedDetail!.HealthStatus);
+        Assert.NotNull(state.SelectedDetail.LastHealthCheck);
+    }
+
+    [Fact]
+    public async Task ListAsync_filters_disabled_connections_to_match_server_contract()
+    {
+        // PostgresSecureConnectionRegistry.GetActiveConnectionsAsync's SQL is
+        // `WHERE is_active = true`, so disabled rows never appear in the
+        // workspace list. Stub must mirror that for parity.
+        var active = Sample("primary", isActive: true);
+        var disabled = Sample("legacy", isActive: false);
+        var stub = new StubDataConnectionClient(new[] { active, disabled });
+        var (state, _) = BuildState(stub);
+
+        await state.RefreshListAsync();
+
+        Assert.Single(state.Connections);
+        Assert.Equal(active.ConnectionId, state.Connections[0].ConnectionId);
+    }
+
+    [Fact]
     public void GetCapabilityMatrix_marks_every_check_not_assessed_until_server_endpoint_lands()
     {
         var stub = new StubDataConnectionClient();
@@ -224,6 +335,53 @@ public sealed class DataConnectionsStateTests
             new PostgresProviderRegistration(),
             new SqlServerStubProviderRegistration()
         });
+    }
+
+    private sealed class ThrowOnGetStubClient : IDataConnectionClient
+    {
+        private readonly StubDataConnectionClient _inner;
+
+        public ThrowOnGetStubClient(DataConnectionDetail seed)
+        {
+            _inner = new StubDataConnectionClient(new[] { seed });
+        }
+
+        public bool FailNextGet { get; set; }
+
+        public Task<ConnectionResult<IReadOnlyList<DataConnectionSummary>>> ListAsync(System.Threading.CancellationToken cancellationToken = default) =>
+            _inner.ListAsync(cancellationToken);
+
+        public Task<ConnectionResult<DataConnectionDetail>> GetAsync(Guid id, System.Threading.CancellationToken cancellationToken = default)
+        {
+            if (FailNextGet)
+            {
+                FailNextGet = false;
+                return Task.FromResult(ConnectionResult<DataConnectionDetail>.Fail(
+                    new ConnectionOperationError(ConnectionErrorKind.Network, "error.network")));
+            }
+            return _inner.GetAsync(id, cancellationToken);
+        }
+
+        public Task<ConnectionResult<DataConnectionSummary>> CreateAsync(CreateConnectionRequest request, System.Threading.CancellationToken cancellationToken = default) =>
+            _inner.CreateAsync(request, cancellationToken);
+
+        public Task<ConnectionResult<DataConnectionSummary>> UpdateAsync(Guid id, UpdateConnectionRequest request, System.Threading.CancellationToken cancellationToken = default) =>
+            _inner.UpdateAsync(id, request, cancellationToken);
+
+        public Task<ConnectionResult<DataConnectionSummary>> DisableAsync(Guid id, System.Threading.CancellationToken cancellationToken = default) =>
+            _inner.DisableAsync(id, cancellationToken);
+
+        public Task<ConnectionResult<DataConnectionSummary>> EnableAsync(Guid id, System.Threading.CancellationToken cancellationToken = default) =>
+            _inner.EnableAsync(id, cancellationToken);
+
+        public Task<ConnectionResult<bool>> DeleteAsync(Guid id, System.Threading.CancellationToken cancellationToken = default) =>
+            _inner.DeleteAsync(id, cancellationToken);
+
+        public Task<ConnectionResult<ConnectionTestOutcome>> TestDraftAsync(CreateConnectionRequest request, System.Threading.CancellationToken cancellationToken = default) =>
+            _inner.TestDraftAsync(request, cancellationToken);
+
+        public Task<ConnectionResult<ConnectionTestOutcome>> TestExistingAsync(Guid id, System.Threading.CancellationToken cancellationToken = default) =>
+            _inner.TestExistingAsync(id, cancellationToken);
     }
 
     private static DataConnectionDetail Sample(string name, bool isActive) => new()

@@ -9,7 +9,7 @@ namespace Honua.Admin.Models.DataConnections;
 /// Property naming policy is inherited from the JSON context — server uses
 /// camelCase on the wire.
 /// </summary>
-public sealed class DataConnectionSummary
+public sealed record DataConnectionSummary
 {
     public required Guid ConnectionId { get; init; }
 

@@ -128,3 +128,41 @@ typed `ConnectionOperationError(Auth)` and a banner alert.
 - **Server change wanted:** mutating endpoints should return
   `ApiResponse<SecureConnectionDetail>` (the same shape the GET endpoint
   emits), removing the need for a follow-up GET.
+
+### 9. `GET /connections` filters out disabled connections — no `?includeInactive`
+
+- **Today:** `PostgresSecureConnectionRegistry.GetActiveConnectionsAsync`
+  uses `WHERE is_active = true`, so the list endpoint never surfaces
+  disabled rows. `GET /connections/{id}` does *not* filter, so a disabled
+  connection is still retrievable by id. The admin UI's
+  `StubDataConnectionClient.ListAsync` was updated to mirror the same
+  filter for parity with production.
+- **Blocks:** operator UX after a soft-disable. Once `PUT … { isActive:
+  false }` succeeds, the row vanishes from `/operator/data-connections`;
+  there is no in-UI list pivot to "see disabled" or to re-enable from the
+  list view. The `disabled` chip on `Index.razor` is dead code under the
+  current contract — it only renders if a future server change surfaces
+  inactive rows.
+- **Server change wanted:** add an opt-in filter (`?includeInactive=true`
+  or a separate `is_active=any` enum) on the list endpoint so the admin
+  can render a "disabled" tab / chip filter without losing existing
+  callers' assumption that the default surface is active-only.
+
+### 10. `POST /connections/{id}/test` does not persist `HealthStatus` to the row
+
+- **Today:** `HandleTestConnection` runs the health probe, returns the
+  `ConnectionTestResult`, and never calls
+  `ISecureConnectionRegistry.UpdateHealthStatusAsync`. The next `GET`
+  returns the prior stored `HealthStatus` regardless of test outcome.
+- **Workaround:** `DataConnectionsState.RunExistingPreflightAsync`
+  derives the refreshed `HealthStatus` ("Healthy"/"Unhealthy", matching
+  the server's `enum.ToString()` casing) and `LastHealthCheck` locally
+  from the `ConnectionTestOutcome` and patches both `SelectedDetail` and
+  the corresponding list entry. Operator-visible chips and timestamps
+  refresh inside the workspace, but a fresh page load (re-fetching from
+  the server) reverts to the stale stored value.
+- **Server change wanted:** `HandleTestConnection` should write the
+  test outcome back to the row (`UpdateHealthStatusAsync(id,
+  isHealthy ? Healthy : Unhealthy, RequestAborted)`) plus update
+  `last_health_check`, so the wire-of-truth and the UI agree without
+  the workaround.

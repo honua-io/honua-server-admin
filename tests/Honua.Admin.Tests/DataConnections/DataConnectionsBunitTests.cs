@@ -117,8 +117,17 @@ public sealed class DataConnectionsBunitTests : IDisposable
         var disableResult = await state.SetActiveAsync(newId, active: false);
         Assert.True(disableResult.IsSuccess);
 
+        // Production list endpoint filters out disabled connections (server's
+        // GetActiveConnectionsAsync uses `WHERE is_active = true`). After a
+        // refresh the row should disappear from the workspace list, but…
         await state.RefreshListAsync();
-        Assert.Single(state.Connections, c => c.ConnectionId == newId && !c.IsActive);
+        Assert.DoesNotContain(state.Connections, c => c.ConnectionId == newId);
+
+        // …it remains retrievable by id (GetConnectionAsync does not filter
+        // on IsActive), so direct-URL navigation still resolves the detail.
+        await state.LoadDetailAsync(newId);
+        Assert.NotNull(state.SelectedDetail);
+        Assert.False(state.SelectedDetail!.IsActive);
     }
 
     public void Dispose()

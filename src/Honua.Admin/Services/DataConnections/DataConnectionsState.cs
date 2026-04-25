@@ -188,8 +188,12 @@ public sealed class DataConnectionsState
     {
         if (SelectedDetail?.ConnectionId != id)
         {
-            // Navigating to a different connection — clear the prior preflight
-            // grid so we don't render a stale verdict against the new selection.
+            // Navigating to a different connection — clear the prior selection
+            // and preflight grid so a failed load (or in-flight load) does not
+            // render the previous connection's data under the new route id.
+            // Same-id reloads keep the prior value so a transient network blip
+            // does not blank the page.
+            SelectedDetail = null;
             LatestDiagnostic = null;
         }
         Status = WorkspaceListStatus.Loading;
@@ -411,6 +415,35 @@ public sealed class DataConnectionsState
         var diagnostic = DiagnosticMapper.Map(result.Value!, detail);
         LatestDiagnostic = diagnostic;
         Status = WorkspaceListStatus.Idle;
+
+        // Reconcile local view with the freshly-computed health. The server's
+        // test endpoint does not persist HealthStatus to the row today (see gap
+        // report), so a follow-up GET would return stale data. Derive
+        // PascalCase ("Healthy"/"Unhealthy") locally to match the server's
+        // enum.ToString() format used elsewhere.
+        var outcome = result.Value!;
+        if (outcome.ConnectionId != Guid.Empty)
+        {
+            var refreshedStatus = outcome.IsHealthy ? "Healthy" : "Unhealthy";
+            if (SelectedDetail is { } current && current.ConnectionId == outcome.ConnectionId)
+            {
+                SelectedDetail = current with
+                {
+                    HealthStatus = refreshedStatus,
+                    LastHealthCheck = outcome.TestedAt
+                };
+            }
+
+            var listIndex = _connections.FindIndex(c => c.ConnectionId == outcome.ConnectionId);
+            if (listIndex >= 0)
+            {
+                _connections[listIndex] = _connections[listIndex] with
+                {
+                    HealthStatus = refreshedStatus,
+                    LastHealthCheck = outcome.TestedAt
+                };
+            }
+        }
 
         var failedStep = diagnostic.AnyFailed
             ? diagnostic.Cells.First(c => c.Status == DiagnosticStatus.Failed).Step.ToString()
