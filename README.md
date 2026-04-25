@@ -11,6 +11,7 @@ This is the official admin UI for managing Honua Server instances:
 - **Service Administration**: Manage map services and API endpoints
 - **Analytics Dashboard**: Monitor usage and performance
 - **Operator Spec Workspace**: Stub-backed three-pane NL + DSL + preview workspace for walking the spec workflow end to end
+- **Identity Workspace**: OIDC provider lifecycle (list / create / edit / enable / delete), provider status, auth diagnostics, and API-key gap surface — see [Identity workspace](#identity-workspace) below
 
 ## Architecture
 
@@ -54,6 +55,20 @@ Configure server connection in `src/Honua.Admin/appsettings.json`:
 }
 ```
 
+`HonuaServer:BaseUrl` is the absolute URL of the Honua server. When omitted,
+the admin UI falls back to its own host base address (assumes same-origin
+deployment).
+
+`HonuaServer:ApiKey` is **development-only**. Blazor WebAssembly ships
+configuration to the browser, so any value placed here is visible to every
+client that loads the static app. `Program.cs` therefore only forwards the
+key as `X-API-Key` when `builder.HostEnvironment.IsDevelopment()` is true;
+production builds log a warning and refuse to attach it. Production
+deployments must front the admin UI with a same-origin backend / BFF that
+injects credentials server-side (or replace the dev auth scaffold with a
+real OIDC bearer-token flow). Tracked as a follow-on in
+[`docs/identity-admin-gaps.md`](docs/identity-admin-gaps.md).
+
 ### Operator Spec Workspace
 
 The S1 operator workspace lives at `/operator/spec` (gated by `[Authorize]`;
@@ -95,6 +110,71 @@ apply, cancel, layout change, and catalog-resolve latency. The S1 scope
 deliberately excludes real grounding / catalog / apply streaming, spec
 library and sharing, parameterization, scheduled runs, graphical authoring,
 and mobile layouts — each is tracked as a follow-on.
+
+### Identity workspace
+
+The identity workspace (ticket `#22`) lives under `/admin/identity/*` on the
+shared spec-editor shell. It backs onto the `honua-server` admin OIDC
+endpoints (`/api/v1/admin/oidc/providers`, `/api/v1/admin/identity/providers`)
+through a typed seam at `src/Honua.Admin/Services/Identity/` so a different
+transport can be DI-swapped without touching the page layer.
+
+Pages:
+
+- `Pages/Identity/Providers.razor` (`/admin/identity/providers`) — CRUD over
+  OIDC providers, with a one-click discovery test per row, masked-secret
+  edit form, and a confirmation gate before destructive operations
+- `Pages/Identity/Status.razor` (`/admin/identity/status`) — read-only
+  catalog of identity providers reported by the server with per-provider
+  reachability test buttons
+- `Pages/Identity/Diagnostics.razor` (`/admin/identity/diagnostics`) —
+  aggregates per-provider reachability, classifies each failure as
+  *operator action* (configuration fix) versus *wait* (likely upstream
+  outage), and surfaces "Pending — see follow-up ticket" cards for clock
+  skew, claim-mapping coverage, and callback-URL drift (server-side gaps)
+- `Pages/Identity/ApiKeys.razor` (`/admin/identity/api-keys`) — stub page
+  documenting the future capability and linking to the
+  [identity admin gap report](docs/identity-admin-gaps.md)
+
+Wire contract. Every honua-server admin response is wrapped in the shared
+`ApiResponse<T>` envelope (`{ success, data, message, timestamp }`); the
+admin client unwraps via `Data`. DTOs live in
+`src/Honua.Admin/Models/Identity/IdentityModels.cs` and mirror the server
+shapes verbatim with `[JsonPropertyName]` attributes. Serialization runs
+through the source-generated `IdentityAdminJsonContext` so the WASM build
+stays trim/AOT-safe. `OidcProviderResponse` intentionally has no
+`clientSecret` field — the server never round-trips secrets.
+
+Plaintext OIDC client secrets are write-only and optional. `ClientSecret`
+on the create form is omitted entirely (sent as `null`) when the operator
+leaves it blank, mirroring `honua-server`'s nullable
+`CreateOidcProviderRequest.ClientSecret` so public / PKCE-style providers
+go through unchanged. When supplied, the secret lives in
+`OidcProviderFormModel.ClientSecret` only for the duration of the dialog,
+is sent to the server exactly once on create or rotate, and is zeroed
+out from in-memory state immediately after submit. The server never
+returns secrets and `OidcProviderResponse` carries no has-secret flag, so
+edit dialogs render a `••••• (write-only)` placeholder — neutral about
+whether the server has anything stored — and require an explicit
+"Rotate secret" toggle to send a new value.
+
+Diagnostics classify each failure as *operator action* (configuration the
+operator can fix — bad authority host, wrong client credentials, missing
+authority) or *wait* (likely upstream — discovery timeout, opaque 5xx).
+Cards labelled "Pending — see follow-up ticket" cover server-side
+capabilities the diagnostics surface promises but does not yet ship
+(clock-skew detection, claim-mapping coverage, callback-URL drift); see
+[`docs/identity-admin-gaps.md`](docs/identity-admin-gaps.md) for the full
+list and the corresponding `honua-server` follow-ups.
+
+The diagnostic copy mapping is centralized in
+`Services/Identity/IdentityDiagnostics.cs`; the table from the design
+brief drives every operator-actionable message rendered on the
+diagnostics and providers pages.
+
+The identity admin client emits structured telemetry via
+`IIdentityAdminTelemetry` (default: `ILogger` sink) for every list /
+create / update / delete / test call.
 
 ## Features
 

@@ -1,0 +1,41 @@
+@* Confirmation gate for destructive provider operations. Renders the provider
+   name and a typed confirmation prompt so an accidental click cannot delete a
+   provider. *@
+@using MudBlazor
+
+<MudDialog>
+    <TitleContent>
+        <MudText Typo="Typo.h6">@Title</MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudText>@Message</MudText>
+        @if (!string.IsNullOrEmpty(WarningCopy))
+        {
+            <MudAlert Severity="Severity.Warning" Class="mt-3" Dense="true"
+                      data-testid="confirm-delete-warning">@WarningCopy</MudAlert>
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel" data-testid="confirm-delete-cancel">Cancel</MudButton>
+        <MudButton Color="Color.Error" Variant="Variant.Filled"
+                   OnClick="Confirm" data-testid="confirm-delete-confirm">
+            @ConfirmCopy
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private IMudDialogInstance Dialog { get; set; } = default!;
+
+    [Parameter] public string Title { get; set; } = "Delete?";
+
+    [Parameter] public string Message { get; set; } = string.Empty;
+
+    [Parameter] public string WarningCopy { get; set; } = string.Empty;
+
+    [Parameter] public string ConfirmCopy { get; set; } = "Delete";
+
+    private void Cancel() => Dialog.Cancel();
+    private void Confirm() => Dialog.Close(DialogResult.Ok(true));
+}

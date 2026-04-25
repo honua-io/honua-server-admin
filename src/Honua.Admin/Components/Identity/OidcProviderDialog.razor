@@ -1,0 +1,96 @@
+@* MudBlazor dialog wrapper around <see cref="OidcProviderForm"/>. Owns the
+   lifecycle of the plaintext secret: on submit success the form's secret is
+   cleared before the dialog closes; on cancel the model is discarded. *@
+@using Honua.Admin.Components.Identity
+@using Honua.Admin.Models.Identity
+@using Honua.Admin.Services.Identity
+@inject IIdentityAdminClient Client
+@inject ISnackbar Snackbar
+
+<MudDialog>
+    <TitleContent>
+        <MudText Typo="Typo.h6">@(Model.IsEdit ? "Edit OIDC provider" : "Add OIDC provider")</MudText>
+    </TitleContent>
+    <DialogContent>
+        <OidcProviderForm Model="Model" ValidationErrors="@ValidationErrors" />
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel" data-testid="oidc-dialog-cancel">Cancel</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled"
+                   OnClick="SubmitAsync" Disabled="@(_submitting)"
+                   data-testid="oidc-dialog-submit">
+            @if (_submitting)
+            {
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" />
+            }
+            else
+            {
+                <span>@(Model.IsEdit ? "Save changes" : "Create provider")</span>
+            }
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private IMudDialogInstance Dialog { get; set; } = default!;
+
+    /// <summary>
+    /// Form model — owned and disposed by this dialog. The parent only consumes
+    /// the resulting <see cref="OidcProviderResponse"/> from the dialog result.
+    /// </summary>
+    [Parameter]
+    [System.Diagnostics.CodeAnalysis.AllowNull]
+    public OidcProviderFormModel Model { get; set; } = OidcProviderFormModel.ForCreate();
+
+    private bool _submitting;
+    private string[] ValidationErrors { get; set; } = System.Array.Empty<string>();
+
+    private void Cancel()
+    {
+        // Clear the secret before discarding so it cannot survive in any captured
+        // closure or telemetry sink.
+        Model.ClearSecret();
+        Dialog.Cancel();
+    }
+
+    private async Task SubmitAsync()
+    {
+        ValidationErrors = Model.Validate();
+        if (ValidationErrors.Length > 0)
+        {
+            return;
+        }
+
+        _submitting = true;
+        try
+        {
+            OidcProviderResponse result;
+            if (Model.IsEdit && Model.ProviderId is { } id)
+            {
+                result = await Client.UpdateOidcProviderAsync(id, Model.ToUpdateRequest(), CancellationToken.None);
+                Snackbar.Add($"Updated provider '{result.Name}'.", Severity.Success);
+            }
+            else
+            {
+                result = await Client.CreateOidcProviderAsync(Model.ToCreateRequest(), CancellationToken.None);
+                Snackbar.Add($"Created provider '{result.Name}'.", Severity.Success);
+            }
+
+            Model.ClearSecret();
+            Dialog.Close(DialogResult.Ok(result));
+        }
+        catch (System.Net.Http.HttpRequestException ex)
+        {
+            Snackbar.Add($"Server rejected the request: {ex.Message}", Severity.Error);
+        }
+        catch (System.Exception ex)
+        {
+            Snackbar.Add($"Submit failed: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _submitting = false;
+        }
+    }
+}
