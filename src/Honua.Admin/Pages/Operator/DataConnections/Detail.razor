@@ -126,9 +126,18 @@
     private Dictionary<string, object> EditFormParameters => new()
     {
         ["Draft"] = State.Draft!,
-        ["DraftChanged"] = EventCallback.Factory.Create<ConnectionDraft>(this, _ => Task.CompletedTask),
+        ["DraftChanged"] = EventCallback.Factory.Create<ConnectionDraft>(this, OnDraftChanged),
         ["IsEdit"] = true
     };
+
+    private Task OnDraftChanged(ConnectionDraft draft)
+    {
+        // Mirror Create.razor: the form mutates Draft by reference, but we still
+        // need to push a Notify() through the state so any future page-level
+        // bindings (validation, dirty indicators) re-render.
+        State.UpdateDraft(_ => { });
+        return Task.CompletedTask;
+    }
 
     protected override async Task OnInitializedAsync()
     {

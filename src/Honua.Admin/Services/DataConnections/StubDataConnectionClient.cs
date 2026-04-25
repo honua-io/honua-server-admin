@@ -10,7 +10,9 @@ namespace Honua.Admin.Services.DataConnections;
 /// <summary>
 /// Deterministic in-memory backing for tests and dev. The HTTP path is the
 /// production wire; the stub mirrors its observable behavior so the bUnit
-/// E2E and the production path agree on every state transition.
+/// E2E and the production path agree on every state transition. Per the
+/// real server contract, mutating endpoints return a
+/// <see cref="DataConnectionSummary"/> projected from the stored detail.
 /// </summary>
 public sealed class StubDataConnectionClient : IDataConnectionClient
 {
@@ -53,18 +55,18 @@ public sealed class StubDataConnectionClient : IDataConnectionClient
         return Task.FromResult(ConnectionResult<DataConnectionDetail>.Ok(detail));
     }
 
-    public Task<ConnectionResult<DataConnectionDetail>> CreateAsync(CreateConnectionRequest request, CancellationToken cancellationToken = default)
+    public Task<ConnectionResult<DataConnectionSummary>> CreateAsync(CreateConnectionRequest request, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(request.Password) && string.IsNullOrWhiteSpace(request.SecretReference))
         {
-            return Task.FromResult(ConnectionResult<DataConnectionDetail>.Fail(
+            return Task.FromResult(ConnectionResult<DataConnectionSummary>.Fail(
                 new ConnectionOperationError(ConnectionErrorKind.Validation, "error.credential_required",
                     "Provide a password or a secret reference.")));
         }
 
         if (_store.Values.Any(c => string.Equals(c.Name, request.Name, StringComparison.OrdinalIgnoreCase)))
         {
-            return Task.FromResult(ConnectionResult<DataConnectionDetail>.Fail(
+            return Task.FromResult(ConnectionResult<DataConnectionSummary>.Fail(
                 new ConnectionOperationError(ConnectionErrorKind.Conflict, "error.duplicate_name")));
         }
 
@@ -91,14 +93,14 @@ public sealed class StubDataConnectionClient : IDataConnectionClient
         };
 
         _store[detail.ConnectionId] = detail;
-        return Task.FromResult(ConnectionResult<DataConnectionDetail>.Ok(detail));
+        return Task.FromResult(ConnectionResult<DataConnectionSummary>.Ok(ToSummary(detail)));
     }
 
-    public Task<ConnectionResult<DataConnectionDetail>> UpdateAsync(Guid id, UpdateConnectionRequest request, CancellationToken cancellationToken = default)
+    public Task<ConnectionResult<DataConnectionSummary>> UpdateAsync(Guid id, UpdateConnectionRequest request, CancellationToken cancellationToken = default)
     {
         if (!_store.TryGetValue(id, out var existing))
         {
-            return Task.FromResult(ConnectionResult<DataConnectionDetail>.Fail(
+            return Task.FromResult(ConnectionResult<DataConnectionSummary>.Fail(
                 new ConnectionOperationError(ConnectionErrorKind.NotFound, "error.not_found")));
         }
 
@@ -125,13 +127,13 @@ public sealed class StubDataConnectionClient : IDataConnectionClient
         };
 
         _store[id] = updated;
-        return Task.FromResult(ConnectionResult<DataConnectionDetail>.Ok(updated));
+        return Task.FromResult(ConnectionResult<DataConnectionSummary>.Ok(ToSummary(updated)));
     }
 
-    public Task<ConnectionResult<DataConnectionDetail>> DisableAsync(Guid id, CancellationToken cancellationToken = default) =>
+    public Task<ConnectionResult<DataConnectionSummary>> DisableAsync(Guid id, CancellationToken cancellationToken = default) =>
         UpdateAsync(id, new UpdateConnectionRequest { IsActive = false }, cancellationToken);
 
-    public Task<ConnectionResult<DataConnectionDetail>> EnableAsync(Guid id, CancellationToken cancellationToken = default) =>
+    public Task<ConnectionResult<DataConnectionSummary>> EnableAsync(Guid id, CancellationToken cancellationToken = default) =>
         UpdateAsync(id, new UpdateConnectionRequest { IsActive = true }, cancellationToken);
 
     public Task<ConnectionResult<bool>> DeleteAsync(Guid id, CancellationToken cancellationToken = default)

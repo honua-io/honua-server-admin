@@ -129,15 +129,19 @@ public sealed class DataConnectionsState
     public void ClearDraft()
     {
         Draft = null;
+        LatestDiagnostic = null;
         Notify();
     }
 
-    public async Task<ConnectionResult<DataConnectionDetail>> SubmitDraftAsync(CancellationToken cancellationToken = default)
+    public async Task<ConnectionResult<DataConnectionSummary>> SubmitDraftAsync(CancellationToken cancellationToken = default)
     {
         if (Draft is null)
         {
-            return ConnectionResult<DataConnectionDetail>.Fail(new ConnectionOperationError(ConnectionErrorKind.Validation, "error.no_draft"));
+            return ConnectionResult<DataConnectionSummary>.Fail(
+                new ConnectionOperationError(ConnectionErrorKind.Validation, "error.no_draft"));
         }
+
+        var providerId = Draft.ProviderId;
 
         Status = WorkspaceListStatus.Mutating;
         LastError = null;
@@ -145,7 +149,7 @@ public sealed class DataConnectionsState
 
         _telemetry.Record("data_connections.create_submitted", new Dictionary<string, object?>
         {
-            ["provider"] = Draft.ProviderId
+            ["provider"] = providerId
         });
 
         var request = ToCreateRequest(Draft);
@@ -157,7 +161,7 @@ public sealed class DataConnectionsState
             LastError = result.Error;
             _telemetry.Record("data_connections.create_failed", new Dictionary<string, object?>
             {
-                ["provider"] = Draft.ProviderId,
+                ["provider"] = providerId,
                 ["failure_code"] = result.Error!.Kind.ToString()
             });
             Notify();
@@ -165,14 +169,16 @@ public sealed class DataConnectionsState
         }
 
         // Optimistic insert — replace on next refresh.
-        _connections.Add(ToSummary(result.Value!));
-        SelectedDetail = result.Value;
+        var summary = result.Value!;
+        _connections.Add(summary);
+        await TryRefreshSelectedDetailAsync(summary.ConnectionId, cancellationToken).ConfigureAwait(false);
         Draft = null;
+        LatestDiagnostic = null;
         Status = WorkspaceListStatus.Idle;
         _telemetry.Record("data_connections.create_succeeded", new Dictionary<string, object?>
         {
-            ["provider"] = result.Value!.ConnectionId.ToString(),
-            ["connection_id"] = result.Value.ConnectionId
+            ["provider"] = providerId,
+            ["connection_id"] = summary.ConnectionId
         });
         Notify();
         return result;
@@ -180,6 +186,12 @@ public sealed class DataConnectionsState
 
     public async Task LoadDetailAsync(Guid id, CancellationToken cancellationToken = default)
     {
+        if (SelectedDetail?.ConnectionId != id)
+        {
+            // Navigating to a different connection — clear the prior preflight
+            // grid so we don't render a stale verdict against the new selection.
+            LatestDiagnostic = null;
+        }
         Status = WorkspaceListStatus.Loading;
         LastError = null;
         Notify();
@@ -198,7 +210,7 @@ public sealed class DataConnectionsState
         Notify();
     }
 
-    public async Task<ConnectionResult<DataConnectionDetail>> SetActiveAsync(Guid id, bool active, CancellationToken cancellationToken = default)
+    public async Task<ConnectionResult<DataConnectionSummary>> SetActiveAsync(Guid id, bool active, CancellationToken cancellationToken = default)
     {
         Status = WorkspaceListStatus.Mutating;
         LastError = null;
@@ -216,8 +228,9 @@ public sealed class DataConnectionsState
             return result;
         }
 
-        SelectedDetail = result.Value;
         ReplaceInList(result.Value!);
+        await TryRefreshSelectedDetailAsync(id, cancellationToken).ConfigureAwait(false);
+        LatestDiagnostic = null;
         Status = WorkspaceListStatus.Idle;
         _telemetry.Record(active ? "data_connections.enabled" : "data_connections.disabled", new Dictionary<string, object?>
         {
@@ -249,11 +262,12 @@ public sealed class DataConnectionsState
         return Draft;
     }
 
-    public async Task<ConnectionResult<DataConnectionDetail>> SubmitEditAsync(CancellationToken cancellationToken = default)
+    public async Task<ConnectionResult<DataConnectionSummary>> SubmitEditAsync(CancellationToken cancellationToken = default)
     {
         if (Draft is null || Draft.ConnectionId is null)
         {
-            return ConnectionResult<DataConnectionDetail>.Fail(new ConnectionOperationError(ConnectionErrorKind.Validation, "error.no_draft"));
+            return ConnectionResult<DataConnectionSummary>.Fail(
+                new ConnectionOperationError(ConnectionErrorKind.Validation, "error.no_draft"));
         }
 
         Status = WorkspaceListStatus.Mutating;
@@ -290,13 +304,15 @@ public sealed class DataConnectionsState
             return result;
         }
 
-        SelectedDetail = result.Value;
-        ReplaceInList(result.Value!);
+        var summary = result.Value!;
+        ReplaceInList(summary);
+        await TryRefreshSelectedDetailAsync(summary.ConnectionId, cancellationToken).ConfigureAwait(false);
         Draft = null;
+        LatestDiagnostic = null;
         Status = WorkspaceListStatus.Idle;
         _telemetry.Record("data_connections.update_succeeded", new Dictionary<string, object?>
         {
-            ["connection_id"] = result.Value!.ConnectionId
+            ["connection_id"] = summary.ConnectionId
         });
         Notify();
         return result;
@@ -321,6 +337,7 @@ public sealed class DataConnectionsState
         if (SelectedDetail?.ConnectionId == id)
         {
             SelectedDetail = null;
+            LatestDiagnostic = null;
         }
         Status = WorkspaceListStatus.Idle;
         _telemetry.Record("data_connections.deleted", new Dictionary<string, object?>
@@ -422,10 +439,21 @@ public sealed class DataConnectionsState
         };
     }
 
-    private void ReplaceInList(DataConnectionDetail detail)
+    private async Task TryRefreshSelectedDetailAsync(Guid id, CancellationToken cancellationToken)
     {
-        var index = _connections.FindIndex(c => c.ConnectionId == detail.ConnectionId);
-        var summary = ToSummary(detail);
+        // Mutating endpoints (POST/PUT) return a Summary; the page expects a
+        // full Detail. Best-effort follow-up: on success, populate SelectedDetail;
+        // on failure leave the prior value unchanged so the page does not blank.
+        var result = await _client.GetAsync(id, cancellationToken).ConfigureAwait(false);
+        if (result.IsSuccess)
+        {
+            SelectedDetail = result.Value;
+        }
+    }
+
+    private void ReplaceInList(DataConnectionSummary summary)
+    {
+        var index = _connections.FindIndex(c => c.ConnectionId == summary.ConnectionId);
         if (index < 0)
         {
             _connections.Add(summary);
@@ -449,25 +477,6 @@ public sealed class DataConnectionsState
         SecretType = draft.CredentialMode == CredentialMode.External ? draft.SecretType : null,
         SslRequired = draft.SslRequired,
         SslMode = draft.SslMode
-    };
-
-    private static DataConnectionSummary ToSummary(DataConnectionDetail detail) => new()
-    {
-        ConnectionId = detail.ConnectionId,
-        Name = detail.Name,
-        Description = detail.Description,
-        Host = detail.Host,
-        Port = detail.Port,
-        DatabaseName = detail.DatabaseName,
-        Username = detail.Username,
-        SslRequired = detail.SslRequired,
-        SslMode = detail.SslMode,
-        StorageType = detail.StorageType,
-        IsActive = detail.IsActive,
-        HealthStatus = detail.HealthStatus,
-        LastHealthCheck = detail.LastHealthCheck,
-        CreatedAt = detail.CreatedAt,
-        CreatedBy = detail.CreatedBy
     };
 
     private void Notify() => OnChanged?.Invoke();

@@ -111,3 +111,20 @@ typed `ConnectionOperationError(Auth)` and a banner alert.
   health-check timestamp.
 - **Server change wanted:** `GET /api/v1/admin/connections/{id}/history`
   returning a paged audit log (actor, action, timestamp, before/after).
+
+### 8. `POST` / `PUT` return `SecureConnectionSummary` rather than `SecureConnectionDetail`
+
+- **Today:** the create and update endpoints return only the summary
+  projection. `CredentialReference`, `EncryptionVersion`, and `UpdatedAt`
+  are not in the response body, so the UI has to issue a follow-up
+  `GET /connections/{id}` to render the detail surface accurately after a
+  mutating call. `DataConnectionsState.SubmitDraftAsync` /
+  `SubmitEditAsync` / `SetActiveAsync` each fire that follow-up via
+  `TryRefreshSelectedDetailAsync`.
+- **Blocks:** the optimistic single-round-trip flow the rest of the
+  workspace assumes. Doubles the latency of every save before the page
+  shows accurate Detail-only fields (e.g., `CredentialReference` after the
+  operator switches credential mode).
+- **Server change wanted:** mutating endpoints should return
+  `ApiResponse<SecureConnectionDetail>` (the same shape the GET endpoint
+  emits), removing the need for a follow-up GET.

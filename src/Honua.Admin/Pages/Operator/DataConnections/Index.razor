@@ -78,7 +78,7 @@
                 <MudTd>@context.Host:@context.Port</MudTd>
                 <MudTd>
                     <MudChip T="string"
-                             Color="@(context.HealthStatus == "healthy" ? Color.Success : context.HealthStatus == "unhealthy" ? Color.Error : Color.Default)"
+                             Color="@HealthChipColor(context.HealthStatus)"
                              Size="Size.Small">
                         @context.HealthStatus
                     </MudChip>
@@ -113,6 +113,16 @@
     private void OpenDetail(Guid id) => Nav.NavigateTo($"/operator/data-connections/{id}");
 
     private void OpenDiagnostics(Guid id) => Nav.NavigateTo($"/operator/data-connections/{id}/diagnostics");
+
+    // honua-server returns HealthStatus as enum.ToString() ("Healthy", "Warning",
+    // "Unhealthy", "Unknown"); the stub uses lowercase. Normalize both sides.
+    private static Color HealthChipColor(string? status) => status?.Trim().ToLowerInvariant() switch
+    {
+        "healthy" => Color.Success,
+        "unhealthy" => Color.Error,
+        "warning" => Color.Warning,
+        _ => Color.Default
+    };
 
     public void Dispose()
     {

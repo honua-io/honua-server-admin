@@ -109,6 +109,8 @@ builder.Services.AddHttpClient<IDataConnectionClient, HttpDataConnectionClient>(
         ? new Uri(baseUrl)
         : new Uri(builder.HostEnvironment.BaseAddress);
 
+    // X-API-Key handling mirrors the identity client: dev-only forwarding,
+    // production must front the admin UI with a same-origin BFF.
     var apiKey = builder.Configuration["HonuaServer:ApiKey"];
     if (!string.IsNullOrWhiteSpace(apiKey))
     {

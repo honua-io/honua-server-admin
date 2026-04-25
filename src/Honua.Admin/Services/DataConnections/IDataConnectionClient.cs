@@ -10,7 +10,10 @@ namespace Honua.Admin.Services.DataConnections;
 /// One-to-one wrapper around <c>/api/v1/admin/connections</c>. Every method
 /// returns a typed <see cref="ConnectionResult{T}"/> — failures never throw
 /// across the boundary so the state store can fold them into a state
-/// transition.
+/// transition. Mutating endpoints (POST/PUT) return
+/// <see cref="DataConnectionSummary"/> because that is what honua-server
+/// returns; the state store fetches a fresh <see cref="DataConnectionDetail"/>
+/// via <see cref="GetAsync"/> when the page needs Detail-only fields.
 /// </summary>
 public interface IDataConnectionClient
 {
@@ -18,13 +21,13 @@ public interface IDataConnectionClient
 
     Task<ConnectionResult<DataConnectionDetail>> GetAsync(Guid id, CancellationToken cancellationToken = default);
 
-    Task<ConnectionResult<DataConnectionDetail>> CreateAsync(CreateConnectionRequest request, CancellationToken cancellationToken = default);
+    Task<ConnectionResult<DataConnectionSummary>> CreateAsync(CreateConnectionRequest request, CancellationToken cancellationToken = default);
 
-    Task<ConnectionResult<DataConnectionDetail>> UpdateAsync(Guid id, UpdateConnectionRequest request, CancellationToken cancellationToken = default);
+    Task<ConnectionResult<DataConnectionSummary>> UpdateAsync(Guid id, UpdateConnectionRequest request, CancellationToken cancellationToken = default);
 
-    Task<ConnectionResult<DataConnectionDetail>> DisableAsync(Guid id, CancellationToken cancellationToken = default);
+    Task<ConnectionResult<DataConnectionSummary>> DisableAsync(Guid id, CancellationToken cancellationToken = default);
 
-    Task<ConnectionResult<DataConnectionDetail>> EnableAsync(Guid id, CancellationToken cancellationToken = default);
+    Task<ConnectionResult<DataConnectionSummary>> EnableAsync(Guid id, CancellationToken cancellationToken = default);
 
     Task<ConnectionResult<bool>> DeleteAsync(Guid id, CancellationToken cancellationToken = default);
 
