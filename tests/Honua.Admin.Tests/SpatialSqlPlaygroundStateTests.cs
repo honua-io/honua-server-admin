@@ -234,6 +234,92 @@ public sealed class SpatialSqlPlaygroundStateTests
         Assert.Equal(SpatialSqlPaneStatus.Idle, observed[^1]);
     }
 
+    [Fact]
+    public async Task RunQueryAsync_superseded_completion_does_not_overwrite_active_query_state()
+    {
+        // A slow query starts, a fast query supersedes it. When the slow query's
+        // await finally resolves it must NOT write LastResult/Status/telemetry —
+        // otherwise it races with the active query's terminal state and undoes it.
+        var slowGate = new TaskCompletionSource<SqlExecuteResult>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var fastResult = new SqlExecuteResult
+        {
+            Columns = new[] { new SqlColumn("payload", "text") },
+            Rows = new[] { new SqlRow(new string?[] { "fast-result" }) }
+        };
+        var client = new GatedExecuteClient(firstAttempt: () => slowGate.Task, fallback: fastResult);
+        var telemetry = new RecordingTelemetry();
+        var state = new SpatialSqlPlaygroundState(client, telemetry);
+
+        state.SetSql("SELECT * FROM slow");
+        var slowTask = state.RunQueryAsync();
+
+        // Now run a second query; it cancels the slow one's cts and, since the
+        // gated client's first attempt is already pending, this call hits the
+        // fallback path and completes synchronously.
+        state.SetSql("SELECT * FROM fast");
+        await state.RunQueryAsync();
+
+        // Active state must reflect the fast query.
+        Assert.Equal("fast-result", state.LastResult!.Rows[0].Cells[0]);
+        Assert.Equal(SpatialSqlPaneStatus.Idle, state.Status);
+
+        // Now release the superseded slow query — its post-await writes must be
+        // discarded by the IsActiveExecution gate.
+        slowGate.SetResult(new SqlExecuteResult
+        {
+            Columns = new[] { new SqlColumn("payload", "text") },
+            Rows = new[] { new SqlRow(new string?[] { "slow-result" }) }
+        });
+        await slowTask;
+
+        Assert.Equal("fast-result", state.LastResult!.Rows[0].Cells[0]);
+        Assert.Equal(SpatialSqlPaneStatus.Idle, state.Status);
+        // Only one query_completed should have fired — the superseded one is silent.
+        Assert.Single(telemetry.Events, e => e.Event == "query_completed");
+    }
+
+    [Fact]
+    public async Task RunQueryAsync_pairs_LastResult_with_the_SQL_that_produced_it()
+    {
+        var state = new SpatialSqlPlaygroundState(new StubSpatialSqlClient(), new RecordingTelemetry());
+        await state.LoadSchemaAsync();
+
+        const string executedSql = "SELECT id, county, geom FROM parcels";
+        state.SetSql(executedSql);
+        await state.RunQueryAsync();
+
+        Assert.Equal(executedSql, state.LastResultSql);
+        Assert.True(state.CanSaveCurrentResult());
+
+        // Edit the editor buffer; CanSaveCurrentResult must drop until the operator
+        // re-runs the query. Otherwise Save would register the edited SQL with the
+        // executed result's geometry metadata.
+        state.SetSql(executedSql + "  -- adding a comment");
+        Assert.False(state.CanSaveCurrentResult());
+        Assert.Equal(executedSql, state.LastResultSql);
+    }
+
+    [Fact]
+    public async Task SaveViewAsync_uses_LastResultSql_not_the_live_editor_buffer()
+    {
+        var capture = new RequestCapturingClient();
+        var state = new SpatialSqlPlaygroundState(capture, new RecordingTelemetry());
+        await state.LoadSchemaAsync();
+
+        const string executedSql = "SELECT id, county, geom FROM parcels";
+        state.SetSql(executedSql);
+        await state.RunQueryAsync();
+
+        // Operator drifts the buffer before opening the dialog.
+        state.SetSql("SELECT id FROM parcels WHERE county='OOPS'");
+
+        await state.SaveViewAsync("active_parcels_drifted", "still ok", default);
+
+        Assert.NotNull(capture.LastSaveRequest);
+        Assert.Equal(executedSql, capture.LastSaveRequest!.Sql);
+        Assert.Equal("geom", capture.LastSaveRequest.GeometryColumn);
+    }
+
     private sealed class NonWgs84Client : ISpatialSqlClient
     {
         private readonly StubSpatialSqlClient _inner = new();
@@ -298,6 +384,56 @@ public sealed class SpatialSqlPlaygroundStateTests
 
         public Task<NamedViewRegistration> SaveViewAsync(SaveViewRequest request, CancellationToken cancellationToken) =>
             throw new System.NotSupportedException();
+    }
+
+    private sealed class GatedExecuteClient : ISpatialSqlClient
+    {
+        private readonly StubSpatialSqlClient _inner = new();
+        private readonly System.Func<Task<SqlExecuteResult>> _firstAttempt;
+        private readonly SqlExecuteResult _fallback;
+        private int _calls;
+
+        public GatedExecuteClient(System.Func<Task<SqlExecuteResult>> firstAttempt, SqlExecuteResult fallback)
+        {
+            _firstAttempt = firstAttempt;
+            _fallback = fallback;
+        }
+
+        public Task<SchemaSnapshot> GetSchemaAsync(CancellationToken cancellationToken) =>
+            _inner.GetSchemaAsync(cancellationToken);
+
+        public Task<SqlExecuteResult> ExecuteAsync(SqlExecuteRequest request, CancellationToken cancellationToken)
+        {
+            var index = System.Threading.Interlocked.Increment(ref _calls);
+            return index == 1 ? _firstAttempt() : Task.FromResult(_fallback);
+        }
+
+        public Task<ExplainPlan> ExplainAsync(SqlExplainRequest request, CancellationToken cancellationToken) =>
+            _inner.ExplainAsync(request, cancellationToken);
+
+        public Task<NamedViewRegistration> SaveViewAsync(SaveViewRequest request, CancellationToken cancellationToken) =>
+            _inner.SaveViewAsync(request, cancellationToken);
+    }
+
+    private sealed class RequestCapturingClient : ISpatialSqlClient
+    {
+        private readonly StubSpatialSqlClient _inner = new();
+        public SaveViewRequest? LastSaveRequest { get; private set; }
+
+        public Task<SchemaSnapshot> GetSchemaAsync(CancellationToken cancellationToken) =>
+            _inner.GetSchemaAsync(cancellationToken);
+
+        public Task<SqlExecuteResult> ExecuteAsync(SqlExecuteRequest request, CancellationToken cancellationToken) =>
+            _inner.ExecuteAsync(request, cancellationToken);
+
+        public Task<ExplainPlan> ExplainAsync(SqlExplainRequest request, CancellationToken cancellationToken) =>
+            _inner.ExplainAsync(request, cancellationToken);
+
+        public Task<NamedViewRegistration> SaveViewAsync(SaveViewRequest request, CancellationToken cancellationToken)
+        {
+            LastSaveRequest = request;
+            return _inner.SaveViewAsync(request, cancellationToken);
+        }
     }
 
     private sealed class CappingClient : ISpatialSqlClient

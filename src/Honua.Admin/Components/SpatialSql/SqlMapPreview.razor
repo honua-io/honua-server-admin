@@ -42,6 +42,12 @@
     {
         if (!string.IsNullOrEmpty(BlockedReason) || Features.Count == 0)
         {
+            // Canvas is no longer in the DOM. If we initialized a map on a prior
+            // render, tear down the JS state now — the cached entry's container
+            // points at a detached element, and the maplibre instance bound to it
+            // would otherwise be reused on the next renderable transition,
+            // turning setMapFeatures into a silent no-op against stale DOM.
+            await TeardownIfInitializedAsync();
             return;
         }
 
@@ -69,18 +75,22 @@
         }
     }
 
-    public async ValueTask DisposeAsync()
+    private async Task TeardownIfInitializedAsync()
     {
-        if (_initialized)
+        if (!_initialized)
         {
-            try
-            {
-                await JS.InvokeVoidAsync("spatialSql.disposeMap", _elementId);
-            }
-            catch
-            {
-                // best-effort teardown
-            }
+            return;
         }
+        try
+        {
+            await JS.InvokeVoidAsync("spatialSql.disposeMap", _elementId);
+        }
+        catch
+        {
+            // best-effort teardown
+        }
+        _initialized = false;
     }
+
+    public ValueTask DisposeAsync() => new(TeardownIfInitializedAsync());
 }

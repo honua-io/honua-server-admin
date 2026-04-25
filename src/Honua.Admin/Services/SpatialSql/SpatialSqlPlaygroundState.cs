@@ -43,6 +43,15 @@ public sealed class SpatialSqlPlaygroundState : IDisposable
 
     public SqlExecuteResult? LastResult { get; private set; }
 
+    /// <summary>
+    /// SQL text that produced <see cref="LastResult"/>. Snapshotted at the moment
+    /// the result is stored so <see cref="SaveViewAsync"/> registers the view
+    /// against the executed SQL (and its derived geometry metadata) instead of
+    /// whatever the operator has typed since. Distinct from <see cref="Sql"/>,
+    /// which tracks the live editor buffer.
+    /// </summary>
+    public string? LastResultSql { get; private set; }
+
     public ExplainPlan? LastPlan { get; private set; }
 
     public NamedViewRegistration? LastSavedView { get; private set; }
@@ -201,6 +210,7 @@ public sealed class SpatialSqlPlaygroundState : IDisposable
                 TimeoutMs = 0,
                 Error = new SqlExecuteError("mutation_blocked", LastError)
             };
+            LastResultSql = Sql;
             _telemetry.Record("query_rejected", new Dictionary<string, object?>
             {
                 ["reason"] = "mutation_blocked"
@@ -223,24 +233,40 @@ public sealed class SpatialSqlPlaygroundState : IDisposable
         ExportTruncatedConfirmed = false;
         Notify();
 
+        // Snapshot the SQL that this execution submitted so the success path can
+        // pair LastResult with the exact text that produced it — even if the
+        // operator edits the editor while the query is in flight.
+        var submittedSql = Sql;
         var watch = Stopwatch.StartNew();
+        var notify = false;
         try
         {
             _telemetry.Record("query_submitted", new Dictionary<string, object?>
             {
-                ["sql_length"] = Sql.Length,
+                ["sql_length"] = submittedSql.Length,
                 ["allow_mutation"] = allowMutation
             });
 
             var request = new SqlExecuteRequest
             {
-                Sql = Sql,
+                Sql = submittedSql,
                 AllowMutation = allowMutation
             };
 
             var result = await _client.ExecuteAsync(request, cts.Token).ConfigureAwait(false);
             watch.Stop();
+
+            // Ownership gate: a newer RunQueryAsync may have superseded this one
+            // (cancelled our cts, replaced _executeCts) while the await was in
+            // flight. The newer call already wrote its own Status/LastError/Notify;
+            // overwriting state here would race with it and undo those writes.
+            if (!IsActiveExecution(cts))
+            {
+                return;
+            }
+
             LastResult = result;
+            LastResultSql = submittedSql;
             if (result.IsError)
             {
                 Status = SpatialSqlPaneStatus.Error;
@@ -278,13 +304,26 @@ public sealed class SpatialSqlPlaygroundState : IDisposable
             // Reset override after each submit so the next mutation requires a fresh
             // confirmation. The audit log on the server records this single statement.
             MutationOverrideArmed = false;
+            notify = true;
         }
         catch (OperationCanceledException)
         {
+            // Same ownership gate as the success path: if we were superseded, the
+            // newer query already owns Status — do not stomp it back to Idle while
+            // the newer query is mid-flight.
+            if (!IsActiveExecution(cts))
+            {
+                return;
+            }
             Status = SpatialSqlPaneStatus.Idle;
+            notify = true;
         }
         catch (Exception ex)
         {
+            if (!IsActiveExecution(cts))
+            {
+                return;
+            }
             Status = SpatialSqlPaneStatus.Error;
             LastError = ex.Message;
             _telemetry.Record("query_rejected", new Dictionary<string, object?>
@@ -292,6 +331,7 @@ public sealed class SpatialSqlPlaygroundState : IDisposable
                 ["reason"] = "transport_error",
                 ["message"] = ex.Message
             });
+            notify = true;
         }
         finally
         {
@@ -305,7 +345,18 @@ public sealed class SpatialSqlPlaygroundState : IDisposable
             }
         }
 
-        Notify();
+        if (notify)
+        {
+            Notify();
+        }
+    }
+
+    private bool IsActiveExecution(CancellationTokenSource cts)
+    {
+        lock (_sync)
+        {
+            return ReferenceEquals(_executeCts, cts);
+        }
     }
 
     public async Task RunExplainAsync(CancellationToken cancellationToken = default)
@@ -362,6 +413,22 @@ public sealed class SpatialSqlPlaygroundState : IDisposable
         Notify();
     }
 
+    /// <summary>
+    /// True when the editor's current SQL still matches the SQL that produced
+    /// <see cref="LastResult"/> and the result has rows the operator could turn
+    /// into a named view. The Save toolbar binds to this so an edited buffer
+    /// cannot register a view against stale geometry metadata pulled from
+    /// <see cref="LastResult"/>.
+    /// </summary>
+    public bool CanSaveCurrentResult()
+    {
+        if (LastResult is null || LastResult.IsError || LastResult.Rows.Count == 0)
+        {
+            return false;
+        }
+        return string.Equals(Sql, LastResultSql, StringComparison.Ordinal);
+    }
+
     public async Task<NamedViewRegistration> SaveViewAsync(string name, string? description, CancellationToken cancellationToken = default)
     {
         Status = SpatialSqlPaneStatus.Saving;
@@ -370,11 +437,15 @@ public sealed class SpatialSqlPlaygroundState : IDisposable
 
         try
         {
+            // Build the request from the SQL that produced LastResult, not the live
+            // editor buffer. The geometry column / SRID we pass through were derived
+            // from that execution; pairing them with whatever the operator typed
+            // since would register a view against mismatched SQL+metadata.
             var request = new SaveViewRequest
             {
                 Name = name,
                 Description = description,
-                Sql = Sql,
+                Sql = LastResultSql ?? Sql,
                 GeometryColumn = LastResult?.HasGeometry == true && LastResult.GeometryColumnIndex is int idx
                     ? LastResult.Columns[idx].Name
                     : null,

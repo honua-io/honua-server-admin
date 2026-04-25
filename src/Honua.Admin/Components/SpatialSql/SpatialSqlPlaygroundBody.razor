@@ -157,8 +157,7 @@
         or SpatialSqlPaneStatus.Explaining
         or SpatialSqlPaneStatus.Saving;
 
-    private bool CanSaveView => !_isBusy
-        && State.LastResult is { IsError: false, Rows.Count: > 0 };
+    private bool CanSaveView => !_isBusy && State.CanSaveCurrentResult();
 
     private bool CanExport => State.CanExportRows();
 
