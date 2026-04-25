@@ -1,0 +1,43 @@
+.license-workspace-root {
+    display: grid;
+    grid-template-columns: minmax(320px, 2fr) minmax(280px, 1.5fr) minmax(220px, 1fr);
+    grid-template-rows: 100%;
+    gap: 12px;
+    min-height: 480px;
+    height: calc(100vh - 128px);
+}
+
+@media (max-width: 960px) {
+    .license-workspace-root {
+        grid-template-columns: 1fr;
+        grid-template-rows: auto auto auto;
+        height: auto;
+    }
+}
+
+.license-workspace-cell {
+    min-width: 0;
+    overflow: auto;
+    display: flex;
+    flex-direction: column;
+}
+
+.license-pane {
+    height: 100%;
+    overflow: auto;
+}
+
+.license-diagnostic-banner {
+    border-left-width: 4px;
+}
+
+.license-diagnostic-server-hint code {
+    background: #f4f4f6;
+    padding: 1px 4px;
+    border-radius: 3px;
+}
+
+.license-expiry-band[data-band="Expired"],
+.license-expiry-band[data-band="Warn1"] {
+    box-shadow: inset 0 0 0 1px rgba(244, 67, 54, 0.4);
+}

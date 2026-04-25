@@ -1,0 +1,17 @@
+@* Three-pane license workspace body — Status | Entitlements | Actions. Mirrors
+   the SpecWorkspaceBody three-pane layout per design §1 (single nav entry,
+   three logical sections inside the workspace). *@
+@using Honua.Admin.Services.LicenseWorkspace
+@inject LicenseWorkspaceState State
+
+<div class="license-workspace-root" data-testid="license-workspace-root">
+    <div class="license-workspace-cell license-workspace-status">
+        <LicenseStatusPane />
+    </div>
+    <div class="license-workspace-cell license-workspace-entitlements">
+        <EntitlementsPane />
+    </div>
+    <div class="license-workspace-cell license-workspace-actions">
+        <LicenseActionsPane />
+    </div>
+</div>

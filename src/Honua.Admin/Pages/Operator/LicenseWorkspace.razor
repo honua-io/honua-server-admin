@@ -1,0 +1,19 @@
+@page "/operator/license"
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize]
+@using Honua.Admin.Components.LicenseWorkspace
+@using Honua.Admin.Services.LicenseWorkspace
+@inject LicenseWorkspaceState State
+
+<PageTitle>License workspace</PageTitle>
+
+<LicenseWorkspaceBody />
+
+@code {
+    protected override async Task OnInitializedAsync()
+    {
+        // Pull status once on workspace open. No polling — license freshness
+        // is operator-driven via the refresh + replace controls.
+        await State.RefreshAsync();
+    }
+}

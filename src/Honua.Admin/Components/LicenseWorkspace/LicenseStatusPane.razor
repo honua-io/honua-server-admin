@@ -1,0 +1,114 @@
+@* Status pane: edition, issued-to, issued-at, expiry, validity banner, and the
+   active diagnostic. Reuses the shared ExpiryBandIndicator + DiagnosticBanner. *@
+@using Honua.Admin.Models.LicenseWorkspace
+@using Honua.Admin.Services.LicenseWorkspace
+@inject LicenseWorkspaceState State
+@implements IDisposable
+
+<MudPaper Class="license-pane license-pane-status pa-3 h-100" Elevation="0" data-testid="license-status-pane">
+    <MudStack Spacing="3">
+        <MudStack Row AlignItems="AlignItems.Center" Spacing="2">
+            <MudText Typo="Typo.h6">License status</MudText>
+            <MudSpacer />
+            <MudIconButton Icon="@Icons.Material.Filled.Refresh"
+                           Color="Color.Primary"
+                           Disabled="State.IsBusy"
+                           OnClick="RefreshAsync"
+                           data-testid="license-refresh"
+                           aria-label="Refresh license status" />
+        </MudStack>
+
+        @if (State.WorkflowStatus == LicenseWorkspaceStatus.Loading && State.Status is null)
+        {
+            <MudProgressLinear Color="Color.Primary" Indeterminate="true" data-testid="license-loading-indicator" />
+        }
+
+        @if (State.Status is { } status)
+        {
+            <MudGrid>
+                <MudItem xs="12" md="6">
+                    <MudStack Spacing="0">
+                        <MudText Typo="Typo.overline">Edition</MudText>
+                        <MudText Typo="Typo.h5" data-testid="license-edition">@status.Edition</MudText>
+                    </MudStack>
+                </MudItem>
+                <MudItem xs="12" md="6">
+                    <MudStack Spacing="0">
+                        <MudText Typo="Typo.overline">Issued to</MudText>
+                        <MudText Typo="Typo.body1" data-testid="license-issued-to">@(status.LicensedTo ?? "—")</MudText>
+                    </MudStack>
+                </MudItem>
+                <MudItem xs="12" md="6">
+                    <MudStack Spacing="0">
+                        <MudText Typo="Typo.overline">Issued by</MudText>
+                        <MudText Typo="Typo.body1" data-testid="license-issuance-source">@IssuanceSource(status)</MudText>
+                    </MudStack>
+                </MudItem>
+                <MudItem xs="12" md="6">
+                    <MudStack Spacing="0">
+                        <MudText Typo="Typo.overline">Issued at</MudText>
+                        <MudText Typo="Typo.body1" data-testid="license-issued-at">@RenderTimestamp(status.IssuedAt)</MudText>
+                    </MudStack>
+                </MudItem>
+                <MudItem xs="12" md="6">
+                    <MudStack Spacing="0">
+                        <MudText Typo="Typo.overline">Expires at</MudText>
+                        <MudText Typo="Typo.body1" data-testid="license-expires-at">@RenderTimestamp(status.ExpiresAt)</MudText>
+                    </MudStack>
+                </MudItem>
+            </MudGrid>
+
+            <ExpiryBandIndicator ExpiresAt="status.ExpiresAt" />
+
+            <LicenseDiagnosticBanner Diagnostic="State.Diagnostic"
+                                     Error="State.LastError"
+                                     ServerHint="@status.ValidationState" />
+        }
+        else if (State.WorkflowStatus == LicenseWorkspaceStatus.Error)
+        {
+            <LicenseDiagnosticBanner Diagnostic="State.Diagnostic"
+                                     Error="State.LastError" />
+        }
+        else
+        {
+            <MudAlert Severity="Severity.Info" Variant="Variant.Outlined" Dense="true" data-testid="license-empty-state">
+                License status not loaded yet. Click refresh to fetch.
+            </MudAlert>
+        }
+    </MudStack>
+</MudPaper>
+
+@code {
+    protected override void OnInitialized()
+    {
+        State.OnChanged += HandleStateChanged;
+    }
+
+    public void Dispose()
+    {
+        State.OnChanged -= HandleStateChanged;
+    }
+
+    private void HandleStateChanged() => InvokeAsync(StateHasChanged);
+
+    private async Task RefreshAsync()
+    {
+        await State.RefreshAsync();
+    }
+
+    private static string RenderTimestamp(DateTimeOffset? value)
+    {
+        if (value is null)
+        {
+            return "—";
+        }
+        var local = value.Value.ToLocalTime();
+        var utc = value.Value.UtcDateTime;
+        return $"{local:yyyy-MM-dd HH:mm zzz} ({utc:yyyy-MM-dd HH:mm} UTC)";
+    }
+
+    private static string IssuanceSource(LicenseStatusDto status) =>
+        string.IsNullOrWhiteSpace(status.IssuanceSource)
+            ? LicenseStatusDto.DefaultIssuanceSource
+            : status.IssuanceSource!;
+}

@@ -1,0 +1,59 @@
+@* Diagnostic surface that maps the workspace's classified diagnostic + last
+   error to operator-action copy. The same component is reused on the status
+   pane and as the upload-failure surface. *@
+@using Honua.Admin.Models.LicenseWorkspace
+@using Honua.Admin.Services.LicenseWorkspace
+
+@if (Diagnostic == LicenseDiagnostic.Valid)
+{
+    return;
+}
+
+<MudAlert Severity="@AlertSeverity"
+          Variant="Variant.Outlined"
+          Class="mt-2 license-diagnostic-banner"
+          data-testid="license-diagnostic-banner"
+          data-diagnostic="@Diagnostic.ToString()">
+    <MudStack Spacing="1">
+        <MudText Typo="Typo.subtitle1" data-testid="license-diagnostic-title">@Copy.Title</MudText>
+        <MudText Typo="Typo.body2" data-testid="license-diagnostic-action">@Copy.Action</MudText>
+
+        @if (!string.IsNullOrWhiteSpace(ServerHint))
+        {
+            <MudText Typo="Typo.caption" Class="license-diagnostic-server-hint" data-testid="license-diagnostic-hint">
+                Server reported: <code>@ServerHint</code>
+            </MudText>
+        }
+
+        @if (Error is not null)
+        {
+            <MudText Typo="Typo.caption" Class="license-diagnostic-server-hint" data-testid="license-diagnostic-error">
+                Transport: <code>@Error.Message</code>@(Error.StatusCode is { } sc ? $" (HTTP {sc})" : string.Empty)
+            </MudText>
+        }
+    </MudStack>
+</MudAlert>
+
+@code {
+    [Parameter, EditorRequired]
+    public LicenseDiagnostic Diagnostic { get; set; }
+
+    [Parameter]
+    public LicenseClientError? Error { get; set; }
+
+    [Parameter]
+    public string? ServerHint { get; set; }
+
+    private LicenseDiagnosticCopy.Copy Copy => LicenseDiagnosticCopy.For(Diagnostic);
+
+    private Severity AlertSeverity => Diagnostic switch
+    {
+        LicenseDiagnostic.Expired => Severity.Error,
+        LicenseDiagnostic.InvalidSignature => Severity.Error,
+        LicenseDiagnostic.AuthenticationFailure => Severity.Error,
+        LicenseDiagnostic.EndpointUnreachable => Severity.Warning,
+        LicenseDiagnostic.FeatureNotEntitled => Severity.Warning,
+        LicenseDiagnostic.Unknown => Severity.Warning,
+        _ => Severity.Info
+    };
+}

@@ -1,0 +1,84 @@
+@* Reusable expiry warning band. Computes its own band from the supplied
+   ExpiresAt so callers don't have to import the classifier. Renders a
+   distinct MudBlazor severity per band per AC4 (visually distinct treatment
+   for ≤30 / ≤14 / ≤7 / ≤1 day windows + Expired + Perpetual). *@
+@using Honua.Admin.Models.LicenseWorkspace
+@using Honua.Admin.Services.LicenseWorkspace
+
+<MudAlert Severity="@AlertSeverity"
+          Variant="Variant.Filled"
+          Dense="true"
+          Class="license-expiry-band"
+          data-testid="license-expiry-band"
+          data-band="@Band.ToString()">
+    <MudStack Row AlignItems="AlignItems.Center" Spacing="2">
+        <MudIcon Icon="@AlertIcon" />
+        <MudStack Spacing="0">
+            <MudText Typo="Typo.subtitle2" data-testid="license-expiry-headline">@Headline</MudText>
+            <MudText Typo="Typo.caption" data-testid="license-expiry-detail">@Detail</MudText>
+        </MudStack>
+    </MudStack>
+</MudAlert>
+
+@code {
+    [Parameter, EditorRequired]
+    public DateTimeOffset? ExpiresAt { get; set; }
+
+    private ExpiryBand Band => ExpiryBandClassifier.Classify(ExpiresAt);
+
+    private int? Days => ExpiresAt is { } dt
+        ? ExpiryBandClassifier.ComputeDaysRemaining(dt, DateTimeOffset.UtcNow)
+        : null;
+
+    private Severity AlertSeverity => Band switch
+    {
+        ExpiryBand.Healthy => Severity.Success,
+        ExpiryBand.Warn30 => Severity.Info,
+        ExpiryBand.Warn14 => Severity.Warning,
+        ExpiryBand.Warn7 => Severity.Warning,
+        ExpiryBand.Warn1 => Severity.Error,
+        ExpiryBand.Expired => Severity.Error,
+        ExpiryBand.Perpetual => Severity.Success,
+        _ => Severity.Info
+    };
+
+    private string AlertIcon => Band switch
+    {
+        ExpiryBand.Healthy => Icons.Material.Filled.VerifiedUser,
+        ExpiryBand.Warn30 => Icons.Material.Filled.Schedule,
+        ExpiryBand.Warn14 => Icons.Material.Filled.HourglassBottom,
+        ExpiryBand.Warn7 => Icons.Material.Filled.HourglassBottom,
+        ExpiryBand.Warn1 => Icons.Material.Filled.PriorityHigh,
+        ExpiryBand.Expired => Icons.Material.Filled.ErrorOutline,
+        ExpiryBand.Perpetual => Icons.Material.Filled.AllInclusive,
+        _ => Icons.Material.Filled.Info
+    };
+
+    private string Headline => Band switch
+    {
+        ExpiryBand.Perpetual => "Perpetual license — no expiry",
+        ExpiryBand.Expired => "License expired",
+        ExpiryBand.Warn1 => "License expires within 1 day",
+        ExpiryBand.Warn7 => "License expires within 7 days",
+        ExpiryBand.Warn14 => "License expires within 14 days",
+        ExpiryBand.Warn30 => "License expires within 30 days",
+        ExpiryBand.Healthy => "License healthy",
+        _ => "License status"
+    };
+
+    private string Detail
+    {
+        get
+        {
+            if (ExpiresAt is null)
+            {
+                return "This license does not expire.";
+            }
+            var stamp = ExpiresAt.Value.ToLocalTime().ToString("yyyy-MM-dd HH:mm zzz");
+            var utcStamp = ExpiresAt.Value.UtcDateTime.ToString("yyyy-MM-dd HH:mm 'UTC'");
+            var days = Days ?? 0;
+            var direction = ExpiryBandClassifier.FormatRelativeDay(Band, days);
+            return $"Expires {stamp} ({utcStamp}) — {direction}.";
+        }
+    }
+}

@@ -12,6 +12,7 @@ This is the official admin UI for managing Honua Server instances:
 - **Analytics Dashboard**: Monitor usage and performance
 - **Operator Spec Workspace**: Stub-backed three-pane NL + DSL + preview workspace for walking the spec workflow end to end
 - **Identity Workspace**: OIDC provider lifecycle (list / create / edit / enable / delete), provider status, auth diagnostics, and API-key gap surface — see [Identity workspace](#identity-workspace) below
+- **License Workspace**: BYOL license status, entitlement inspection, expiry banding, replace flow, and operator-actionable diagnostics — see [License workspace](#license-workspace) below
 
 ## Architecture
 
@@ -175,6 +176,112 @@ diagnostics and providers pages.
 The identity admin client emits structured telemetry via
 `IIdentityAdminTelemetry` (default: `ILogger` sink) for every list /
 create / update / delete / test call.
+
+### License workspace
+
+The license workspace (ticket `#23`) lives at `/operator/license` on the
+shared shell as a single nav entry that opens a three-pane body —
+**Status | Entitlements | Actions** — mirroring the `SpecWorkspace`
+layering rather than introducing a parallel layout. The page is
+`[Authorize]`-gated so the production auth provider swap-in is automatic
+when `DevAuthenticationStateProvider` is replaced.
+
+This first slice covers **BYOL only**. The display contract is shaped
+to accommodate the marketplace adapters from `honua-io/honua-server#804`
+without redesign — the "Issued by" cell renders `LicenseStatusDto.IssuanceSource`
+and defaults to `"BYOL portal"` client-side when the server omits the
+field, so AWS / Azure marketplace adapters slot in by populating the
+field server-side.
+
+Pages and panes:
+
+- `Pages/Operator/LicenseWorkspace.razor` (`/operator/license`) — pulls
+  status once on workspace open via `LicenseWorkspaceState.RefreshAsync`.
+  No polling; refresh is operator-driven via the actions pane.
+- `Components/LicenseWorkspace/LicenseStatusPane.razor` — current
+  edition, issued-by, issued-to, expiry (local TZ + UTC tooltip), and
+  the diagnostic banner.
+- `Components/LicenseWorkspace/EntitlementsPane.razor` — entitlement
+  rows with active/inactive state, addressable by key for "feature not
+  entitled" callers.
+- `Components/LicenseWorkspace/LicenseActionsPane.razor` — refresh and
+  the replace-license affordance.
+- `Components/LicenseWorkspace/ReplaceLicenseDialog.razor` — file
+  picker + explicit confirmation gate; the upload buffer lives only in
+  the dialog's local scope and is dropped on submit/dispose.
+- `Components/LicenseWorkspace/ExpiryBandIndicator.razor` — reusable
+  band chip driven by `ExpiryBandClassifier`.
+- `Components/LicenseWorkspace/LicenseDiagnosticBanner.razor` — renders
+  the diagnostic copy mapped from `LicenseDiagnosticClassifier`.
+
+Wire contract. Server responses use the shared `ApiResponse<T>` envelope
+(`{ success, data, message, timestamp }`) decoded as
+`LicenseApiEnvelope<T>` via the source-generated
+`LicenseWorkspaceJsonContext` so the WASM build stays trim/AOT-safe.
+`HttpLicenseWorkspaceClient` is hard-pinned to the working honua-server
+endpoint set:
+
+- `GET /api/v1/admin/license` → `LicenseStatusDto`
+- `GET /api/v1/admin/license/entitlements` → `IReadOnlyList<EntitlementDto>`
+- `POST /api/v1/admin/license` (`application/octet-stream`) → `LicenseStatusDto`
+
+The duplicate `LicenseAdminEndpoints` set (with a 501 `POST /license/upload`
+placeholder) is intentionally avoided; consolidation is filed in the gap
+report. After a successful upload the state always re-fetches
+`GET /api/v1/admin/license` rather than trusting the upload response
+alone, so server-side signature failures surface in the next status read
+even when the upload itself returned 200.
+
+`LicenseStatusDto` exposes `Edition`, `ExpiresAt`, `IssuedAt`,
+`LicensedTo`, `IsValid`, `IssuanceSource`, `ValidationState`,
+`DaysUntilExpiry`, `ExpiryWarning`, and `Entitlements`. The signed
+license file content is never round-tripped to the browser: only
+extracted metadata appears, and the upload byte buffer never leaves the
+upload action's scope (no `IBrowserStorageService`, no logging, no DOM
+text rendering).
+
+Diagnostics. `LicenseDiagnosticClassifier` is the single source of
+truth for mapping status responses (or transport failures) to the
+`LicenseDiagnostic` enum: `Valid`, `Expired`, `InvalidSignature`,
+`EndpointUnreachable`, `AuthenticationFailure`, `FeatureNotEntitled`,
+`Unknown`. Each maps to distinct operator-action copy in
+`LicenseDiagnosticCopy`. Until honua-server publishes a stable
+`LicenseValidationCode` enum, the classifier pattern-matches the
+free-form `ValidationState` string (substrings: `expired`, `expiry`,
+`signature`, `signed`, `tamper`, `verification`); see the gap report
+for the migration path. `AuthenticationFailure` is split out from
+`EndpointUnreachable` because the remediation differs (401/403 → fix
+credentials; 5xx/timeout → check server reachability).
+
+Expiry banding. `ExpiryBandClassifier` always computes in UTC
+(truncated to whole UTC days) and renders to local for display, so the
+30 / 14 / 7 / 1-day warning bands are stable across DST boundaries.
+Licenses with no `ExpiresAt` map to `Perpetual` (community edition).
+
+Telemetry. `LicenseWorkspaceState` emits structured events via
+`ILicenseWorkspaceTelemetry` (default: `LoggingLicenseWorkspaceTelemetry`
+`ILogger` sink) for `status_loaded`, `status_load_failed`,
+`upload_attempted`, `upload_succeeded`, `upload_failed`, and
+`diagnostic_observed`. Telemetry never logs license payload bytes —
+only counts, status codes, edition strings, and band/diagnostic enum
+values.
+
+DI wiring is in `Program.cs`:
+`ILicenseWorkspaceTelemetry → LoggingLicenseWorkspaceTelemetry`,
+`ILicenseWorkspaceClient → HttpLicenseWorkspaceClient` (typed
+`AddHttpClient<>` registration sharing the identity client's
+`HonuaServer:BaseUrl` resolution and Development-only `X-API-Key`
+forwarding), and the scoped `LicenseWorkspaceState` store.
+`StubLicenseWorkspaceClient` stays in the namespace as the
+deterministic in-memory backend for direct construction in tests and
+offline preview, but is not DI-registered.
+
+Server-side gaps surfaced by this workspace are catalogued in
+[`docs/license-admin-gaps.md`](docs/license-admin-gaps.md) (stable
+`LicenseValidationCode` enum, discriminated upload-failure responses,
+duplicate endpoint-set consolidation, server-side `IssuanceSource`,
+real Ed25519 verification on `ApplyLicenseAsync`, phone-home health
+field, marketplace-aware surfaces).
 
 ## Features
 
