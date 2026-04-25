@@ -116,7 +116,7 @@
                             <SqlTableResults Result="@State.LastResult" />
                         </MudTabPanel>
                         <MudTabPanel Text="Map" Disabled="@(State.LastResult is null || !State.LastResult.HasGeometry)" data-testid="sql-results-tab-map">
-                            <SqlMapPreview Features="@State.BuildMapFeatures()" />
+                            <SqlMapPreview Features="@State.BuildMapFeatures()" BlockedReason="@State.MapPreviewBlockedReason" />
                         </MudTabPanel>
                     </MudTabs>
                 </MudStack>

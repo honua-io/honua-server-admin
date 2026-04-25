@@ -99,6 +99,12 @@ public sealed class SpatialSqlPlaygroundState : IDisposable
     /// Surfaces a client-side export failure (e.g. non-WGS84 SRID) on the toolbar
     /// banner without disturbing the underlying result. Telemetry records the
     /// rejection so the operator-visible error has a paired log entry.
+    ///
+    /// Deliberate exception to the LastError-implies-Error invariant: the query
+    /// itself succeeded — only the export action failed — so <see cref="Status"/>
+    /// stays at its prior value (typically Idle) while the banner communicates the
+    /// rejection. The next state-changing call (re-Run, EXPLAIN, save) clears
+    /// <see cref="LastError"/>.
     /// </summary>
     public void SetExportError(string message)
     {
@@ -108,6 +114,31 @@ public sealed class SpatialSqlPlaygroundState : IDisposable
             ["message"] = message
         });
         Notify();
+    }
+
+    /// <summary>
+    /// Reason the map preview cannot be rendered for the current result, or
+    /// <c>null</c> when the preview is renderable. Mirrors the SRID guard the
+    /// GeoJSON exporter enforces so both surfaces refuse the same inputs —
+    /// MapLibre expects WGS84 longitude/latitude, so a non-4326 result would
+    /// silently put markers off-map.
+    /// </summary>
+    public string? MapPreviewBlockedReason
+    {
+        get
+        {
+            if (LastResult is not { HasGeometry: true } result)
+            {
+                return null;
+            }
+            if (result.GeometrySrid is int srid && srid != SqlResultExporter.Wgs84Srid)
+            {
+                return string.Create(
+                    System.Globalization.CultureInfo.InvariantCulture,
+                    $"Map preview requires WGS84 (SRID 4326); result is SRID {srid}. Reproject server-side to preview.");
+            }
+            return null;
+        }
     }
 
     public async Task LoadSchemaAsync(CancellationToken cancellationToken = default)
@@ -128,7 +159,11 @@ public sealed class SpatialSqlPlaygroundState : IDisposable
         }
         catch (OperationCanceledException)
         {
+            // Notify before re-throwing so subscribers observing the Loading state
+            // see the Idle terminal state — RunQueryAsync / RunExplainAsync make
+            // the same guarantee via their trailing Notify().
             Status = SpatialSqlPaneStatus.Idle;
+            Notify();
             throw;
         }
         catch (Exception ex)
@@ -219,14 +254,10 @@ public sealed class SpatialSqlPlaygroundState : IDisposable
             else
             {
                 Status = SpatialSqlPaneStatus.Idle;
-                if (result.HasGeometry)
-                {
-                    ResultsTab = "map";
-                }
-                else
-                {
-                    ResultsTab = "table";
-                }
+                // Auto-switch to the map tab only when the geometry can actually be
+                // previewed — non-WGS84 results would mis-render on MapLibre, so leave
+                // the operator on the table view with the blocked-reason banner.
+                ResultsTab = result.HasGeometry && IsRenderableSrid(result.GeometrySrid) ? "map" : "table";
                 _telemetry.RecordLatency("query_completed", watch.ElapsedMilliseconds, new Dictionary<string, object?>
                 {
                     ["rows"] = result.Rows.Count,
@@ -372,6 +403,16 @@ public sealed class SpatialSqlPlaygroundState : IDisposable
             Notify();
             return registration;
         }
+        catch (OperationCanceledException)
+        {
+            // Match the cancellation contract used by LoadSchemaAsync /
+            // RunQueryAsync / RunExplainAsync: cancellation lands in Idle, not in
+            // the Error/transport_error bucket, and subscribers are notified before
+            // the exception propagates so any 'Saving' spinner can clear.
+            Status = SpatialSqlPaneStatus.Idle;
+            Notify();
+            throw;
+        }
         catch (Exception ex)
         {
             Status = SpatialSqlPaneStatus.Error;
@@ -438,6 +479,12 @@ public sealed class SpatialSqlPlaygroundState : IDisposable
         {
             return Array.Empty<MapPreviewFeature>();
         }
+        // Mirror the GeoJSON exporter's WGS84 guard so non-4326 SRIDs never reach
+        // MapLibre — see <see cref="MapPreviewBlockedReason"/> for the surfaced text.
+        if (!IsRenderableSrid(LastResult.GeometrySrid))
+        {
+            return Array.Empty<MapPreviewFeature>();
+        }
         var geometryIndex = LastResult.GeometryColumnIndex!.Value;
         var idIndex = FindIdColumn(LastResult.Columns);
         var labelIndex = FindLabelColumn(LastResult.Columns, idIndex);
@@ -488,6 +535,8 @@ public sealed class SpatialSqlPlaygroundState : IDisposable
         }
         return -1;
     }
+
+    private static bool IsRenderableSrid(int? srid) => srid is null || srid == SqlResultExporter.Wgs84Srid;
 
     private static int FindLabelColumn(IReadOnlyList<SqlColumn> columns, int idIndex)
     {

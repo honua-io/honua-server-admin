@@ -354,7 +354,10 @@ serialize without reflection; the EXPLAIN parser and exporter are
 reflection-free; the MapLibre interop re-uses the existing vendored
 bootstrap from the spec workspace. GeoJSON export follows RFC 7946 — no
 legacy `crs` member, and non-WGS84 SRIDs are rejected so reprojection
-stays a server-side responsibility.
+stays a server-side responsibility. The MapLibre preview enforces the
+same WGS84 guard: a non-4326 result keeps the operator on the table tab
+and surfaces a "preview requires WGS84" banner instead of mis-rendering
+coordinates.
 
 The S1 scope deliberately excludes Monaco / CodeMirror integration, write
 SQL beyond the per-query override, multi-database routing, query history

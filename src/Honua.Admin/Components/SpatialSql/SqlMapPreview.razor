@@ -7,7 +7,13 @@
 @implements IAsyncDisposable
 
 <div class="spatial-sql-map" data-testid="sql-map-preview">
-    @if (Features.Count == 0)
+    @if (!string.IsNullOrEmpty(BlockedReason))
+    {
+        <MudAlert Severity="Severity.Warning" Dense="true" Variant="Variant.Outlined" data-testid="sql-map-blocked">
+            @BlockedReason
+        </MudAlert>
+    }
+    else if (Features.Count == 0)
     {
         <MudAlert Severity="Severity.Info" Dense="true" Variant="Variant.Text" data-testid="sql-map-empty">
             No geometry rows to preview. Run a query that returns a geometry column.
@@ -25,9 +31,16 @@
 
     [Parameter] public IReadOnlyList<MapPreviewFeature> Features { get; set; } = Array.Empty<MapPreviewFeature>();
 
+    /// <summary>
+    /// When non-null the map renders a warning instead of a canvas — used to mirror
+    /// the GeoJSON exporter's WGS84 guard so non-4326 results refuse to preview
+    /// instead of silently mis-rendering.
+    /// </summary>
+    [Parameter] public string? BlockedReason { get; set; }
+
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (Features.Count == 0)
+        if (!string.IsNullOrEmpty(BlockedReason) || Features.Count == 0)
         {
             return;
         }

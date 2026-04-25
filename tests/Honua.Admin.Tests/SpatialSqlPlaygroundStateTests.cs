@@ -122,9 +122,10 @@ public sealed class SpatialSqlPlaygroundStateTests
         Assert.NotNull(registration.OgcFeaturesUrl);
         Assert.NotNull(registration.ODataUrl);
         Assert.Contains(telemetry.Events, e => e.Event == "view_saved");
-        // LastSavedView is the surface the dialog uses to render the URL chips
-        // and copy buttons; the dialog now stays open on success and reads from
-        // this property rather than auto-closing and dropping the URLs.
+        // LastSavedView mirrors the registration on the state store so external
+        // observers (tests, future surfaces such as a saved-views list) can recover
+        // the URLs after the dialog closes. The dialog itself renders from its own
+        // local `Registration` field captured from SaveViewAsync's return value.
         Assert.Same(registration, state.LastSavedView);
     }
 
@@ -147,12 +148,156 @@ public sealed class SpatialSqlPlaygroundStateTests
     {
         var telemetry = new RecordingTelemetry();
         var state = new SpatialSqlPlaygroundState(new StubSpatialSqlClient(), telemetry);
+        // Status is intentionally preserved: the underlying query result is still
+        // valid — only the export action failed — so the chip stays at its prior
+        // value while the banner communicates the rejection.
+        var preStatus = state.Status;
 
         state.SetExportError("GeoJSON export requires WGS84 (SRID 4326); got SRID 3857.");
 
         Assert.NotNull(state.LastError);
         Assert.Contains("WGS84", state.LastError!, System.StringComparison.Ordinal);
         Assert.Contains(telemetry.Events, e => e.Event == "export_rejected");
+        Assert.Equal(preStatus, state.Status);
+    }
+
+    [Fact]
+    public async Task RunQueryAsync_with_non_wgs84_geometry_blocks_map_preview_and_keeps_table_tab()
+    {
+        var telemetry = new RecordingTelemetry();
+        var state = new SpatialSqlPlaygroundState(new NonWgs84Client(), telemetry);
+        await state.LoadSchemaAsync();
+
+        state.SetSql("SELECT id, geom FROM mercator");
+        await state.RunQueryAsync();
+
+        Assert.True(state.LastResult!.HasGeometry);
+        Assert.Equal(3857, state.LastResult.GeometrySrid);
+        // Auto-tab-switch must NOT promote the operator into a map view that would
+        // mis-render — keep them on the table with the blocked-reason banner.
+        Assert.Equal("table", state.ResultsTab);
+        Assert.NotNull(state.MapPreviewBlockedReason);
+        Assert.Contains("WGS84", state.MapPreviewBlockedReason!, System.StringComparison.Ordinal);
+        Assert.Contains("3857", state.MapPreviewBlockedReason!, System.StringComparison.Ordinal);
+        // BuildMapFeatures mirrors the SqlResultExporter guard: refuse to hand
+        // non-WGS84 coordinates to MapLibre even if the caller forces the tab.
+        Assert.Empty(state.BuildMapFeatures());
+    }
+
+    [Fact]
+    public async Task RunQueryAsync_with_wgs84_geometry_leaves_blocked_reason_null()
+    {
+        var state = new SpatialSqlPlaygroundState(new StubSpatialSqlClient(), new RecordingTelemetry());
+        await state.LoadSchemaAsync();
+        state.SetSql("SELECT id, county, geom FROM parcels");
+        await state.RunQueryAsync();
+
+        Assert.True(state.LastResult!.HasGeometry);
+        Assert.Null(state.MapPreviewBlockedReason);
+        Assert.Equal("map", state.ResultsTab);
+    }
+
+    [Fact]
+    public async Task SaveViewAsync_routes_OperationCanceledException_through_idle_terminal_state()
+    {
+        var telemetry = new RecordingTelemetry();
+        var state = new SpatialSqlPlaygroundState(new CancellingSaveClient(), telemetry);
+        var observed = new List<SpatialSqlPaneStatus>();
+        state.OnChanged += () => observed.Add(state.Status);
+
+        await Assert.ThrowsAsync<OperationCanceledException>(() => state.SaveViewAsync("v", "d", default));
+
+        // Cancellation lands in Idle (matches LoadSchema/RunQuery/RunExplain), and
+        // is NOT misclassified as a transport_error in telemetry.
+        Assert.Equal(SpatialSqlPaneStatus.Idle, state.Status);
+        Assert.Null(state.LastError);
+        Assert.DoesNotContain(telemetry.Events, e => e.Event == "view_save_rejected");
+        // Subscribers must observe both the Saving and Idle transitions so any
+        // 'Saving…' spinner can clear.
+        Assert.Contains(SpatialSqlPaneStatus.Saving, observed);
+        Assert.Equal(SpatialSqlPaneStatus.Idle, observed[^1]);
+    }
+
+    [Fact]
+    public async Task LoadSchemaAsync_notifies_subscribers_before_re_throwing_cancellation()
+    {
+        var state = new SpatialSqlPlaygroundState(new CancellingSchemaClient(), new RecordingTelemetry());
+        var observed = new List<SpatialSqlPaneStatus>();
+        state.OnChanged += () => observed.Add(state.Status);
+
+        await Assert.ThrowsAsync<OperationCanceledException>(() => state.LoadSchemaAsync());
+
+        // The trailing Notify() is bypassed by the re-throw, so the OCE catch must
+        // notify before propagating — otherwise subscribers get stuck on Loading.
+        Assert.Equal(SpatialSqlPaneStatus.Idle, state.Status);
+        Assert.Contains(SpatialSqlPaneStatus.Loading, observed);
+        Assert.Equal(SpatialSqlPaneStatus.Idle, observed[^1]);
+    }
+
+    private sealed class NonWgs84Client : ISpatialSqlClient
+    {
+        private readonly StubSpatialSqlClient _inner = new();
+
+        public Task<SchemaSnapshot> GetSchemaAsync(CancellationToken cancellationToken) =>
+            _inner.GetSchemaAsync(cancellationToken);
+
+        public Task<SqlExecuteResult> ExecuteAsync(SqlExecuteRequest request, CancellationToken cancellationToken) =>
+            Task.FromResult(new SqlExecuteResult
+            {
+                Columns = new[]
+                {
+                    new SqlColumn("id", "uuid"),
+                    new SqlColumn("geom", "geometry", IsGeometry: true)
+                },
+                Rows = new[]
+                {
+                    new SqlRow(new string?[]
+                    {
+                        "1",
+                        "{\"type\":\"Point\",\"coordinates\":[1000000,2000000]}"
+                    })
+                },
+                GeometryColumnIndex = 1,
+                GeometrySrid = 3857
+            });
+
+        public Task<ExplainPlan> ExplainAsync(SqlExplainRequest request, CancellationToken cancellationToken) =>
+            _inner.ExplainAsync(request, cancellationToken);
+
+        public Task<NamedViewRegistration> SaveViewAsync(SaveViewRequest request, CancellationToken cancellationToken) =>
+            _inner.SaveViewAsync(request, cancellationToken);
+    }
+
+    private sealed class CancellingSaveClient : ISpatialSqlClient
+    {
+        private readonly StubSpatialSqlClient _inner = new();
+
+        public Task<SchemaSnapshot> GetSchemaAsync(CancellationToken cancellationToken) =>
+            _inner.GetSchemaAsync(cancellationToken);
+
+        public Task<SqlExecuteResult> ExecuteAsync(SqlExecuteRequest request, CancellationToken cancellationToken) =>
+            _inner.ExecuteAsync(request, cancellationToken);
+
+        public Task<ExplainPlan> ExplainAsync(SqlExplainRequest request, CancellationToken cancellationToken) =>
+            _inner.ExplainAsync(request, cancellationToken);
+
+        public Task<NamedViewRegistration> SaveViewAsync(SaveViewRequest request, CancellationToken cancellationToken) =>
+            Task.FromException<NamedViewRegistration>(new OperationCanceledException());
+    }
+
+    private sealed class CancellingSchemaClient : ISpatialSqlClient
+    {
+        public Task<SchemaSnapshot> GetSchemaAsync(CancellationToken cancellationToken) =>
+            Task.FromException<SchemaSnapshot>(new OperationCanceledException());
+
+        public Task<SqlExecuteResult> ExecuteAsync(SqlExecuteRequest request, CancellationToken cancellationToken) =>
+            throw new System.NotSupportedException();
+
+        public Task<ExplainPlan> ExplainAsync(SqlExplainRequest request, CancellationToken cancellationToken) =>
+            throw new System.NotSupportedException();
+
+        public Task<NamedViewRegistration> SaveViewAsync(SaveViewRequest request, CancellationToken cancellationToken) =>
+            throw new System.NotSupportedException();
     }
 
     private sealed class CappingClient : ISpatialSqlClient

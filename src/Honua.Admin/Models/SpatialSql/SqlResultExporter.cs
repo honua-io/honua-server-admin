@@ -124,7 +124,13 @@ public static class SqlResultExporter
         return Encoding.UTF8.GetString(stream.ToArray());
     }
 
-    private const int Wgs84Srid = 4326;
+    /// <summary>
+    /// SRID 4326 — the WGS84 geographic coordinate system. RFC 7946 §4 mandates
+    /// this for GeoJSON output, and MapLibre expects WGS84 lng/lat for the in-page
+    /// preview, so both the exporter and <c>SpatialSqlPlaygroundState</c> guard
+    /// against non-4326 results using this single constant.
+    /// </summary>
+    internal const int Wgs84Srid = 4326;
 
     public static string ToClipboardText(SqlExecuteResult result) => ToCsv(result);
 
