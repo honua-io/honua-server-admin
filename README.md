@@ -128,12 +128,34 @@ Pages:
   documenting the future capability and linking to the
   [identity admin gap report](docs/identity-admin-gaps.md)
 
-Plaintext OIDC client secrets are write-only: they live in
+Wire contract. Every honua-server admin response is wrapped in the shared
+`ApiResponse<T>` envelope (`{ success, data, message, timestamp }`); the
+admin client unwraps via `Data`. DTOs live in
+`src/Honua.Admin/Models/Identity/IdentityModels.cs` and mirror the server
+shapes verbatim with `[JsonPropertyName]` attributes. Serialization runs
+through the source-generated `IdentityAdminJsonContext` so the WASM build
+stays trim/AOT-safe. `OidcProviderResponse` intentionally has no
+`clientSecret` field — the server never round-trips secrets.
+
+Plaintext OIDC client secrets are write-only and optional. `ClientSecret`
+on the create form is omitted entirely (sent as `null`) when the operator
+leaves it blank, mirroring `honua-server`'s nullable
+`CreateOidcProviderRequest.ClientSecret` so public / PKCE-style providers
+go through unchanged. When supplied, the secret lives in
 `OidcProviderFormModel.ClientSecret` only for the duration of the dialog,
-are sent to the server exactly once on create or rotate, and are zeroed
+is sent to the server exactly once on create or rotate, and is zeroed
 out from in-memory state immediately after submit. The server never
-returns them; edit dialogs render a `••••• (set)` placeholder and require
-an explicit "Rotate secret" toggle to send a new value.
+returns secrets; edit dialogs render a `••••• (set)` placeholder and
+require an explicit "Rotate secret" toggle to send a new value.
+
+Diagnostics classify each failure as *operator action* (configuration the
+operator can fix — bad authority host, wrong client credentials, missing
+authority) or *wait* (likely upstream — discovery timeout, opaque 5xx).
+Cards labelled "Pending — see follow-up ticket" cover server-side
+capabilities the diagnostics surface promises but does not yet ship
+(clock-skew detection, claim-mapping coverage, callback-URL drift); see
+[`docs/identity-admin-gaps.md`](docs/identity-admin-gaps.md) for the full
+list and the corresponding `honua-server` follow-ups.
 
 The diagnostic copy mapping is centralized in
 `Services/Identity/IdentityDiagnostics.cs`; the table from the design

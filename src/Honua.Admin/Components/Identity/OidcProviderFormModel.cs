@@ -105,10 +105,6 @@ public sealed class OidcProviderFormModel
         {
             errors.Add("Client ID is required.");
         }
-        if (!IsEdit && string.IsNullOrWhiteSpace(ClientSecret))
-        {
-            errors.Add("Client secret is required when creating a provider.");
-        }
         if (IsEdit && RotateSecret && string.IsNullOrWhiteSpace(ClientSecret))
         {
             errors.Add("Enter the new client secret to rotate, or turn off the rotate toggle.");
@@ -117,8 +113,9 @@ public sealed class OidcProviderFormModel
     }
 
     /// <summary>
-    /// Build the create payload sent to honua-server. Plaintext secret is included
-    /// because the server has no other way to persist it on first creation.
+    /// Build the create payload sent to honua-server. The plaintext secret is sent
+    /// when the operator typed one (confidential client); a blank field becomes
+    /// <c>null</c> so the server stores no secret (public / PKCE-style providers).
     /// </summary>
     public CreateOidcProviderRequest ToCreateRequest()
     {
@@ -128,7 +125,7 @@ public sealed class OidcProviderFormModel
             ProviderType = ProviderType,
             Authority = Authority.Trim(),
             ClientId = ClientId.Trim(),
-            ClientSecret = ClientSecret,
+            ClientSecret = string.IsNullOrWhiteSpace(ClientSecret) ? null : ClientSecret,
             Enabled = Enabled
         };
     }
@@ -145,7 +142,7 @@ public sealed class OidcProviderFormModel
             Name = Name.Trim(),
             Authority = Authority.Trim(),
             ClientId = ClientId.Trim(),
-            ClientSecret = RotateSecret && !string.IsNullOrEmpty(ClientSecret) ? ClientSecret : null,
+            ClientSecret = RotateSecret && !string.IsNullOrWhiteSpace(ClientSecret) ? ClientSecret : null,
             Enabled = Enabled
         };
     }
@@ -161,8 +158,12 @@ public sealed class OidcProviderFormModel
 
     /// <summary>
     /// Hint copy for the secret field. Edit mode renders an obscured indicator
-    /// when the server reports a secret is configured; create mode shows nothing.
+    /// when the server reports a secret is configured; create mode tells the
+    /// operator the secret is optional (public / PKCE-style clients leave it
+    /// blank).
     /// </summary>
     public string SecretHint =>
-        IsEdit && ServerHasSecret ? "••••• (set) — toggle Rotate to replace" : "Required to authenticate operators against the provider.";
+        IsEdit && ServerHasSecret
+            ? "••••• (set) — toggle Rotate to replace"
+            : "Optional — leave blank for public / PKCE clients; required for confidential clients.";
 }

@@ -61,12 +61,12 @@
                           InputType="InputType.Password"
                           Variant="Variant.Outlined"
                           HelperText="@Model.SecretHint"
-                          Required="@(!Model.IsEdit || Model.RotateSecret)"
+                          Required="@(Model.IsEdit && Model.RotateSecret)"
                           RequiredError="Client secret is required."
                           data-testid="oidc-form-client-secret" />
             <MudAlert Severity="Severity.Info" Dense="true" NoIcon="false" Class="mt-2"
                       data-testid="oidc-form-secret-notice">
-                Client secrets are write-only. The server never returns a stored secret to the browser; this value is sent once and cleared from memory after submit.
+                Client secrets are write-only. The server never returns a stored secret to the browser; if entered, this value is sent once and cleared from memory after submit. Leave blank for public / PKCE clients.
             </MudAlert>
         </MudItem>
     }

@@ -31,6 +31,43 @@ public sealed class OidcProviderFormModelTests
     }
 
     [Fact]
+    public void Create_without_secret_validates_and_sends_null_to_server()
+    {
+        // honua-server's CreateOidcProviderRequest.ClientSecret is nullable to
+        // allow public / PKCE-style providers. The admin form must not be
+        // stricter than the API it mirrors.
+        var model = OidcProviderFormModel.ForCreate();
+        model.Name = "Public PKCE IdP";
+        model.ProviderType = "Okta";
+        model.Authority = "https://dev-12345.okta.com";
+        model.ClientId = "public-spa";
+        // ClientSecret deliberately left blank.
+
+        Assert.Empty(model.Validate());
+        var request = model.ToCreateRequest();
+
+        Assert.Null(request.ClientSecret);
+        Assert.Equal("public-spa", request.ClientId);
+        Assert.Equal("Okta", request.ProviderType);
+    }
+
+    [Fact]
+    public void Create_with_whitespace_secret_sends_null_not_whitespace()
+    {
+        var model = OidcProviderFormModel.ForCreate();
+        model.Name = "Acme IdP";
+        model.ProviderType = "Generic";
+        model.Authority = "https://idp.example";
+        model.ClientId = "honua-admin";
+        model.ClientSecret = "   ";
+
+        Assert.Empty(model.Validate());
+        var request = model.ToCreateRequest();
+
+        Assert.Null(request.ClientSecret);
+    }
+
+    [Fact]
     public void Edit_without_rotate_omits_secret_from_request()
     {
         var existing = new OidcProviderResponse
