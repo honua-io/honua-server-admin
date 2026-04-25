@@ -1,6 +1,8 @@
 @* Recursive collapsible tree for EXPLAIN nodes. Each node shows its operator,
    actual rows, planner-vs-actual delta, and accumulated time. Mis-estimated
-   rows (>= 10x off in either direction) get a warning chip. *@
+   rows (>= 10x off in either direction) get a warning chip. Numeric formatting
+   uses InvariantCulture to keep '.' as the decimal separator across locales. *@
+@using System.Globalization
 @using Honua.Admin.Models.SpatialSql
 
 <div class="spatial-sql-explain" data-testid="explain-tree">
@@ -20,10 +22,10 @@
     {
         <MudStack Row Spacing="2" AlignItems="AlignItems.Center" Class="mb-2">
             <MudChip T="string" Variant="Variant.Outlined" Size="Size.Small" data-testid="explain-total">
-                total @Plan.TotalElapsedMs.ToString("0.0") ms
+                total @Plan.TotalElapsedMs.ToString("0.0", CultureInfo.InvariantCulture) ms
             </MudChip>
             <MudChip T="string" Variant="Variant.Outlined" Size="Size.Small" data-testid="explain-planning">
-                planning @Plan.PlanningMs.ToString("0.0") ms
+                planning @Plan.PlanningMs.ToString("0.0", CultureInfo.InvariantCulture) ms
             </MudChip>
         </MudStack>
         <ExplainNodeView Node="Plan.Root" Depth="0" />

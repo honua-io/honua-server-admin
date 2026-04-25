@@ -122,6 +122,10 @@ public sealed class SpatialSqlPlaygroundStateTests
         Assert.NotNull(registration.OgcFeaturesUrl);
         Assert.NotNull(registration.ODataUrl);
         Assert.Contains(telemetry.Events, e => e.Event == "view_saved");
+        // LastSavedView is the surface the dialog uses to render the URL chips
+        // and copy buttons; the dialog now stays open on success and reads from
+        // this property rather than auto-closing and dropping the URLs.
+        Assert.Same(registration, state.LastSavedView);
     }
 
     [Fact]
@@ -136,6 +140,19 @@ public sealed class SpatialSqlPlaygroundStateTests
         var csv = state.ExportCsv();
         Assert.Contains("id,county", csv, System.StringComparison.Ordinal);
         Assert.Contains(telemetry.Events, e => e.Event == "export_triggered");
+    }
+
+    [Fact]
+    public void SetExportError_surfaces_message_and_emits_export_rejected_event()
+    {
+        var telemetry = new RecordingTelemetry();
+        var state = new SpatialSqlPlaygroundState(new StubSpatialSqlClient(), telemetry);
+
+        state.SetExportError("GeoJSON export requires WGS84 (SRID 4326); got SRID 3857.");
+
+        Assert.NotNull(state.LastError);
+        Assert.Contains("WGS84", state.LastError!, System.StringComparison.Ordinal);
+        Assert.Contains(telemetry.Events, e => e.Event == "export_rejected");
     }
 
     private sealed class CappingClient : ISpatialSqlClient

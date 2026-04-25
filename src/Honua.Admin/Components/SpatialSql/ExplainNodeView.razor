@@ -1,5 +1,7 @@
 @* Recursive node renderer for the EXPLAIN tree. Pulled into its own component so
-   the parent can stay declarative and the recursion is clear. *@
+   the parent can stay declarative and the recursion is clear. Numeric formatting
+   uses InvariantCulture to keep '.' as the decimal separator across locales. *@
+@using System.Globalization
 @using Honua.Admin.Models.SpatialSql
 
 <div class="explain-node" data-testid="@($"explain-node-{Node.NodeType.Replace(' ', '-').ToLowerInvariant()}")">
@@ -21,15 +23,15 @@
             <MudChip T="string" Variant="Variant.Outlined" Size="Size.Small">@Node.Relation</MudChip>
         }
         <MudChip T="string" Variant="Variant.Text" Size="Size.Small" data-testid="explain-node-rows">
-            rows @Node.ActualRows.ToString("0")
+            rows @Node.ActualRows.ToString("0", CultureInfo.InvariantCulture)
         </MudChip>
         <MudChip T="string" Variant="Variant.Text" Size="Size.Small" data-testid="explain-node-time">
-            @Node.ActualTotalMs.ToString("0.00") ms
+            @Node.ActualTotalMs.ToString("0.00", CultureInfo.InvariantCulture) ms
         </MudChip>
         @if (Node.RowEstimateOff)
         {
             <MudChip T="string" Color="Color.Warning" Size="Size.Small" Variant="Variant.Filled" data-testid="explain-node-misestimate">
-                est ≠ actual (planned @Node.PlanRows.ToString("0"))
+                est ≠ actual (planned @Node.PlanRows.ToString("0", CultureInfo.InvariantCulture))
             </MudChip>
         }
     </MudStack>

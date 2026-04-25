@@ -151,21 +151,61 @@
                 if (!feature.geometry) {
                     return;
                 }
-                if (feature.geometry.type === 'Point') {
-                    bounds.extend(feature.geometry.coordinates);
-                } else if (Array.isArray(feature.geometry.coordinates)) {
-                    feature.geometry.coordinates.flat(Infinity).forEach(function (value, idx, arr) {
-                        if (idx % 2 === 1) {
-                            bounds.extend([arr[idx - 1], value]);
-                        }
-                    });
-                }
+                extendBoundsFromGeometry(bounds, feature.geometry);
             });
             if (!bounds.isEmpty()) {
                 map.fitBounds(bounds, { padding: 32, maxZoom: 12, duration: 0 });
             }
         } catch (err) {
             // bounds extension is best-effort; ignore malformed geometry rows
+        }
+    }
+
+    // Walk a GeoJSON geometry by type, extending the bounds with each (lng, lat)
+    // pair. Type-aware so 3D coordinates ([lng, lat, elev]) keep elevation out of
+    // the bounding-box math instead of mis-pairing it as latitude.
+    function extendBoundsFromGeometry(bounds, geometry) {
+        if (!geometry || !geometry.coordinates) {
+            return;
+        }
+        const coords = geometry.coordinates;
+        switch (geometry.type) {
+            case 'Point':
+                extendPoint(bounds, coords);
+                break;
+            case 'MultiPoint':
+            case 'LineString':
+                coords.forEach(function (p) { extendPoint(bounds, p); });
+                break;
+            case 'MultiLineString':
+            case 'Polygon':
+                coords.forEach(function (ring) {
+                    ring.forEach(function (p) { extendPoint(bounds, p); });
+                });
+                break;
+            case 'MultiPolygon':
+                coords.forEach(function (polygon) {
+                    polygon.forEach(function (ring) {
+                        ring.forEach(function (p) { extendPoint(bounds, p); });
+                    });
+                });
+                break;
+            case 'GeometryCollection':
+                if (Array.isArray(geometry.geometries)) {
+                    geometry.geometries.forEach(function (g) {
+                        extendBoundsFromGeometry(bounds, g);
+                    });
+                }
+                break;
+            default:
+                // Unknown geometry type — skip rather than throwing.
+                break;
+        }
+    }
+
+    function extendPoint(bounds, point) {
+        if (Array.isArray(point) && typeof point[0] === 'number' && typeof point[1] === 'number') {
+            bounds.extend([point[0], point[1]]);
         }
     }
 

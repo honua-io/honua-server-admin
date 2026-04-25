@@ -46,8 +46,13 @@ public static class SqlResultExporter
     }
 
     /// <summary>
-    /// GeoJSON FeatureCollection. Geometry cells are passed through verbatim — the
-    /// server returns geometry columns as already-serialized GeoJSON strings.
+    /// GeoJSON FeatureCollection per RFC 7946. Geometry cells are passed through
+    /// verbatim — the server returns geometry columns as already-serialized
+    /// GeoJSON strings in WGS84/EPSG:4326. RFC 7946 §4 mandates WGS84 longitude
+    /// and latitude and removed the legacy <c>crs</c> member, so this exporter
+    /// emits no <c>crs</c> envelope. If <see cref="SqlExecuteResult.GeometrySrid"/>
+    /// is set to anything other than 4326 the exporter throws — reprojection is
+    /// the server's responsibility, not the admin's.
     /// </summary>
     public static string ToGeoJson(SqlExecuteResult result)
     {
@@ -55,6 +60,14 @@ public static class SqlResultExporter
         if (!result.HasGeometry)
         {
             throw new InvalidOperationException("Result has no geometry column to export as GeoJSON.");
+        }
+
+        if (result.GeometrySrid is int srid && srid != Wgs84Srid)
+        {
+            throw new InvalidOperationException(
+                string.Create(
+                    CultureInfo.InvariantCulture,
+                    $"GeoJSON export requires WGS84 (SRID 4326); got SRID {srid}. Reproject server-side before export."));
         }
 
         var geometryIndex = result.GeometryColumnIndex!.Value;
@@ -106,20 +119,12 @@ public static class SqlResultExporter
 
             writer.WriteEndArray();
 
-            if (result.GeometrySrid is int srid)
-            {
-                writer.WriteStartObject("crs");
-                writer.WriteString("type", "name");
-                writer.WriteStartObject("properties");
-                writer.WriteString("name", string.Create(CultureInfo.InvariantCulture, $"EPSG:{srid}"));
-                writer.WriteEndObject();
-                writer.WriteEndObject();
-            }
-
             writer.WriteEndObject();
         }
         return Encoding.UTF8.GetString(stream.ToArray());
     }
+
+    private const int Wgs84Srid = 4326;
 
     public static string ToClipboardText(SqlExecuteResult result) => ToCsv(result);
 

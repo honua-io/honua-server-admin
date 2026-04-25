@@ -18,7 +18,7 @@ This is the official admin UI for managing Honua Server instances:
 ## Architecture
 
 - **Frontend**: Blazor WebAssembly with MudBlazor components
-- **Backend Communication**: Operator S1 uses the in-repo `ISpecWorkspaceClient` stub; the [honua-sdk-dotnet](https://github.com/honua-io/honua-sdk-dotnet) gRPC client swap is a follow-on
+- **Backend Communication**: Operator S1 uses the in-repo `ISpecWorkspaceClient` and `ISpatialSqlClient` stubs; the [honua-sdk-dotnet](https://github.com/honua-io/honua-sdk-dotnet) gRPC client and the SQL HTTP adapter swap in once the matching server endpoints land
 - **Deployment**: Static web app (can be hosted on CDN)
 
 ## Development
@@ -296,6 +296,10 @@ The route includes:
 
 - A SQL editor with PostGIS-aware highlighting and schema-driven
   autocomplete (tables, columns, PostGIS function/operator reference).
+  Built on the same textarea+overlay pattern as the spec workspace's
+  `DslSectionEditor` — Monaco / CodeMirror is deliberately deferred to
+  keep the WASM bundle flat; the inner widget can be swapped later
+  without touching `SqlEditor.razor`'s public surface.
 - A schema sidebar with click-to-insert tables, columns, and PostGIS
   helpers, plus a manual refresh button to defeat cache staleness.
 - A results pane with `Table | Map` tabs. Map auto-selects when the result
@@ -304,7 +308,9 @@ The route includes:
 - A collapsible EXPLAIN tree with per-node row counts, actual time, and a
   warning chip when the planner row estimate is off by ≥10×.
 - Save-as-view dialog that returns FeatureServer / OGC API Features /
-  OData URLs once the named view is registered.
+  OData URLs once the named view is registered. The dialog stays open on
+  success and renders each URL with a copy-to-clipboard button so the
+  operator can grab them before dismissing.
 - Per-query mutation override dialog. The operator must tick the
   acknowledgement before the request is re-sent with `allowMutation=true`;
   the resulting `auditEntryId` is shown back next to the result chip.
@@ -320,16 +326,35 @@ Backend calls funnel through `ISpatialSqlClient`
 reference, and an in-memory named-view registry. The HTTP-backed client
 will land once the matching server endpoints
 (`POST /api/v1/admin/sql/{execute,explain,views}`,
-`GET /api/v1/admin/sql/schema`) ship — the page is feature-flagged behind
-the operator role until then.
+`GET /api/v1/admin/sql/schema`) ship — the page is kept behind
+`[Authorize]` (the same `DevAuthenticationStateProvider` that backs the
+spec workspace) until then.
 
-`SpatialSqlPlaygroundState` emits `ISpatialSqlTelemetry` events
-(`schema_loaded`, `query_submitted`, `query_completed`, `query_rejected`,
-`mutation_override_accepted`, `cap_reached`, `view_saved`,
-`export_triggered`) via the default `ILogger` sink. AOT/trim-friendly:
-all DTOs are wired through the source-generated `SpatialSqlJsonContext`;
-the EXPLAIN parser and exporter are reflection-free; the MapLibre interop
-re-uses the existing vendored bootstrap from the spec workspace.
+`SpatialSqlPlaygroundState` emits `ISpatialSqlTelemetry` events via the
+default `ILogger` sink. The vocabulary is:
+
+| Event | Trigger |
+| --- | --- |
+| `schema_loaded` / `schema_load_failed` | autocomplete schema fetch outcome |
+| `query_submitted` | run-query button or keybinding (with `allow_mutation`) |
+| `query_completed` (latency) | run succeeded; carries `rows`, `truncated`, `has_geometry`, `audit_entry_id` |
+| `query_rejected` | server / client error (mutation block, transport, server error) |
+| `cap_reached` | result truncation flag; carries `row_limit` |
+| `explain_completed` (latency) / `explain_rejected` | EXPLAIN call outcome |
+| `view_saved` / `view_save_rejected` | named-view registration outcome |
+| `mutation_override_accepted` | operator confirmed the mutation dialog |
+| `export_triggered` | CSV / GeoJSON / clipboard export, with `format` and `rows` |
+| `export_rejected` | client-side export failure (e.g. non-WGS84 GeoJSON) surfaced as a toolbar alert |
+| `results_tab_changed` | operator toggled `Table` ↔ `Map` |
+
+AOT/trim-friendly: all DTOs (including the `MapPreviewFeature` JS-interop
+DTO) are declared in the source-generated `SpatialSqlJsonContext` ahead of
+the HTTP client landing, so the upcoming `HttpSpatialSqlClient` can
+serialize without reflection; the EXPLAIN parser and exporter are
+reflection-free; the MapLibre interop re-uses the existing vendored
+bootstrap from the spec workspace. GeoJSON export follows RFC 7946 — no
+legacy `crs` member, and non-WGS84 SRIDs are rejected so reprojection
+stays a server-side responsibility.
 
 The S1 scope deliberately excludes Monaco / CodeMirror integration, write
 SQL beyond the per-query override, multi-database routing, query history

@@ -1,11 +1,13 @@
 using System.Text.Json.Serialization;
+using Honua.Admin.Services.SpatialSql;
 
 namespace Honua.Admin.Models.SpatialSql;
 
 /// <summary>
 /// Source-generated serializer context for spatial-SQL DTOs. Mirrors the
 /// SpecWorkspace approach so admin can publish AOT/trim-friendly without
-/// reflection-based JSON.
+/// reflection-based JSON. Includes <see cref="MapPreviewFeature"/> so the
+/// JS interop boundary stays trim-safe alongside the network DTOs.
 /// </summary>
 [JsonSourceGenerationOptions(
     PropertyNamingPolicy = JsonKnownNamingPolicy.CamelCase,
@@ -19,6 +21,8 @@ namespace Honua.Admin.Models.SpatialSql;
 [JsonSerializable(typeof(ExplainNode))]
 [JsonSerializable(typeof(SaveViewRequest))]
 [JsonSerializable(typeof(NamedViewRegistration))]
+[JsonSerializable(typeof(MapPreviewFeature))]
+[JsonSerializable(typeof(System.Collections.Generic.IReadOnlyList<MapPreviewFeature>))]
 public sealed partial class SpatialSqlJsonContext : JsonSerializerContext
 {
 }

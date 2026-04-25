@@ -228,19 +228,26 @@
 
     private async Task ExportCsvAsync()
     {
-        var csv = State.ExportCsv();
-        await DownloadAsync("results.csv", "text/csv", csv);
+        if (TryExport(State.ExportCsv) is { } csv)
+        {
+            await DownloadAsync("results.csv", "text/csv", csv);
+        }
     }
 
     private async Task ExportGeoJsonAsync()
     {
-        var geojson = State.ExportGeoJson();
-        await DownloadAsync("results.geojson", "application/geo+json", geojson);
+        if (TryExport(State.ExportGeoJson) is { } geojson)
+        {
+            await DownloadAsync("results.geojson", "application/geo+json", geojson);
+        }
     }
 
     private async Task ExportClipboardAsync()
     {
-        var text = State.ExportClipboard();
+        if (TryExport(State.ExportClipboard) is not { } text)
+        {
+            return;
+        }
         try
         {
             await JS.InvokeVoidAsync("spatialSql.copyToClipboard", text);
@@ -248,6 +255,19 @@
         catch
         {
             // No clipboard support — keep the export attempt non-fatal.
+        }
+    }
+
+    private string? TryExport(Func<string> exporter)
+    {
+        try
+        {
+            return exporter();
+        }
+        catch (InvalidOperationException ex)
+        {
+            State.SetExportError(ex.Message);
+            return null;
         }
     }
 

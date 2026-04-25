@@ -34,7 +34,7 @@ public sealed class SqlResultExporterTests
     }
 
     [Fact]
-    public void ToGeoJson_emits_feature_collection_with_properties_excluding_geometry()
+    public void ToGeoJson_emits_rfc7946_feature_collection_without_legacy_crs_member()
     {
         var result = new SqlExecuteResult
         {
@@ -67,7 +67,36 @@ public sealed class SqlResultExporterTests
         var properties = feature.GetProperty("properties");
         Assert.Equal("Big Island", properties.GetProperty("county").GetString());
         Assert.False(properties.TryGetProperty("geom", out _));
-        Assert.Equal("EPSG:4326", root.GetProperty("crs").GetProperty("properties").GetProperty("name").GetString());
+        // RFC 7946 §4 removed the crs member — coordinates must be WGS84 implicitly.
+        Assert.False(root.TryGetProperty("crs", out _));
+    }
+
+    [Fact]
+    public void ToGeoJson_emits_feature_collection_when_geometry_srid_is_unspecified()
+    {
+        var result = new SqlExecuteResult
+        {
+            Columns = new[]
+            {
+                new SqlColumn("id", "uuid"),
+                new SqlColumn("geom", "geometry", IsGeometry: true)
+            },
+            Rows = new[]
+            {
+                new SqlRow(new string?[]
+                {
+                    "1",
+                    "{\"type\":\"Point\",\"coordinates\":[0,0]}"
+                })
+            },
+            GeometryColumnIndex = 1
+        };
+
+        var json = SqlResultExporter.ToGeoJson(result);
+
+        using var doc = JsonDocument.Parse(json);
+        Assert.Equal("FeatureCollection", doc.RootElement.GetProperty("type").GetString());
+        Assert.False(doc.RootElement.TryGetProperty("crs", out _));
     }
 
     [Fact]
@@ -80,5 +109,32 @@ public sealed class SqlResultExporterTests
         };
 
         Assert.Throws<System.InvalidOperationException>(() => SqlResultExporter.ToGeoJson(result));
+    }
+
+    [Fact]
+    public void ToGeoJson_throws_when_geometry_srid_is_not_wgs84()
+    {
+        var result = new SqlExecuteResult
+        {
+            Columns = new[]
+            {
+                new SqlColumn("id", "uuid"),
+                new SqlColumn("geom", "geometry", IsGeometry: true)
+            },
+            Rows = new[]
+            {
+                new SqlRow(new string?[]
+                {
+                    "1",
+                    "{\"type\":\"Point\",\"coordinates\":[1000000,2000000]}"
+                })
+            },
+            GeometryColumnIndex = 1,
+            GeometrySrid = 3857
+        };
+
+        var ex = Assert.Throws<System.InvalidOperationException>(() => SqlResultExporter.ToGeoJson(result));
+        Assert.Contains("WGS84", ex.Message, System.StringComparison.Ordinal);
+        Assert.Contains("3857", ex.Message, System.StringComparison.Ordinal);
     }
 }

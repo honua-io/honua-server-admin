@@ -95,6 +95,21 @@ public sealed class SpatialSqlPlaygroundState : IDisposable
         Notify();
     }
 
+    /// <summary>
+    /// Surfaces a client-side export failure (e.g. non-WGS84 SRID) on the toolbar
+    /// banner without disturbing the underlying result. Telemetry records the
+    /// rejection so the operator-visible error has a paired log entry.
+    /// </summary>
+    public void SetExportError(string message)
+    {
+        LastError = message;
+        _telemetry.Record("export_rejected", new Dictionary<string, object?>
+        {
+            ["message"] = message
+        });
+        Notify();
+    }
+
     public async Task LoadSchemaAsync(CancellationToken cancellationToken = default)
     {
         Status = SpatialSqlPaneStatus.Loading;
@@ -511,4 +526,7 @@ public sealed class SpatialSqlPlaygroundState : IDisposable
     private void Notify() => OnChanged?.Invoke();
 }
 
-public sealed record MapPreviewFeature(string Id, string Label, string GeoJson);
+public sealed record MapPreviewFeature(
+    [property: System.Text.Json.Serialization.JsonPropertyName("id")] string Id,
+    [property: System.Text.Json.Serialization.JsonPropertyName("label")] string Label,
+    [property: System.Text.Json.Serialization.JsonPropertyName("geoJson")] string GeoJson);
