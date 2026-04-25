@@ -1,0 +1,305 @@
+@page "/admin/identity/diagnostics"
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize]
+@using Honua.Admin.Models.Identity
+@using Honua.Admin.Services.Identity
+@using MudBlazor
+@inject IIdentityAdminClient Client
+@inject ISnackbar Snackbar
+
+<PageTitle>Auth diagnostics</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="mt-4">
+    <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
+        <MudText Typo="Typo.h4">
+            <MudIcon Icon="@Icons.Material.Filled.HealthAndSafety" Class="mr-2" />
+            Auth diagnostics
+        </MudText>
+        <MudButton StartIcon="@Icons.Material.Filled.PlayArrow"
+                   Variant="Variant.Filled"
+                   Color="Color.Primary"
+                   OnClick="RunAllAsync"
+                   Disabled="@_loading"
+                   data-testid="diagnostics-run-all">
+            Run all checks
+        </MudButton>
+    </MudStack>
+
+    <MudText Typo="Typo.body2" Class="mt-2 mb-4">
+        Aggregates per-provider reachability and surfaces operator-actionable
+        copy. Failures are categorized as <em>operator action</em> (you fix
+        configuration) versus <em>wait</em> (likely an upstream provider outage).
+    </MudText>
+
+    @if (_loadError is not null)
+    {
+        <MudAlert Severity="Severity.Error" Class="mb-3" data-testid="diagnostics-load-error">
+            Could not load providers: @_loadError
+        </MudAlert>
+    }
+
+    @if (_oidcProviders.Count == 0 && _catalogProviders.Length == 0)
+    {
+        <MudPaper Class="pa-6 mb-4" Elevation="0" data-testid="diagnostics-empty">
+            <MudText Align="Align.Center">
+                No identity providers configured yet. Add an OIDC provider on the <MudLink Href="/admin/identity/providers">Identity providers</MudLink> page to run reachability checks.
+            </MudText>
+        </MudPaper>
+    }
+
+    @if (_oidcProviders.Count > 0)
+    {
+        <MudText Typo="Typo.h6" Class="mt-2">Configured OIDC providers</MudText>
+        <MudGrid Spacing="2" Class="mb-4">
+            @foreach (var provider in _oidcProviders)
+            {
+                var copy = _oidcResults.GetValueOrDefault(provider.ProviderId);
+                <MudItem xs="12" md="6">
+                    <MudCard data-testid="@($"diagnostics-card-{provider.ProviderId:N}")">
+                        <MudCardHeader>
+                            <CardHeaderContent>
+                                <MudText Typo="Typo.h6">@provider.Name</MudText>
+                                <MudText Typo="Typo.caption">@provider.ProviderType — @provider.Authority</MudText>
+                            </CardHeaderContent>
+                            <CardHeaderActions>
+                                @if (copy.Severity != default || !string.IsNullOrEmpty(copy.Title))
+                                {
+                                    <MudChip T="string" Color="@SeverityToColor(copy.Severity)" Size="Size.Small">@copy.Title</MudChip>
+                                }
+                                else
+                                {
+                                    <MudChip T="string" Color="Color.Default" Size="Size.Small">No data</MudChip>
+                                }
+                            </CardHeaderActions>
+                        </MudCardHeader>
+                        <MudCardContent>
+                            @if (string.IsNullOrEmpty(copy.Title))
+                            {
+                                <MudText Typo="Typo.body2">No reachability test has been run yet for this provider.</MudText>
+                            }
+                            else
+                            {
+                                <MudAlert Severity="@SeverityFor(copy.Severity)" Dense="true">
+                                    <strong>@copy.Title</strong> — @copy.Action
+                                </MudAlert>
+                                <MudText Typo="Typo.caption" Class="mt-2">
+                                    Action category:
+                                    <MudChip T="string" Size="Size.Small"
+                                             Color="@(copy.Outcome == IdentityDiagnostics.DiagnosticAction.OperatorAction ? Color.Warning : copy.Outcome == IdentityDiagnostics.DiagnosticAction.Wait ? Color.Info : Color.Default)">
+                                        @ActionLabel(copy.Outcome)
+                                    </MudChip>
+                                </MudText>
+                            }
+                        </MudCardContent>
+                        <MudCardActions>
+                            <MudButton OnClick="@(() => TestOidcAsync(provider))"
+                                       StartIcon="@Icons.Material.Filled.Bolt"
+                                       Disabled="@_testInProgressOidc.Contains(provider.ProviderId)"
+                                       data-testid="@($"diagnostics-test-{provider.ProviderId:N}")">
+                                @(_testInProgressOidc.Contains(provider.ProviderId) ? "Testing…" : "Run reachability test")
+                            </MudButton>
+                        </MudCardActions>
+                    </MudCard>
+                </MudItem>
+            }
+        </MudGrid>
+    }
+
+    @if (_catalogProviders.Length > 0)
+    {
+        <MudText Typo="Typo.h6" Class="mt-2">Catalog providers</MudText>
+        <MudGrid Spacing="2" Class="mb-4">
+            @foreach (var provider in _catalogProviders)
+            {
+                var copy = _catalogResults.GetValueOrDefault(provider.Type);
+                <MudItem xs="12" md="6">
+                    <MudCard data-testid="@($"diagnostics-catalog-{provider.Type}")">
+                        <MudCardHeader>
+                            <CardHeaderContent>
+                                <MudText Typo="Typo.h6">@provider.DisplayName</MudText>
+                                <MudText Typo="Typo.caption">@provider.Type</MudText>
+                            </CardHeaderContent>
+                            <CardHeaderActions>
+                                @if (!string.IsNullOrEmpty(copy.Title))
+                                {
+                                    <MudChip T="string" Color="@SeverityToColor(copy.Severity)" Size="Size.Small">@copy.Title</MudChip>
+                                }
+                                else
+                                {
+                                    <MudChip T="string" Color="Color.Default" Size="Size.Small">No data</MudChip>
+                                }
+                            </CardHeaderActions>
+                        </MudCardHeader>
+                        <MudCardContent>
+                            @if (string.IsNullOrEmpty(copy.Title))
+                            {
+                                <MudText Typo="Typo.body2">No reachability test has been run yet.</MudText>
+                            }
+                            else
+                            {
+                                <MudAlert Severity="@SeverityFor(copy.Severity)" Dense="true">
+                                    <strong>@copy.Title</strong> — @copy.Action
+                                </MudAlert>
+                                <MudText Typo="Typo.caption" Class="mt-2">
+                                    Action category:
+                                    <MudChip T="string" Size="Size.Small"
+                                             Color="@(copy.Outcome == IdentityDiagnostics.DiagnosticAction.OperatorAction ? Color.Warning : copy.Outcome == IdentityDiagnostics.DiagnosticAction.Wait ? Color.Info : Color.Default)">
+                                        @ActionLabel(copy.Outcome)
+                                    </MudChip>
+                                </MudText>
+                            }
+                        </MudCardContent>
+                        <MudCardActions>
+                            <MudButton OnClick="@(() => TestCatalogAsync(provider.Type))"
+                                       StartIcon="@Icons.Material.Filled.Bolt"
+                                       Disabled="@_testInProgressCatalog.Contains(provider.Type)"
+                                       data-testid="@($"diagnostics-test-catalog-{provider.Type}")">
+                                @(_testInProgressCatalog.Contains(provider.Type) ? "Testing…" : "Run reachability test")
+                            </MudButton>
+                        </MudCardActions>
+                    </MudCard>
+                </MudItem>
+            }
+        </MudGrid>
+    }
+
+    <MudText Typo="Typo.h6" Class="mt-4">Pending checks</MudText>
+    <MudText Typo="Typo.body2" Class="mb-2">
+        These diagnostics are not yet available — the server does not expose the
+        underlying signals. Each links to the corresponding follow-up ticket.
+    </MudText>
+    <MudGrid Spacing="2">
+        @foreach (var pending in IdentityDiagnostics.PendingDiagnostics)
+        {
+            <MudItem xs="12" md="6">
+                <MudCard Outlined="true" data-testid="@($"diagnostics-pending-{pending.Title.Replace(" ", "-")}")">
+                    <MudCardHeader>
+                        <CardHeaderContent>
+                            <MudText Typo="Typo.h6">@pending.Title</MudText>
+                        </CardHeaderContent>
+                        <CardHeaderActions>
+                            <MudChip T="string" Color="Color.Default" Size="Size.Small">Pending</MudChip>
+                        </CardHeaderActions>
+                    </MudCardHeader>
+                    <MudCardContent>
+                        <MudText Typo="Typo.body2">@pending.Description</MudText>
+                        <MudText Typo="Typo.caption" Class="mt-2">@pending.ServerTicket</MudText>
+                    </MudCardContent>
+                </MudCard>
+            </MudItem>
+        }
+    </MudGrid>
+</MudContainer>
+
+@code {
+    private List<OidcProviderResponse> _oidcProviders = new();
+    private IdentityProviderStatus[] _catalogProviders = System.Array.Empty<IdentityProviderStatus>();
+    private readonly Dictionary<Guid, IdentityDiagnostics.DiagnosticCopy> _oidcResults = new();
+    private readonly Dictionary<string, IdentityDiagnostics.DiagnosticCopy> _catalogResults = new(StringComparer.OrdinalIgnoreCase);
+    private readonly HashSet<Guid> _testInProgressOidc = new();
+    private readonly HashSet<string> _testInProgressCatalog = new(StringComparer.OrdinalIgnoreCase);
+    private bool _loading;
+    private string? _loadError;
+
+    protected override Task OnInitializedAsync() => ReloadAsync();
+
+    private async Task ReloadAsync()
+    {
+        _loading = true;
+        _loadError = null;
+        try
+        {
+            var oidcTask = Client.ListOidcProvidersAsync(CancellationToken.None);
+            var catalogTask = Client.GetIdentityProvidersAsync(CancellationToken.None);
+            await Task.WhenAll(oidcTask, catalogTask);
+            _oidcProviders = oidcTask.Result.ToList();
+            _catalogProviders = catalogTask.Result.Providers;
+        }
+        catch (System.Exception ex)
+        {
+            _loadError = ex.Message;
+        }
+        finally
+        {
+            _loading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task RunAllAsync()
+    {
+        await ReloadAsync();
+        var oidcTasks = _oidcProviders.Select(p => TestOidcAsync(p));
+        var catalogTasks = _catalogProviders.Select(p => TestCatalogAsync(p.Type));
+        await Task.WhenAll(oidcTasks.Concat(catalogTasks));
+    }
+
+    private async Task TestOidcAsync(OidcProviderResponse provider)
+    {
+        if (!_testInProgressOidc.Add(provider.ProviderId))
+        {
+            return;
+        }
+        StateHasChanged();
+        try
+        {
+            var result = await Client.TestOidcProviderAsync(provider.ProviderId, CancellationToken.None);
+            _oidcResults[provider.ProviderId] = IdentityDiagnostics.ForOidcProviderTest(result);
+        }
+        catch (System.Exception ex)
+        {
+            Snackbar.Add($"Test failed: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _testInProgressOidc.Remove(provider.ProviderId);
+            StateHasChanged();
+        }
+    }
+
+    private async Task TestCatalogAsync(string providerType)
+    {
+        if (!_testInProgressCatalog.Add(providerType))
+        {
+            return;
+        }
+        StateHasChanged();
+        try
+        {
+            var result = await Client.TestIdentityProviderAsync(providerType, CancellationToken.None);
+            _catalogResults[providerType] = IdentityDiagnostics.ForIdentityProviderTest(result);
+        }
+        catch (System.Exception ex)
+        {
+            Snackbar.Add($"Test failed: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _testInProgressCatalog.Remove(providerType);
+            StateHasChanged();
+        }
+    }
+
+    private static Color SeverityToColor(IdentityDiagnostics.DiagnosticSeverity severity) => severity switch
+    {
+        IdentityDiagnostics.DiagnosticSeverity.Healthy => Color.Success,
+        IdentityDiagnostics.DiagnosticSeverity.Warning => Color.Warning,
+        IdentityDiagnostics.DiagnosticSeverity.Error => Color.Error,
+        _ => Color.Default
+    };
+
+    private static Severity SeverityFor(IdentityDiagnostics.DiagnosticSeverity severity) => severity switch
+    {
+        IdentityDiagnostics.DiagnosticSeverity.Healthy => Severity.Success,
+        IdentityDiagnostics.DiagnosticSeverity.Warning => Severity.Warning,
+        IdentityDiagnostics.DiagnosticSeverity.Error => Severity.Error,
+        _ => Severity.Info
+    };
+
+    private static string ActionLabel(IdentityDiagnostics.DiagnosticAction outcome) => outcome switch
+    {
+        IdentityDiagnostics.DiagnosticAction.OperatorAction => "Operator action",
+        IdentityDiagnostics.DiagnosticAction.Wait => "Wait — likely upstream",
+        _ => "No action"
+    };
+}

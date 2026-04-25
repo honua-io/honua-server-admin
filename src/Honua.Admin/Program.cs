@@ -1,4 +1,5 @@
 using Honua.Admin;
+using Honua.Admin.Services.Identity;
 using Honua.Admin.Services.SpecWorkspace;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Components.Web;
@@ -20,6 +21,22 @@ builder.Services.AddScoped<IBrowserStorageService, BrowserStorageService>();
 builder.Services.AddScoped<ISpecWorkspaceTelemetry, LoggingSpecWorkspaceTelemetry>();
 builder.Services.AddScoped<ISpecWorkspaceClient, StubSpecWorkspaceClient>();
 builder.Services.AddScoped<SpecWorkspaceState>();
+
+// Identity admin services (ticket #22).
+builder.Services.AddScoped<IIdentityAdminTelemetry, LoggingIdentityAdminTelemetry>();
+builder.Services.AddHttpClient<IIdentityAdminClient, HttpIdentityAdminClient>(client =>
+{
+    var baseUrl = builder.Configuration["HonuaServer:BaseUrl"];
+    client.BaseAddress = !string.IsNullOrWhiteSpace(baseUrl)
+        ? new Uri(baseUrl)
+        : new Uri(builder.HostEnvironment.BaseAddress);
+
+    var apiKey = builder.Configuration["HonuaServer:ApiKey"];
+    if (!string.IsNullOrWhiteSpace(apiKey))
+    {
+        client.DefaultRequestHeaders.Add("X-API-Key", apiKey);
+    }
+});
 
 // Dev auth scaffold — replaced once the real admin auth provider lands.
 builder.Services.AddAuthorizationCore();

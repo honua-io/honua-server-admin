@@ -1,0 +1,59 @@
+@page "/admin/identity/api-keys"
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize]
+@using MudBlazor
+
+<PageTitle>API keys</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Medium" Class="mt-4">
+    <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
+        <MudText Typo="Typo.h4">
+            <MudIcon Icon="@Icons.Material.Filled.Key" Class="mr-2" />
+            API keys
+        </MudText>
+    </MudStack>
+
+    <MudAlert Severity="Severity.Info" Class="mt-4" data-testid="api-keys-stub-banner">
+        <strong>API key management is not yet supported by the server.</strong>
+        Today, admin authentication uses a single environment-configured key
+        (<code>HONUA_ADMIN_PASSWORD</code>). Per-user create / list / revoke /
+        rotate is tracked as a follow-up server ticket — see the
+        <MudLink Href="https://github.com/honua-io/honua-server-admin/blob/master/docs/identity-admin-gaps.md">identity admin gaps report</MudLink>
+        for the full list.
+    </MudAlert>
+
+    <MudCard Class="mt-4" Outlined="true">
+        <MudCardHeader>
+            <CardHeaderContent>
+                <MudText Typo="Typo.h6">Planned capability</MudText>
+            </CardHeaderContent>
+        </MudCardHeader>
+        <MudCardContent>
+            <MudText Typo="Typo.body2">
+                Once the server endpoint lands, this page will allow operators
+                to create scoped API keys, view masked previews, rotate, and
+                revoke them. Plaintext key material is shown exactly once at
+                creation time — the admin UI never persists or re-fetches it.
+            </MudText>
+            <MudList T="string" Dense="true" Class="mt-3">
+                <MudListItem T="string" Icon="@Icons.Material.Filled.RadioButtonUnchecked">
+                    Create with scope and expiry
+                </MudListItem>
+                <MudListItem T="string" Icon="@Icons.Material.Filled.RadioButtonUnchecked">
+                    List with masked previews (last 4 chars only)
+                </MudListItem>
+                <MudListItem T="string" Icon="@Icons.Material.Filled.RadioButtonUnchecked">
+                    Show plaintext exactly once at creation
+                </MudListItem>
+                <MudListItem T="string" Icon="@Icons.Material.Filled.RadioButtonUnchecked">
+                    Rotate / revoke individual keys
+                </MudListItem>
+            </MudList>
+        </MudCardContent>
+    </MudCard>
+
+    <MudText Typo="Typo.caption" Class="mt-4">
+        See <MudLink Href="https://github.com/honua-io/honua-server-admin/blob/master/docs/identity-admin-gaps.md" data-testid="api-keys-gap-link">docs/identity-admin-gaps.md</MudLink>
+        for the full set of identity capabilities pending on the server.
+    </MudText>
+</MudContainer>

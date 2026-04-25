@@ -1,0 +1,190 @@
+@page "/admin/identity/status"
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize]
+@using Honua.Admin.Models.Identity
+@using Honua.Admin.Services.Identity
+@using MudBlazor
+@inject IIdentityAdminClient Client
+@inject ISnackbar Snackbar
+
+<PageTitle>Identity status</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="mt-4">
+    <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
+        <MudText Typo="Typo.h4">
+            <MudIcon Icon="@Icons.Material.Filled.Verified" Class="mr-2" />
+            Identity provider status
+        </MudText>
+        <MudButton StartIcon="@Icons.Material.Filled.Refresh"
+                   OnClick="ReloadAsync"
+                   Disabled="@_loading"
+                   data-testid="status-reload">
+            Refresh
+        </MudButton>
+    </MudStack>
+
+    <MudText Typo="Typo.body2" Class="mt-2 mb-4">
+        Read-only view of the identity provider catalog reported by the server.
+        Use the <em>Test discovery</em> action to verify a provider's authority
+        URL is reachable.
+    </MudText>
+
+    @if (_loadError is not null)
+    {
+        <MudAlert Severity="Severity.Error" Class="mb-3" data-testid="status-load-error">
+            Could not load provider status: @_loadError
+        </MudAlert>
+    }
+    else if (_response is not null)
+    {
+        <MudAlert Severity="@(_response.Enabled ? Severity.Info : Severity.Warning)" Class="mb-3"
+                  data-testid="status-global">
+            OIDC authentication is <strong>@(_response.Enabled ? "enabled" : "disabled")</strong> at the server level.
+            @if (!_response.Enabled)
+            {
+                <span> No provider is reachable for sign-in until OIDC is turned on in server configuration.</span>
+            }
+        </MudAlert>
+
+        @if (_response.Providers.Length == 0)
+        {
+            <MudPaper Class="pa-6" Elevation="0" data-testid="status-empty">
+                <MudText Align="Align.Center">
+                    No identity providers reported by the server catalog.
+                </MudText>
+            </MudPaper>
+        }
+        else
+        {
+            <MudGrid Spacing="3">
+                @foreach (var provider in _response.Providers)
+                {
+                    var status = IdentityDiagnostics.ForProviderStatus(provider);
+                    var resultCopy = _testResults.GetValueOrDefault(provider.Type);
+                    <MudItem xs="12" md="6">
+                        <MudCard data-testid="@($"status-card-{provider.Type}")">
+                            <MudCardHeader>
+                                <CardHeaderContent>
+                                    <MudText Typo="Typo.h6">@provider.DisplayName</MudText>
+                                    <MudText Typo="Typo.caption">@provider.Type</MudText>
+                                </CardHeaderContent>
+                                <CardHeaderActions>
+                                    <MudChip T="string"
+                                             Color="@SeverityToColor(status.Severity)"
+                                             Size="Size.Small">@status.Title</MudChip>
+                                </CardHeaderActions>
+                            </MudCardHeader>
+                            <MudCardContent>
+                                <MudText Typo="Typo.body2">@status.Action</MudText>
+                                <MudList T="string" Dense="true" Class="mt-2">
+                                    <MudListItem T="string">
+                                        <strong>Authority:</strong> <span data-testid="@($"status-authority-{provider.Type}")">@(provider.Authority ?? "—")</span>
+                                    </MudListItem>
+                                    <MudListItem T="string">
+                                        <strong>Callback:</strong> <span data-testid="@($"status-callback-{provider.Type}")">@(provider.CallbackPath ?? "—")</span>
+                                    </MudListItem>
+                                    <MudListItem T="string">
+                                        <strong>Scopes:</strong> @(provider.Scopes is { Length: > 0 } ? string.Join(", ", provider.Scopes) : "—")
+                                    </MudListItem>
+                                    <MudListItem T="string">
+                                        <strong>Configuration valid:</strong> @(provider.IsConfigurationValid ? "yes" : "no")
+                                    </MudListItem>
+                                </MudList>
+
+                                @if (resultCopy is { } copy)
+                                {
+                                    <MudAlert Severity="@SeverityFor(copy.Severity)" Dense="true" Class="mt-2"
+                                              data-testid="@($"status-test-result-{provider.Type}")">
+                                        <strong>@copy.Title</strong> — @copy.Action
+                                    </MudAlert>
+                                }
+                            </MudCardContent>
+                            <MudCardActions>
+                                <MudButton StartIcon="@Icons.Material.Filled.Bolt"
+                                           Color="Color.Primary"
+                                           Disabled="@(_testInProgress.Contains(provider.Type))"
+                                           OnClick="@(() => TestAsync(provider.Type))"
+                                           data-testid="@($"status-test-{provider.Type}")">
+                                    @(_testInProgress.Contains(provider.Type) ? "Testing…" : "Test discovery")
+                                </MudButton>
+                            </MudCardActions>
+                        </MudCard>
+                    </MudItem>
+                }
+            </MudGrid>
+        }
+    }
+</MudContainer>
+
+@code {
+    private IdentityProvidersResponse? _response;
+    private readonly Dictionary<string, IdentityDiagnostics.DiagnosticCopy> _testResults = new(StringComparer.OrdinalIgnoreCase);
+    private readonly HashSet<string> _testInProgress = new(StringComparer.OrdinalIgnoreCase);
+    private bool _loading;
+    private string? _loadError;
+
+    protected override Task OnInitializedAsync() => ReloadAsync();
+
+    private async Task ReloadAsync()
+    {
+        _loading = true;
+        _loadError = null;
+        StateHasChanged();
+        try
+        {
+            _response = await Client.GetIdentityProvidersAsync(CancellationToken.None);
+        }
+        catch (System.Exception ex)
+        {
+            _loadError = ex.Message;
+            _response = null;
+        }
+        finally
+        {
+            _loading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task TestAsync(string providerType)
+    {
+        if (!_testInProgress.Add(providerType))
+        {
+            return;
+        }
+        StateHasChanged();
+        try
+        {
+            var result = await Client.TestIdentityProviderAsync(providerType, CancellationToken.None);
+            var copy = IdentityDiagnostics.ForIdentityProviderTest(result);
+            _testResults[providerType] = copy;
+            Snackbar.Add($"{copy.Title}: {copy.Action}",
+                copy.Severity == IdentityDiagnostics.DiagnosticSeverity.Healthy ? Severity.Success : Severity.Warning);
+        }
+        catch (System.Exception ex)
+        {
+            Snackbar.Add($"Discovery test failed: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _testInProgress.Remove(providerType);
+            StateHasChanged();
+        }
+    }
+
+    private static Color SeverityToColor(IdentityDiagnostics.DiagnosticSeverity severity) => severity switch
+    {
+        IdentityDiagnostics.DiagnosticSeverity.Healthy => Color.Success,
+        IdentityDiagnostics.DiagnosticSeverity.Warning => Color.Warning,
+        IdentityDiagnostics.DiagnosticSeverity.Error => Color.Error,
+        _ => Color.Default
+    };
+
+    private static Severity SeverityFor(IdentityDiagnostics.DiagnosticSeverity severity) => severity switch
+    {
+        IdentityDiagnostics.DiagnosticSeverity.Healthy => Severity.Success,
+        IdentityDiagnostics.DiagnosticSeverity.Warning => Severity.Warning,
+        IdentityDiagnostics.DiagnosticSeverity.Error => Severity.Error,
+        _ => Severity.Info
+    };
+}

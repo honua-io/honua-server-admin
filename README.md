@@ -11,6 +11,7 @@ This is the official admin UI for managing Honua Server instances:
 - **Service Administration**: Manage map services and API endpoints
 - **Analytics Dashboard**: Monitor usage and performance
 - **Operator Spec Workspace**: Stub-backed three-pane NL + DSL + preview workspace for walking the spec workflow end to end
+- **Identity Workspace**: OIDC provider lifecycle (list / create / edit / enable / delete), provider status, auth diagnostics, and API-key gap surface — see [Identity workspace](#identity-workspace) below
 
 ## Architecture
 
@@ -54,6 +55,12 @@ Configure server connection in `src/Honua.Admin/appsettings.json`:
 }
 ```
 
+`HonuaServer:BaseUrl` is the absolute URL of the Honua server. When omitted,
+the admin UI falls back to its own host base address (assumes same-origin
+deployment). `HonuaServer:ApiKey` is forwarded as `X-API-Key` on every admin
+API request — this is the same authentication scheme honua-server's
+`ApiKeyAuthenticationHandler` expects.
+
 ### Operator Spec Workspace
 
 The S1 operator workspace lives at `/operator/spec` (gated by `[Authorize]`;
@@ -95,6 +102,47 @@ apply, cancel, layout change, and catalog-resolve latency. The S1 scope
 deliberately excludes real grounding / catalog / apply streaming, spec
 library and sharing, parameterization, scheduled runs, graphical authoring,
 and mobile layouts — each is tracked as a follow-on.
+
+### Identity workspace
+
+The identity workspace (ticket `#22`) lives under `/admin/identity/*` on the
+shared spec-editor shell. It backs onto the `honua-server` admin OIDC
+endpoints (`/api/v1/admin/oidc/providers`, `/api/v1/admin/identity/providers`)
+through a typed seam at `src/Honua.Admin/Services/Identity/` so a different
+transport can be DI-swapped without touching the page layer.
+
+Pages:
+
+- `Pages/Identity/Providers.razor` (`/admin/identity/providers`) — CRUD over
+  OIDC providers, with a one-click discovery test per row, masked-secret
+  edit form, and a confirmation gate before destructive operations
+- `Pages/Identity/Status.razor` (`/admin/identity/status`) — read-only
+  catalog of identity providers reported by the server with per-provider
+  reachability test buttons
+- `Pages/Identity/Diagnostics.razor` (`/admin/identity/diagnostics`) —
+  aggregates per-provider reachability, classifies each failure as
+  *operator action* (configuration fix) versus *wait* (likely upstream
+  outage), and surfaces "Pending — see follow-up ticket" cards for clock
+  skew, claim-mapping coverage, and callback-URL drift (server-side gaps)
+- `Pages/Identity/ApiKeys.razor` (`/admin/identity/api-keys`) — stub page
+  documenting the future capability and linking to the
+  [identity admin gap report](docs/identity-admin-gaps.md)
+
+Plaintext OIDC client secrets are write-only: they live in
+`OidcProviderFormModel.ClientSecret` only for the duration of the dialog,
+are sent to the server exactly once on create or rotate, and are zeroed
+out from in-memory state immediately after submit. The server never
+returns them; edit dialogs render a `••••• (set)` placeholder and require
+an explicit "Rotate secret" toggle to send a new value.
+
+The diagnostic copy mapping is centralized in
+`Services/Identity/IdentityDiagnostics.cs`; the table from the design
+brief drives every operator-actionable message rendered on the
+diagnostics and providers pages.
+
+The identity admin client emits structured telemetry via
+`IIdentityAdminTelemetry` (default: `ILogger` sink) for every list /
+create / update / delete / test call.
 
 ## Features
 

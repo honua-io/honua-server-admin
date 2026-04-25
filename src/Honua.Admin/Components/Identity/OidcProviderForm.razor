@@ -1,0 +1,118 @@
+@* Shared OIDC provider create/edit form. Plaintext ClientSecret stays in
+   <see cref="Model"/> for the duration of the dialog and is cleared after submit
+   by the parent dialog so it never reaches a persistence sink. *@
+@using Honua.Admin.Components.Identity
+@using MudBlazor
+
+<MudGrid Spacing="2">
+    <MudItem xs="12" md="6">
+        <MudTextField T="string" Label="Display name" @bind-Value="Model.Name"
+                      Required="true" RequiredError="Name is required"
+                      Counter="200" MaxLength="200"
+                      Variant="Variant.Outlined"
+                      data-testid="oidc-form-name" />
+    </MudItem>
+    <MudItem xs="12" md="6">
+        <MudSelect T="string" Label="Provider type" @bind-Value="Model.ProviderType"
+                   Variant="Variant.Outlined" Disabled="@Model.IsEdit"
+                   data-testid="oidc-form-provider-type">
+            @foreach (var providerType in OidcProviderFormModel.SupportedProviderTypes)
+            {
+                <MudSelectItem T="string" Value="@providerType">@providerType</MudSelectItem>
+            }
+        </MudSelect>
+    </MudItem>
+    <MudItem xs="12">
+        <MudTextField T="string" Label="Authority URL" @bind-Value="Model.Authority"
+                      Required="true" RequiredError="Authority is required"
+                      Variant="Variant.Outlined"
+                      HelperText="OIDC issuer URL — discovery is fetched from {authority}/.well-known/openid-configuration"
+                      data-testid="oidc-form-authority" />
+    </MudItem>
+    <MudItem xs="12" md="6">
+        <MudTextField T="string" Label="Client ID" @bind-Value="Model.ClientId"
+                      Required="true" RequiredError="Client ID is required"
+                      Variant="Variant.Outlined"
+                      data-testid="oidc-form-client-id" />
+    </MudItem>
+    <MudItem xs="12" md="6">
+        <MudSwitch T="bool" Color="Color.Primary" @bind-Value="Model.Enabled"
+                   Label="@(Model.Enabled ? "Enabled" : "Disabled")"
+                   data-testid="oidc-form-enabled" />
+    </MudItem>
+
+    @if (Model.IsEdit)
+    {
+        <MudItem xs="12">
+            <MudSwitch T="bool" Color="Color.Warning" @bind-Value="Model.RotateSecret"
+                       Label="Rotate client secret"
+                       data-testid="oidc-form-rotate-toggle" />
+            <MudText Typo="Typo.caption" Color="Color.Default">
+                Toggle on to replace the existing secret. Leave off to keep the secret already configured on the server.
+            </MudText>
+        </MudItem>
+    }
+
+    @if (!Model.IsEdit || Model.RotateSecret)
+    {
+        <MudItem xs="12">
+            <MudTextField T="string" Label="Client secret"
+                          @bind-Value="Model.ClientSecret"
+                          InputType="InputType.Password"
+                          Variant="Variant.Outlined"
+                          HelperText="@Model.SecretHint"
+                          Required="@(!Model.IsEdit || Model.RotateSecret)"
+                          RequiredError="Client secret is required."
+                          data-testid="oidc-form-client-secret" />
+            <MudAlert Severity="Severity.Info" Dense="true" NoIcon="false" Class="mt-2"
+                      data-testid="oidc-form-secret-notice">
+                Client secrets are write-only. The server never returns a stored secret to the browser; this value is sent once and cleared from memory after submit.
+            </MudAlert>
+        </MudItem>
+    }
+    else
+    {
+        <MudItem xs="12">
+            <MudTextField T="string" Label="Client secret"
+                          Value="@MaskedSecretPlaceholder"
+                          InputType="InputType.Password"
+                          ReadOnly="true"
+                          Disabled="true"
+                          Variant="Variant.Outlined"
+                          HelperText="@Model.SecretHint"
+                          data-testid="oidc-form-client-secret-mask" />
+        </MudItem>
+    }
+
+    @if (ValidationErrors is { Length: > 0 })
+    {
+        <MudItem xs="12">
+            <MudAlert Severity="Severity.Error" Dense="true" data-testid="oidc-form-errors">
+                <ul class="mb-0">
+                    @foreach (var error in ValidationErrors)
+                    {
+                        <li>@error</li>
+                    }
+                </ul>
+            </MudAlert>
+        </MudItem>
+    }
+</MudGrid>
+
+@code {
+    private const string MaskedSecretPlaceholder = "••••• (set)";
+
+    /// <summary>
+    /// Bound form model. The parent dialog owns the lifecycle.
+    /// </summary>
+    [Parameter]
+    [System.Diagnostics.CodeAnalysis.AllowNull]
+    public OidcProviderFormModel Model { get; set; } = OidcProviderFormModel.ForCreate();
+
+    /// <summary>
+    /// Inline validation errors rendered above the action row. Parent passes the
+    /// result of <see cref="OidcProviderFormModel.Validate"/> on submit.
+    /// </summary>
+    [Parameter]
+    public string[] ValidationErrors { get; set; } = System.Array.Empty<string>();
+}

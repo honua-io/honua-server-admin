@@ -1,0 +1,243 @@
+@page "/admin/identity/providers"
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize]
+@using Honua.Admin.Components.Identity
+@using Honua.Admin.Models.Identity
+@using Honua.Admin.Services.Identity
+@using MudBlazor
+@inject IIdentityAdminClient Client
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+
+<PageTitle>Identity providers</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="mt-4">
+    <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
+        <MudText Typo="Typo.h4">
+            <MudIcon Icon="@Icons.Material.Filled.VpnKey" Class="mr-2" />
+            Identity providers
+        </MudText>
+        <MudStack Row="true" Spacing="2">
+            <MudButton StartIcon="@Icons.Material.Filled.Refresh"
+                       OnClick="ReloadAsync"
+                       Disabled="@_loading"
+                       data-testid="providers-reload">
+                Refresh
+            </MudButton>
+            <MudButton Color="Color.Primary" Variant="Variant.Filled"
+                       StartIcon="@Icons.Material.Filled.Add"
+                       OnClick="OpenAddDialogAsync"
+                       data-testid="providers-add">
+                Add provider
+            </MudButton>
+        </MudStack>
+    </MudStack>
+
+    <MudText Typo="Typo.body2" Class="mt-2 mb-4">
+        Configure OIDC identity providers without editing raw config. Plaintext
+        client secrets are sent only on create or rotate; the server never
+        round-trips them back to the browser.
+    </MudText>
+
+    @if (_loadError is not null)
+    {
+        <MudAlert Severity="Severity.Error" Class="mb-3" data-testid="providers-load-error">
+            Could not load providers: @_loadError
+        </MudAlert>
+    }
+
+    <MudTable Items="@_providers" Hover="true" Loading="@_loading"
+              Class="provider-table" Dense="false"
+              data-testid="providers-table">
+        <HeaderContent>
+            <MudTh>Name</MudTh>
+            <MudTh>Type</MudTh>
+            <MudTh>Authority</MudTh>
+            <MudTh>Status</MudTh>
+            <MudTh>Last health check</MudTh>
+            <MudTh></MudTh>
+        </HeaderContent>
+        <RowTemplate>
+            <MudTd DataLabel="Name">
+                <MudText Inline="true">@context.Name</MudText>
+                <MudText Typo="Typo.caption" Color="Color.Default" Class="d-block">@context.ClientId</MudText>
+            </MudTd>
+            <MudTd DataLabel="Type">@context.ProviderType</MudTd>
+            <MudTd DataLabel="Authority">
+                <MudText Typo="Typo.body2">@context.Authority</MudText>
+            </MudTd>
+            <MudTd DataLabel="Status">
+                <MudChip T="string"
+                         Color="@(context.Enabled ? (context.IsHealthy ? Color.Success : Color.Warning) : Color.Default)"
+                         Size="Size.Small">
+                    @(context.Enabled ? (context.IsHealthy ? "Healthy" : "Unhealthy") : "Disabled")
+                </MudChip>
+            </MudTd>
+            <MudTd DataLabel="Last health check">
+                @(context.LastHealthCheck?.ToString("u") ?? "—")
+            </MudTd>
+            <MudTd DataLabel="Actions">
+                <MudStack Row="true" Spacing="1">
+                    <MudTooltip Text="Run discovery test">
+                        <MudIconButton Icon="@Icons.Material.Filled.Bolt"
+                                       Size="Size.Small"
+                                       Disabled="@(_testInProgress.Contains(context.ProviderId))"
+                                       OnClick="@(() => RunTestAsync(context))"
+                                       data-testid="@($"providers-test-{context.ProviderId:N}")" />
+                    </MudTooltip>
+                    <MudTooltip Text="Edit provider">
+                        <MudIconButton Icon="@Icons.Material.Filled.Edit"
+                                       Size="Size.Small"
+                                       OnClick="@(() => OpenEditDialogAsync(context))"
+                                       data-testid="@($"providers-edit-{context.ProviderId:N}")" />
+                    </MudTooltip>
+                    <MudTooltip Text="Delete provider">
+                        <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                                       Color="Color.Error"
+                                       Size="Size.Small"
+                                       OnClick="@(() => DeleteAsync(context))"
+                                       data-testid="@($"providers-delete-{context.ProviderId:N}")" />
+                    </MudTooltip>
+                </MudStack>
+                @if (_lastTestResults.TryGetValue(context.ProviderId, out var copy))
+                {
+                    <MudAlert Severity="@SeverityFor(copy.Severity)" Dense="true" Class="mt-1"
+                              data-testid="@($"providers-test-result-{context.ProviderId:N}")">
+                        <strong>@copy.Title</strong> — @copy.Action
+                    </MudAlert>
+                }
+            </MudTd>
+        </RowTemplate>
+        <NoRecordsContent>
+            <MudText Align="Align.Center" Class="py-4" data-testid="providers-empty">
+                No OIDC providers configured. Use <em>Add provider</em> to register one.
+            </MudText>
+        </NoRecordsContent>
+    </MudTable>
+</MudContainer>
+
+@code {
+    private List<OidcProviderResponse> _providers = new();
+    private readonly Dictionary<Guid, IdentityDiagnostics.DiagnosticCopy> _lastTestResults = new();
+    private readonly HashSet<Guid> _testInProgress = new();
+    private bool _loading;
+    private string? _loadError;
+
+    protected override Task OnInitializedAsync() => ReloadAsync();
+
+    private async Task ReloadAsync()
+    {
+        _loading = true;
+        _loadError = null;
+        StateHasChanged();
+        try
+        {
+            var providers = await Client.ListOidcProvidersAsync(CancellationToken.None);
+            _providers = providers.ToList();
+        }
+        catch (System.Exception ex)
+        {
+            _loadError = ex.Message;
+            _providers = new List<OidcProviderResponse>();
+        }
+        finally
+        {
+            _loading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task OpenAddDialogAsync()
+    {
+        var parameters = new DialogParameters
+        {
+            ["Model"] = OidcProviderFormModel.ForCreate()
+        };
+        var options = new DialogOptions { CloseOnEscapeKey = true, MaxWidth = MaxWidth.Medium, FullWidth = true };
+        var dialog = await DialogService.ShowAsync<OidcProviderDialog>("Add OIDC provider", parameters, options);
+        var result = await dialog.Result;
+        if (result is not null && !result.Canceled)
+        {
+            await ReloadAsync();
+        }
+    }
+
+    private async Task OpenEditDialogAsync(OidcProviderResponse provider)
+    {
+        var parameters = new DialogParameters
+        {
+            ["Model"] = OidcProviderFormModel.ForEdit(provider)
+        };
+        var options = new DialogOptions { CloseOnEscapeKey = true, MaxWidth = MaxWidth.Medium, FullWidth = true };
+        var dialog = await DialogService.ShowAsync<OidcProviderDialog>($"Edit {provider.Name}", parameters, options);
+        var result = await dialog.Result;
+        if (result is not null && !result.Canceled)
+        {
+            await ReloadAsync();
+        }
+    }
+
+    private async Task DeleteAsync(OidcProviderResponse provider)
+    {
+        var parameters = new DialogParameters
+        {
+            ["Title"] = $"Delete {provider.Name}?",
+            ["Message"] = $"This permanently removes the OIDC provider '{provider.Name}' from the server. Operators using it will no longer be able to sign in.",
+            ["WarningCopy"] = "This action cannot be undone.",
+            ["ConfirmCopy"] = "Delete provider"
+        };
+        var options = new DialogOptions { CloseOnEscapeKey = true, MaxWidth = MaxWidth.Small, FullWidth = true };
+        var dialog = await DialogService.ShowAsync<ConfirmDeleteDialog>("Delete provider", parameters, options);
+        var result = await dialog.Result;
+        if (result is null || result.Canceled)
+        {
+            return;
+        }
+
+        try
+        {
+            await Client.DeleteOidcProviderAsync(provider.ProviderId, CancellationToken.None);
+            Snackbar.Add($"Deleted provider '{provider.Name}'.", Severity.Success);
+            _lastTestResults.Remove(provider.ProviderId);
+            await ReloadAsync();
+        }
+        catch (System.Exception ex)
+        {
+            Snackbar.Add($"Could not delete provider: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task RunTestAsync(OidcProviderResponse provider)
+    {
+        if (!_testInProgress.Add(provider.ProviderId))
+        {
+            return;
+        }
+        StateHasChanged();
+        try
+        {
+            var result = await Client.TestOidcProviderAsync(provider.ProviderId, CancellationToken.None);
+            var copy = IdentityDiagnostics.ForOidcProviderTest(result);
+            _lastTestResults[provider.ProviderId] = copy;
+            Snackbar.Add($"{copy.Title}: {copy.Action}",
+                copy.Severity == IdentityDiagnostics.DiagnosticSeverity.Healthy ? Severity.Success : Severity.Warning);
+        }
+        catch (System.Exception ex)
+        {
+            Snackbar.Add($"Discovery test failed: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _testInProgress.Remove(provider.ProviderId);
+            StateHasChanged();
+        }
+    }
+
+    private static Severity SeverityFor(IdentityDiagnostics.DiagnosticSeverity severity) => severity switch
+    {
+        IdentityDiagnostics.DiagnosticSeverity.Healthy => Severity.Success,
+        IdentityDiagnostics.DiagnosticSeverity.Warning => Severity.Warning,
+        IdentityDiagnostics.DiagnosticSeverity.Error => Severity.Error,
+        _ => Severity.Info
+    };
+}
