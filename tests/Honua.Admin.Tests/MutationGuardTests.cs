@@ -83,4 +83,49 @@ public sealed class MutationGuardTests
         // prevents a false positive while the operator is still typing.
         Assert.False(MutationGuard.IsMutating("SELECT $$incomplete body DELETE FROM parcels"));
     }
+
+    [Theory]
+    [InlineData("SELECT * INTO new_table FROM parcels")]
+    [InlineData("SELECT id, geom INTO archived FROM parcels WHERE retired_at IS NOT NULL")]
+    [InlineData("SELECT * INTO TEMP scratch FROM parcels")]
+    [InlineData("SELECT * INTO TEMPORARY scratch FROM parcels")]
+    [InlineData("SELECT * INTO UNLOGGED bulk FROM parcels")]
+    [InlineData("SELECT * INTO TABLE archived FROM parcels")]
+    [InlineData("select * into new_table from parcels")]
+    public void Select_into_creates_a_table_and_must_be_flagged(string sql)
+    {
+        // EXPLAIN ANALYZE on SELECT ... INTO actually creates and fills the
+        // target table — it is a write under the EXPLAIN endpoint just like
+        // INSERT/UPDATE. The bare INTO keyword is sufficient because INSERT
+        // INTO and MERGE INTO are already flagged by their primary verbs.
+        // https://www.postgresql.org/docs/current/sql-selectinto.html
+        Assert.True(MutationGuard.IsMutating(sql));
+    }
+
+    [Theory]
+    [InlineData("EXECUTE my_prepared_statement")]
+    [InlineData("EXECUTE my_prepared_statement(1, 'foo')")]
+    [InlineData("execute my_prepared_statement")]
+    public void Execute_runs_an_opaque_prepared_statement_and_must_be_flagged(string sql)
+    {
+        // EXECUTE invokes a previously prepared statement whose body the
+        // client cannot inspect; under EXPLAIN ANALYZE it actually runs
+        // the prepared statement, so the conservative guard rejects all
+        // EXECUTE forms. https://www.postgresql.org/docs/current/sql-execute.html
+        Assert.True(MutationGuard.IsMutating(sql));
+    }
+
+    [Theory]
+    [InlineData("SELECT 'INTO' AS note FROM parcels")]
+    [InlineData("SELECT 'going INTO production' AS note FROM logs")]
+    [InlineData("SELECT into_col FROM stats")]
+    [InlineData("SELECT executions FROM stats")]
+    [InlineData("SELECT col_into_x FROM stats")]
+    public void Into_or_execute_inside_literal_or_identifier_is_not_flagged(string sql)
+    {
+        // String literals are stripped before keyword scanning; identifier
+        // word-boundary rules prevent `into_col`, `col_into_x`, and
+        // `executions` from matching the new INTO/EXECUTE keywords.
+        Assert.False(MutationGuard.IsMutating(sql));
+    }
 }

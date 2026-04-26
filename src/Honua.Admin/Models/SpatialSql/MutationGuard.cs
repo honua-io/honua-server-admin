@@ -27,13 +27,30 @@ public static class MutationGuard
         "REINDEX",
         "CLUSTER",
         "COMMENT",
-        "MERGE"
+        "MERGE",
+        // SELECT ... INTO target FROM source creates a new table and fills it
+        // (https://www.postgresql.org/docs/current/sql-selectinto.html); the
+        // bare INTO keyword catches that. INSERT INTO and MERGE INTO are
+        // already flagged via INSERT/MERGE so the additional keyword does
+        // not affect them.
+        "INTO",
+        // EXECUTE runs a previously prepared statement whose body is opaque
+        // to the client, and is also the PL/pgSQL dynamic-SQL primitive.
+        // EXPLAIN ANALYZE EXECUTE actually executes the prepared statement
+        // (https://www.postgresql.org/docs/current/sql-explain.html), so
+        // the client guard rejects it conservatively; the per-query
+        // operator override remains available on the Run path.
+        "EXECUTE"
     };
 
     /// <summary>
     /// True when the SQL appears to mutate data or schema. False for SELECT, WITH-only,
     /// EXPLAIN, and SHOW statements. Whitespace-only SQL is treated as non-mutating
-    /// since the server will reject it on its own grounds.
+    /// since the server will reject it on its own grounds. Also flags
+    /// <c>SELECT ... INTO</c> (creates a table) and <c>EXECUTE</c> (opaque
+    /// prepared-statement / dynamic-SQL execution) — both forms run as writes
+    /// under <c>EXPLAIN ANALYZE</c>, so the conservative check applies on both
+    /// the Run and EXPLAIN paths.
     /// </summary>
     public static bool IsMutating(string? sql)
     {
