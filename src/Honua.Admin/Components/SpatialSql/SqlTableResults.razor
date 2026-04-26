@@ -1,0 +1,89 @@
+@* Tabular renderer for SQL results. Columns and types come from the server-supplied
+   metadata so the geometry column can be marked without client-side guessing.
+   Uses MudDataGrid (per the approved design) with TemplateColumns generated from
+   Result.Columns so the grid stays dynamic across arbitrary SELECT shapes. *@
+@using Honua.Admin.Models.SpatialSql
+
+<div class="sql-table-results" data-testid="sql-table-results">
+    @if (Result is null)
+    {
+        <MudAlert Severity="Severity.Info" Dense="true" Variant="Variant.Text" data-testid="sql-table-empty">
+            Run a SELECT to populate results here.
+        </MudAlert>
+    }
+    else if (Result.IsError)
+    {
+        <MudAlert Severity="Severity.Error" Dense="true" Variant="Variant.Filled" data-testid="sql-table-error">
+            <strong>@Result.Error!.Code</strong>: @Result.Error.Message
+        </MudAlert>
+    }
+    else
+    {
+        @if (Result.Truncated)
+        {
+            <MudAlert Severity="Severity.Warning" Dense="true" Variant="Variant.Outlined" Class="mb-2" data-testid="sql-table-truncated">
+                Result was truncated at the @Result.RowLimit-row server cap. Refine the query or raise the cap.
+            </MudAlert>
+        }
+
+        <MudStack Row Spacing="2" AlignItems="AlignItems.Center" Class="mb-2">
+            <MudChip T="string" Variant="Variant.Outlined" Size="Size.Small" data-testid="sql-table-rowcount">
+                @Result.Rows.Count rows
+            </MudChip>
+            <MudChip T="string" Variant="Variant.Outlined" Size="Size.Small" data-testid="sql-table-elapsed">
+                @Result.ElapsedMs ms
+            </MudChip>
+            @if (!string.IsNullOrWhiteSpace(Result.AuditEntryId))
+            {
+                <MudChip T="string" Color="Color.Warning" Variant="Variant.Filled" Size="Size.Small" data-testid="sql-table-audit">
+                    audit @Result.AuditEntryId
+                </MudChip>
+            }
+        </MudStack>
+
+        @if (Result.Columns.Count == 0 || Result.Rows.Count == 0)
+        {
+            <MudAlert Severity="Severity.Info" Dense="true" Variant="Variant.Text">
+                No rows returned.
+            </MudAlert>
+        }
+        else
+        {
+            <MudDataGrid T="SqlRow"
+                         Items="@Result.Rows"
+                         Hover="true"
+                         Dense="true"
+                         Striped="true"
+                         data-testid="sql-table-grid">
+                <Columns>
+                    @for (var i = 0; i < Result.Columns.Count; i++)
+                    {
+                        var index = i;
+                        var column = Result.Columns[i];
+                        <TemplateColumn T="SqlRow" Title="@column.Name" Sortable="false" Filterable="false">
+                            <HeaderTemplate>
+                                <MudStack Row Spacing="1" AlignItems="AlignItems.Center">
+                                    <MudText Typo="Typo.body2"><strong>@column.Name</strong></MudText>
+                                    @if (column.IsGeometry)
+                                    {
+                                        <MudChip T="string" Color="Color.Primary" Variant="Variant.Outlined" Size="Size.Small">geom</MudChip>
+                                    }
+                                    <MudText Typo="Typo.caption" Color="Color.Secondary">@column.Type</MudText>
+                                </MudStack>
+                            </HeaderTemplate>
+                            <CellTemplate>
+                                <span data-testid="@($"sql-table-cell-{index}")">
+                                    @(index < context.Item.Cells.Count ? context.Item.Cells[index] ?? string.Empty : string.Empty)
+                                </span>
+                            </CellTemplate>
+                        </TemplateColumn>
+                    }
+                </Columns>
+            </MudDataGrid>
+        }
+    }
+</div>
+
+@code {
+    [Parameter] public SqlExecuteResult? Result { get; set; }
+}

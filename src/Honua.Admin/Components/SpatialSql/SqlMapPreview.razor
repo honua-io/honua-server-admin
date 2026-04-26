@@ -1,0 +1,96 @@
+@* MapLibre preview for geometry-bearing SQL results. Uses the same vendored
+   MapLibre interop as <c>SpecWorkspace.MapPreview</c> — geometry payloads are
+   already GeoJSON, so we hand them to a thin interop helper that injects them
+   into the existing source/layer setup. *@
+@using Honua.Admin.Services.SpatialSql
+@inject IJSRuntime JS
+@implements IAsyncDisposable
+
+<div class="spatial-sql-map" data-testid="sql-map-preview">
+    @if (!string.IsNullOrEmpty(BlockedReason))
+    {
+        <MudAlert Severity="Severity.Warning" Dense="true" Variant="Variant.Outlined" data-testid="sql-map-blocked">
+            @BlockedReason
+        </MudAlert>
+    }
+    else if (Features.Count == 0)
+    {
+        <MudAlert Severity="Severity.Info" Dense="true" Variant="Variant.Text" data-testid="sql-map-empty">
+            No geometry rows to preview. Run a query that returns a geometry column.
+        </MudAlert>
+    }
+    else
+    {
+        <div id="@_elementId" class="spec-map-canvas" data-testid="sql-map-canvas"></div>
+    }
+</div>
+
+@code {
+    private readonly string _elementId = $"sql-map-{Guid.NewGuid():n}";
+    private bool _initialized;
+
+    [Parameter] public IReadOnlyList<MapPreviewFeature> Features { get; set; } = Array.Empty<MapPreviewFeature>();
+
+    /// <summary>
+    /// When non-null the map renders a warning instead of a canvas — used to mirror
+    /// the GeoJSON exporter's WGS84 guard so non-4326 results refuse to preview
+    /// instead of silently mis-rendering.
+    /// </summary>
+    [Parameter] public string? BlockedReason { get; set; }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!string.IsNullOrEmpty(BlockedReason) || Features.Count == 0)
+        {
+            // Canvas is no longer in the DOM. If we initialized a map on a prior
+            // render, tear down the JS state now — the cached entry's container
+            // points at a detached element, and the maplibre instance bound to it
+            // would otherwise be reused on the next renderable transition,
+            // turning setMapFeatures into a silent no-op against stale DOM.
+            await TeardownIfInitializedAsync();
+            return;
+        }
+
+        if (!_initialized)
+        {
+            try
+            {
+                await JS.InvokeVoidAsync("spatialSql.initializeMap", _elementId);
+                _initialized = true;
+            }
+            catch
+            {
+                // interop missing — fall through silently; tests/pre-render don't need a live map
+                return;
+            }
+        }
+
+        try
+        {
+            await JS.InvokeVoidAsync("spatialSql.setMapFeatures", _elementId, Features);
+        }
+        catch
+        {
+            // non-fatal: interop helper missing in this environment
+        }
+    }
+
+    private async Task TeardownIfInitializedAsync()
+    {
+        if (!_initialized)
+        {
+            return;
+        }
+        try
+        {
+            await JS.InvokeVoidAsync("spatialSql.disposeMap", _elementId);
+        }
+        catch
+        {
+            // best-effort teardown
+        }
+        _initialized = false;
+    }
+
+    public ValueTask DisposeAsync() => new(TeardownIfInitializedAsync());
+}

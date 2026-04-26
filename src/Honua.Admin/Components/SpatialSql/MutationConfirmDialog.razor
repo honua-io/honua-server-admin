@@ -1,0 +1,51 @@
+@* Per-query operator override for write SQL. The operator must explicitly tick the
+   confirmation checkbox before the dialog returns Ok. The state store arms the
+   override; the next ExecuteAsync is sent with allowMutation=true and the
+   server records the audit entry. *@
+
+<MudDialog data-testid="mutation-confirm-dialog">
+    <DialogContent>
+        <MudStack Spacing="2">
+            <MudAlert Severity="Severity.Warning" Variant="Variant.Filled" Dense="true">
+                This statement will modify data. Honua admin runs SQL read-only by default — submitting requires an explicit override.
+            </MudAlert>
+            <MudPaper Class="pa-2" Elevation="0">
+                <pre style="white-space: pre-wrap; word-break: break-word; margin: 0;">@Sql</pre>
+            </MudPaper>
+            <MudCheckBox T="bool"
+                         @bind-Value="_acknowledged"
+                         Color="Color.Warning"
+                         data-testid="mutation-confirm-ack">
+                I understand this will modify data and accept the audit log entry.
+            </MudCheckBox>
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel" data-testid="mutation-confirm-cancel">Cancel</MudButton>
+        <MudButton Color="Color.Warning"
+                   Variant="Variant.Filled"
+                   Disabled="@(!_acknowledged)"
+                   OnClick="Submit"
+                   data-testid="mutation-confirm-submit">
+            Run with override
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance Dialog { get; set; } = default!;
+
+    [Parameter] public string Sql { get; set; } = string.Empty;
+
+    private bool _acknowledged;
+
+    private void Submit()
+    {
+        if (_acknowledged)
+        {
+            Dialog.Close(DialogResult.Ok(true));
+        }
+    }
+
+    private void Cancel() => Dialog.Cancel();
+}

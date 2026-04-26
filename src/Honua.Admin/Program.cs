@@ -1,6 +1,7 @@
 using Honua.Admin;
 using Honua.Admin.Services.Identity;
 using Honua.Admin.Services.LicenseWorkspace;
+using Honua.Admin.Services.SpatialSql;
 using Honua.Admin.Services.SpecWorkspace;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Components.Web;
@@ -22,6 +23,12 @@ builder.Services.AddScoped<IBrowserStorageService, BrowserStorageService>();
 builder.Services.AddScoped<ISpecWorkspaceTelemetry, LoggingSpecWorkspaceTelemetry>();
 builder.Services.AddScoped<ISpecWorkspaceClient, StubSpecWorkspaceClient>();
 builder.Services.AddScoped<SpecWorkspaceState>();
+
+// Spatial SQL playground (ticket #1 — admin-side S1 stub; HTTP client lands once the
+// server child tickets ship the /api/v1/admin/sql endpoints).
+builder.Services.AddScoped<ISpatialSqlTelemetry, LoggingSpatialSqlTelemetry>();
+builder.Services.AddScoped<ISpatialSqlClient, StubSpatialSqlClient>();
+builder.Services.AddScoped<SpatialSqlPlaygroundState>();
 
 // Identity admin services (ticket #22).
 builder.Services.AddScoped<IIdentityAdminTelemetry, LoggingIdentityAdminTelemetry>();

@@ -1,0 +1,300 @@
+@* SQL editor + autocomplete dropdown. Built on the same textarea+overlay pattern
+   as DslSectionEditor — keeps the bundle flat and reuses the existing
+   spec-workspace-interop selection helper. The autocomplete catalogue is
+   schema-aware: typing inside a token offers tables, columns, PostGIS
+   functions, and PostGIS operators. *@
+@using System.Text
+@using System.Text.Encodings.Web
+@using Honua.Admin.Models.SpatialSql
+@inject IJSRuntime JS
+
+<div class="spatial-sql-editor" data-testid="sql-editor-shell">
+    <div class="spec-editor-shell">
+        <pre class="spec-editor-underlay" aria-hidden="true">@((MarkupString)BuildHighlight())</pre>
+        <textarea class="spec-editor-input"
+                  value="@Sql"
+                  @ref="_editorRef"
+                  @oninput="HandleInputAsync"
+                  @onclick="HandleSelectionChangedAsync"
+                  @onkeyup="HandleSelectionChangedAsync"
+                  @onmouseup="HandleSelectionChangedAsync"
+                  data-testid="sql-editor-textarea"
+                  spellcheck="false"></textarea>
+    </div>
+
+    @if (_completions.Count > 0)
+    {
+        <MudPaper Class="spec-intellisense-popover mt-2 pa-1" Elevation="0" data-testid="sql-editor-completions">
+            <MudList T="string" Dense="true">
+                @foreach (var item in _completions)
+                {
+                    <MudListItem T="string"
+                                 OnClick="@(() => InsertCompletionAsync(item))"
+                                 Icon="@IconFor(item.Kind)"
+                                 data-testid="@($"sql-completion-{item.Kind}-{item.Token}")">
+                        <MudStack Spacing="0">
+                            <MudText Typo="Typo.body2"><strong>@item.Label</strong></MudText>
+                            @if (!string.IsNullOrWhiteSpace(item.Detail))
+                            {
+                                <MudText Typo="Typo.caption" Color="Color.Secondary">@item.Detail</MudText>
+                            }
+                        </MudStack>
+                    </MudListItem>
+                }
+            </MudList>
+        </MudPaper>
+    }
+</div>
+
+@code {
+    [Parameter] public string Sql { get; set; } = string.Empty;
+
+    [Parameter] public EventCallback<string> SqlChanged { get; set; }
+
+    [Parameter] public SchemaSnapshot? Schema { get; set; }
+
+    private ElementReference _editorRef;
+    private int _selectionStart;
+    private int _selectionEnd;
+    private List<CompletionItem> _completions = new();
+
+    private async Task HandleInputAsync(ChangeEventArgs args)
+    {
+        Sql = args.Value?.ToString() ?? string.Empty;
+        await SqlChanged.InvokeAsync(Sql);
+        await RefreshSelectionAsync();
+        BuildCompletions();
+    }
+
+    private async Task HandleSelectionChangedAsync()
+    {
+        await RefreshSelectionAsync();
+        BuildCompletions();
+    }
+
+    private async Task RefreshSelectionAsync()
+    {
+        try
+        {
+            var selection = await JS.InvokeAsync<TextSelection>("specWorkspace.getTextSelection", _editorRef);
+            _selectionStart = selection.Start;
+            _selectionEnd = selection.End;
+        }
+        catch
+        {
+            _selectionStart = Sql.Length;
+            _selectionEnd = Sql.Length;
+        }
+    }
+
+    private void BuildCompletions()
+    {
+        _completions.Clear();
+        if (Schema is null)
+        {
+            return;
+        }
+
+        var cursor = Math.Clamp(_selectionStart, 0, Sql.Length);
+        var prefixSpan = ExtractPrefix(Sql, cursor);
+        if (prefixSpan is null)
+        {
+            return;
+        }
+
+        var (prefix, _, _) = prefixSpan.Value;
+        if (prefix.Length == 0)
+        {
+            return;
+        }
+
+        var lowered = prefix.ToLowerInvariant();
+        foreach (var table in Schema.Tables)
+        {
+            if (table.Name.StartsWith(lowered, StringComparison.OrdinalIgnoreCase))
+            {
+                _completions.Add(new CompletionItem(
+                    Token: table.Name,
+                    Label: table.Name,
+                    Detail: table.Description ?? "table",
+                    Kind: CompletionKind.Table));
+            }
+
+            foreach (var column in table.Columns)
+            {
+                if (column.Name.StartsWith(lowered, StringComparison.OrdinalIgnoreCase))
+                {
+                    _completions.Add(new CompletionItem(
+                        Token: column.Name,
+                        Label: column.Name,
+                        Detail: $"{table.Name}.{column.Type}",
+                        Kind: CompletionKind.Column));
+                }
+            }
+        }
+
+        foreach (var fn in Schema.Functions)
+        {
+            if (fn.Name.StartsWith(lowered, StringComparison.OrdinalIgnoreCase))
+            {
+                _completions.Add(new CompletionItem(
+                    Token: fn.Name,
+                    Label: fn.Name,
+                    Detail: fn.Signature,
+                    Kind: CompletionKind.Function));
+            }
+        }
+
+        if (_completions.Count > 12)
+        {
+            _completions = _completions.Take(12).ToList();
+        }
+    }
+
+    private async Task InsertCompletionAsync(CompletionItem item)
+    {
+        var span = ExtractPrefix(Sql, _selectionStart);
+        if (span is null)
+        {
+            _completions.Clear();
+            return;
+        }
+
+        var (_, start, end) = span.Value;
+        var insertion = item.Kind == CompletionKind.Function ? item.Token + "(" : item.Token;
+        var next = Sql[..start] + insertion + Sql[end..];
+        Sql = next;
+        _selectionStart = start + insertion.Length;
+        _selectionEnd = _selectionStart;
+        _completions.Clear();
+        await SqlChanged.InvokeAsync(Sql);
+    }
+
+    public async Task InsertExternalTokenAsync(string token)
+    {
+        var insertionStart = Math.Clamp(_selectionStart, 0, Sql.Length);
+        var insertionEnd = Math.Clamp(_selectionEnd, insertionStart, Sql.Length);
+        Sql = Sql[..insertionStart] + token + Sql[insertionEnd..];
+        _selectionStart = insertionStart + token.Length;
+        _selectionEnd = _selectionStart;
+        _completions.Clear();
+        await SqlChanged.InvokeAsync(Sql);
+    }
+
+    private static (string Prefix, int Start, int End)? ExtractPrefix(string sql, int cursor)
+    {
+        cursor = Math.Clamp(cursor, 0, sql.Length);
+        var start = cursor;
+        while (start > 0 && IsTokenChar(sql[start - 1]))
+        {
+            start--;
+        }
+        if (start == cursor)
+        {
+            return null;
+        }
+        return (sql[start..cursor], start, cursor);
+    }
+
+    private static bool IsTokenChar(char c) =>
+        char.IsLetterOrDigit(c) || c == '_';
+
+    private string BuildHighlight()
+    {
+        if (Sql.Length == 0)
+        {
+            return string.Empty;
+        }
+
+        var sb = new StringBuilder();
+        var index = 0;
+        while (index < Sql.Length)
+        {
+            var ch = Sql[index];
+            if (char.IsLetter(ch) || ch == '_')
+            {
+                var end = index;
+                while (end < Sql.Length && (char.IsLetterOrDigit(Sql[end]) || Sql[end] == '_'))
+                {
+                    end++;
+                }
+                var token = Sql[index..end];
+                if (SqlKeywords.Contains(token.ToUpperInvariant()))
+                {
+                    sb.Append("<span class=\"sql-keyword\">");
+                    sb.Append(HtmlEncoder.Default.Encode(token));
+                    sb.Append("</span>");
+                }
+                else if (token.StartsWith("ST_", StringComparison.OrdinalIgnoreCase))
+                {
+                    sb.Append("<span class=\"sql-postgis\">");
+                    sb.Append(HtmlEncoder.Default.Encode(token));
+                    sb.Append("</span>");
+                }
+                else
+                {
+                    sb.Append(HtmlEncoder.Default.Encode(token));
+                }
+                index = end;
+            }
+            else if (ch == '\'')
+            {
+                var end = index + 1;
+                while (end < Sql.Length && Sql[end] != '\'')
+                {
+                    end++;
+                }
+                end = Math.Min(end + 1, Sql.Length);
+                sb.Append("<span class=\"sql-literal\">");
+                sb.Append(HtmlEncoder.Default.Encode(Sql[index..end]));
+                sb.Append("</span>");
+                index = end;
+            }
+            else if (ch == '-' && index + 1 < Sql.Length && Sql[index + 1] == '-')
+            {
+                var end = index;
+                while (end < Sql.Length && Sql[end] != '\n')
+                {
+                    end++;
+                }
+                sb.Append("<span class=\"sql-comment\">");
+                sb.Append(HtmlEncoder.Default.Encode(Sql[index..end]));
+                sb.Append("</span>");
+                index = end;
+            }
+            else
+            {
+                sb.Append(HtmlEncoder.Default.Encode(ch.ToString()));
+                index++;
+            }
+        }
+        return sb.ToString();
+    }
+
+    private static readonly HashSet<string> SqlKeywords = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "SELECT", "FROM", "WHERE", "GROUP", "BY", "ORDER", "LIMIT", "OFFSET", "JOIN", "ON", "INNER",
+        "LEFT", "RIGHT", "OUTER", "AS", "AND", "OR", "NOT", "IN", "IS", "NULL", "CASE", "WHEN",
+        "THEN", "ELSE", "END", "WITH", "UNION", "ALL", "DISTINCT", "HAVING", "EXISTS", "EXPLAIN",
+        "ANALYZE", "ASC", "DESC", "TRUE", "FALSE"
+    };
+
+    private static string IconFor(CompletionKind kind) => kind switch
+    {
+        CompletionKind.Table => Icons.Material.Filled.TableChart,
+        CompletionKind.Column => Icons.Material.Filled.ViewColumn,
+        CompletionKind.Function => Icons.Material.Filled.Functions,
+        _ => Icons.Material.Filled.Code
+    };
+
+    private sealed record CompletionItem(string Token, string Label, string Detail, CompletionKind Kind);
+
+    private enum CompletionKind
+    {
+        Table,
+        Column,
+        Function
+    }
+
+    private sealed record TextSelection(int Start, int End);
+}

@@ -13,11 +13,12 @@ This is the official admin UI for managing Honua Server instances:
 - **Operator Spec Workspace**: Stub-backed three-pane NL + DSL + preview workspace for walking the spec workflow end to end
 - **Identity Workspace**: OIDC provider lifecycle (list / create / edit / enable / delete), provider status, auth diagnostics, and API-key gap surface — see [Identity workspace](#identity-workspace) below
 - **License Workspace**: BYOL license status, entitlement inspection, expiry banding, replace flow, and operator-actionable diagnostics — see [License workspace](#license-workspace) below
+- **Spatial SQL Playground**: Browser-based PostGIS-aware SQL editor with schema autocomplete, MapLibre preview, EXPLAIN tree, and named-view save flow — see [Spatial SQL playground](#spatial-sql-playground) below
 
 ## Architecture
 
 - **Frontend**: Blazor WebAssembly with MudBlazor components
-- **Backend Communication**: Operator S1 uses the in-repo `ISpecWorkspaceClient` stub; the [honua-sdk-dotnet](https://github.com/honua-io/honua-sdk-dotnet) gRPC client swap is a follow-on
+- **Backend Communication**: Operator S1 uses the in-repo `ISpecWorkspaceClient` and `ISpatialSqlClient` stubs; the [honua-sdk-dotnet](https://github.com/honua-io/honua-sdk-dotnet) gRPC client and the SQL HTTP adapter swap in once the matching server endpoints land
 - **Deployment**: Static web app (can be hosted on CDN)
 
 ## Development
@@ -282,6 +283,89 @@ Server-side gaps surfaced by this workspace are catalogued in
 duplicate endpoint-set consolidation, server-side `IssuanceSource`,
 real Ed25519 verification on `ApplyLicenseAsync`, phone-home health
 field, marketplace-aware surfaces).
+
+### Spatial SQL Playground
+
+The SQL playground lives at `/operator/sql` (gated by `[Authorize]`; reuses
+the same `DevAuthenticationStateProvider` shim as the spec workspace until
+the real admin auth provider lands). It registers as a `MudNavLink` inside
+the shared `Shared/NavMenu.razor` so it lives in the same shell as Spec
+Workspace.
+
+The route includes:
+
+- A SQL editor with PostGIS-aware highlighting and schema-driven
+  autocomplete (tables, columns, PostGIS function/operator reference).
+  Built on the same textarea+overlay pattern as the spec workspace's
+  `DslSectionEditor` — Monaco / CodeMirror is deliberately deferred to
+  keep the WASM bundle flat; the inner widget can be swapped later
+  without touching `SqlEditor.razor`'s public surface.
+- A schema sidebar with click-to-insert tables, columns, and PostGIS
+  helpers, plus a manual refresh button to defeat cache staleness.
+- A results pane with `Table | Map` tabs. Map auto-selects when the result
+  carries a geometry column. The geometry column is identified from the
+  server-supplied `GeometryColumnIndex`, never from client guessing.
+- A collapsible EXPLAIN tree with per-node row counts, actual time, and a
+  warning chip when the planner row estimate is off by ≥10×. EXPLAIN
+  refuses mutating SQL outright — `EXPLAIN ANALYZE` would execute the
+  statement on the server and the EXPLAIN endpoint has no audited
+  mutation-override hook, so the per-query override applies to Run only.
+- Save-as-view dialog that returns FeatureServer / OGC API Features /
+  OData URLs once the named view is registered. The dialog stays open on
+  success and renders each URL with a copy-to-clipboard button so the
+  operator can grab them before dismissing.
+- Per-query mutation override dialog. The operator must tick the
+  acknowledgement before the request is re-sent with `allowMutation=true`;
+  the resulting `auditEntryId` is shown back next to the result chip.
+- Result export to CSV, GeoJSON, and clipboard. Exports refuse to run
+  while the result is truncated until the operator opts in via the
+  toolbar.
+
+#### Wiring
+
+Backend calls funnel through `ISpatialSqlClient`
+(`src/Honua.Admin/Services/SpatialSql/`). S1 ships the deterministic
+`StubSpatialSqlClient`, which seeds two geometry tables, a curated PostGIS
+reference, and an in-memory named-view registry. The HTTP-backed client
+will land once the matching server endpoints
+(`POST /api/v1/admin/sql/{execute,explain,views}`,
+`GET /api/v1/admin/sql/schema`) ship — the page is kept behind
+`[Authorize]` (the same `DevAuthenticationStateProvider` that backs the
+spec workspace) until then.
+
+`SpatialSqlPlaygroundState` emits `ISpatialSqlTelemetry` events via the
+default `ILogger` sink. The vocabulary is:
+
+| Event | Trigger |
+| --- | --- |
+| `schema_loaded` / `schema_load_failed` | autocomplete schema fetch outcome |
+| `query_submitted` | run-query button or keybinding (with `allow_mutation`) |
+| `query_completed` (latency) | run succeeded; carries `rows`, `truncated`, `has_geometry`, `audit_entry_id` |
+| `query_rejected` | server / client error (mutation block, transport, server error) |
+| `cap_reached` | result truncation flag; carries `row_limit` |
+| `explain_completed` (latency) / `explain_rejected` | EXPLAIN call outcome |
+| `view_saved` / `view_save_rejected` | named-view registration outcome |
+| `mutation_override_accepted` | operator confirmed the mutation dialog |
+| `export_triggered` | CSV / GeoJSON / clipboard export, with `format` and `rows` |
+| `export_rejected` | client-side export failure (e.g. non-WGS84 GeoJSON) surfaced as a toolbar alert |
+| `results_tab_changed` | operator toggled `Table` ↔ `Map` |
+
+AOT/trim-friendly: all DTOs (including the `MapPreviewFeature` JS-interop
+DTO) are declared in the source-generated `SpatialSqlJsonContext` ahead of
+the HTTP client landing, so the upcoming `HttpSpatialSqlClient` can
+serialize without reflection; the EXPLAIN parser and exporter are
+reflection-free; the MapLibre interop re-uses the existing vendored
+bootstrap from the spec workspace. GeoJSON export follows RFC 7946 — no
+legacy `crs` member, and non-WGS84 SRIDs are rejected so reprojection
+stays a server-side responsibility. The MapLibre preview enforces the
+same WGS84 guard: a non-4326 result keeps the operator on the table tab
+and surfaces a "preview requires WGS84" banner instead of mis-rendering
+coordinates.
+
+The S1 scope deliberately excludes Monaco / CodeMirror integration, write
+SQL beyond the per-query override, multi-database routing, query history
+sharing across operators, and live `pg_proc` introspection — each is
+tracked as a follow-on against `honua-server` or a future admin ticket.
 
 ## Features
 

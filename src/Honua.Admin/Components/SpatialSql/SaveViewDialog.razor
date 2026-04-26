@@ -1,0 +1,192 @@
+@* Save current SQL as a named virtual layer. After a successful registration the
+   dialog stays open and renders the FeatureServer / OGC API Features / OData URLs
+   so the operator can copy each one before dismissing. The dialog never auto-closes
+   on success — that would hide the URLs the operator came here to retrieve. *@
+@using Honua.Admin.Models.SpatialSql
+@using Honua.Admin.Services.SpatialSql
+@inject IJSRuntime JS
+@implements IDisposable
+
+<MudDialog data-testid="save-view-dialog">
+    <DialogContent>
+        <MudStack Spacing="2">
+            <MudTextField T="string"
+                          Label="Name"
+                          Required="true"
+                          Disabled="@IsRegistered"
+                          @bind-Value="_name"
+                          data-testid="save-view-name" />
+            <MudTextField T="string"
+                          Label="Description (optional)"
+                          Lines="3"
+                          Disabled="@IsRegistered"
+                          @bind-Value="_description"
+                          data-testid="save-view-description" />
+            @if (_error is not null)
+            {
+                <MudAlert Severity="Severity.Error" Dense="true" Variant="Variant.Filled" data-testid="save-view-error">
+                    @_error
+                </MudAlert>
+            }
+            @if (Registration is { IsError: false } reg)
+            {
+                <MudPaper Class="pa-2" Elevation="0" data-testid="save-view-success">
+                    <MudText Typo="Typo.subtitle2">Registered as <code>@reg.Name</code></MudText>
+                    <MudStack Spacing="1" Class="mt-1">
+                        @if (reg.FeatureServerUrl is { } featureServerUrl)
+                        {
+                            <MudStack Row Spacing="1" AlignItems="AlignItems.Center">
+                                <MudChip T="string" Color="Color.Primary" Variant="Variant.Outlined" Size="Size.Small">FeatureServer</MudChip>
+                                <code data-testid="save-view-featureserver-url">@featureServerUrl</code>
+                                <MudIconButton Icon="@Icons.Material.Filled.ContentCopy"
+                                               Size="Size.Small"
+                                               OnClick="@(() => CopyUrlAsync(featureServerUrl))"
+                                               data-testid="save-view-featureserver-copy"
+                                               title="Copy FeatureServer URL" />
+                            </MudStack>
+                        }
+                        @if (reg.OgcFeaturesUrl is { } ogcUrl)
+                        {
+                            <MudStack Row Spacing="1" AlignItems="AlignItems.Center">
+                                <MudChip T="string" Color="Color.Secondary" Variant="Variant.Outlined" Size="Size.Small">OGC API</MudChip>
+                                <code data-testid="save-view-ogc-url">@ogcUrl</code>
+                                <MudIconButton Icon="@Icons.Material.Filled.ContentCopy"
+                                               Size="Size.Small"
+                                               OnClick="@(() => CopyUrlAsync(ogcUrl))"
+                                               data-testid="save-view-ogc-copy"
+                                               title="Copy OGC API URL" />
+                            </MudStack>
+                        }
+                        @if (reg.ODataUrl is { } odataUrl)
+                        {
+                            <MudStack Row Spacing="1" AlignItems="AlignItems.Center">
+                                <MudChip T="string" Color="Color.Tertiary" Variant="Variant.Outlined" Size="Size.Small">OData</MudChip>
+                                <code data-testid="save-view-odata-url">@odataUrl</code>
+                                <MudIconButton Icon="@Icons.Material.Filled.ContentCopy"
+                                               Size="Size.Small"
+                                               OnClick="@(() => CopyUrlAsync(odataUrl))"
+                                               data-testid="save-view-odata-copy"
+                                               title="Copy OData URL" />
+                            </MudStack>
+                        }
+                    </MudStack>
+                </MudPaper>
+            }
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        @if (IsRegistered)
+        {
+            <MudButton Color="Color.Primary"
+                       Variant="Variant.Filled"
+                       OnClick="Done"
+                       data-testid="save-view-done">
+                Done
+            </MudButton>
+        }
+        else
+        {
+            <MudButton OnClick="Cancel" data-testid="save-view-cancel">Cancel</MudButton>
+            <MudButton Color="Color.Primary"
+                       Variant="Variant.Filled"
+                       Disabled="@_busy"
+                       OnClick="Submit"
+                       data-testid="save-view-submit">
+                Save
+            </MudButton>
+        }
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance Dialog { get; set; } = default!;
+
+    [Parameter] public SpatialSqlPlaygroundState State { get; set; } = default!;
+
+    private string _name = string.Empty;
+    private string _description = string.Empty;
+    private string? _error;
+    private bool _busy;
+    private CancellationTokenSource? _cts;
+
+    public NamedViewRegistration? Registration { get; private set; }
+
+    private bool IsRegistered => Registration is { IsError: false };
+
+    private async Task Submit()
+    {
+        _error = null;
+        if (string.IsNullOrWhiteSpace(_name))
+        {
+            _error = "A view name is required.";
+            return;
+        }
+
+        _busy = true;
+        var cts = new CancellationTokenSource();
+        _cts = cts;
+        try
+        {
+            Registration = await State.SaveViewAsync(_name, _description, cts.Token);
+            if (Registration.IsError)
+            {
+                _error = Registration.Error?.Message;
+            }
+            // Successful registration intentionally keeps the dialog open so the
+            // FeatureServer / OGC / OData URLs render and the operator can copy
+            // them. Dismissal happens via the Done button.
+        }
+        catch (OperationCanceledException)
+        {
+            // The operator dismissed the dialog (or the surrounding scope
+            // cancelled) while the save was in flight. The state store routes
+            // OCE to Idle and emits no view_save_rejected telemetry; the
+            // dialog must mirror that and not surface a red "operation
+            // canceled" error.
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _busy = false;
+            if (ReferenceEquals(_cts, cts))
+            {
+                _cts = null;
+            }
+            cts.Dispose();
+        }
+    }
+
+    private void Done() => Dialog.Close(DialogResult.Ok(Registration));
+
+    private void Cancel()
+    {
+        // Cancel any in-flight save first so the awaited SaveViewAsync raises
+        // OCE (which the Submit catch handles silently) instead of completing
+        // against a torn-down dialog.
+        _cts?.Cancel();
+        Dialog.Cancel();
+    }
+
+    public void Dispose()
+    {
+        _cts?.Cancel();
+        _cts?.Dispose();
+        _cts = null;
+    }
+
+    private async Task CopyUrlAsync(string url)
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("spatialSql.copyToClipboard", url);
+        }
+        catch
+        {
+            // Clipboard API unavailable (test/pre-render); the URL stays visible
+            // in the success panel so the operator can copy manually.
+        }
+    }
+}

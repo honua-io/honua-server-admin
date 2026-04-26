@@ -1,0 +1,296 @@
+@* Three-pane SQL playground body — Editor + Schema | Results + Map | EXPLAIN.
+   Uses the same shell idiom as <c>SpecWorkspaceBody</c>: a grid of cells with
+   the action toolbar pinned at the top so the editor and result panes share
+   identical layout chrome. *@
+@using Honua.Admin.Models.SpatialSql
+@using Honua.Admin.Services.SpatialSql
+@inject SpatialSqlPlaygroundState State
+@inject IDialogService DialogService
+@inject IJSRuntime JS
+@implements IDisposable
+
+<div class="spatial-sql-root" data-testid="spatial-sql-root">
+    <div class="spatial-sql-toolbar">
+        <MudStack Row Spacing="1" AlignItems="AlignItems.Center">
+            <MudButton StartIcon="@Icons.Material.Filled.PlayArrow"
+                       Color="Color.Primary"
+                       Variant="Variant.Filled"
+                       Size="Size.Small"
+                       Disabled="@_isBusy"
+                       OnClick="OnRunAsync"
+                       data-testid="sql-run-button">
+                Run
+            </MudButton>
+            <MudButton StartIcon="@Icons.Material.Filled.Insights"
+                       Variant="Variant.Outlined"
+                       Size="Size.Small"
+                       Disabled="@_isBusy"
+                       OnClick="OnExplainAsync"
+                       data-testid="sql-explain-button">
+                EXPLAIN
+            </MudButton>
+            <MudButton StartIcon="@Icons.Material.Filled.Save"
+                       Variant="Variant.Outlined"
+                       Size="Size.Small"
+                       Disabled="@(!CanSaveView)"
+                       OnClick="OnSaveAsViewAsync"
+                       data-testid="sql-save-button">
+                Save as view
+            </MudButton>
+            <MudSpacer />
+            <MudButton StartIcon="@Icons.Material.Filled.GetApp"
+                       Variant="Variant.Text"
+                       Size="Size.Small"
+                       Disabled="@(!CanExport)"
+                       OnClick="ExportCsvAsync"
+                       data-testid="sql-export-csv">
+                CSV
+            </MudButton>
+            <MudButton StartIcon="@Icons.Material.Filled.Map"
+                       Variant="Variant.Text"
+                       Size="Size.Small"
+                       Disabled="@(!CanExportGeoJson)"
+                       OnClick="ExportGeoJsonAsync"
+                       data-testid="sql-export-geojson">
+                GeoJSON
+            </MudButton>
+            <MudButton StartIcon="@Icons.Material.Filled.ContentCopy"
+                       Variant="Variant.Text"
+                       Size="Size.Small"
+                       Disabled="@(!CanExport)"
+                       OnClick="ExportClipboardAsync"
+                       data-testid="sql-export-clipboard">
+                Copy
+            </MudButton>
+        </MudStack>
+        @if (State.LastError is not null)
+        {
+            <MudAlert Severity="Severity.Error" Class="mt-2" Dense="true" Variant="Variant.Filled" data-testid="sql-toolbar-error">
+                @State.LastError
+            </MudAlert>
+        }
+        @if (State.LastResult is { Truncated: true })
+        {
+            <MudStack Row Spacing="2" AlignItems="AlignItems.Center" Class="mt-2">
+                <MudAlert Severity="Severity.Warning" Dense="true" Variant="Variant.Outlined" Class="flex-grow-1" data-testid="sql-toolbar-truncated">
+                    Result was capped at @State.LastResult.RowLimit rows. Exports require explicit confirmation.
+                </MudAlert>
+                <MudButton Size="Size.Small"
+                           Variant="Variant.Outlined"
+                           Color="Color.Warning"
+                           OnClick="ConfirmTruncatedExport"
+                           Disabled="@State.ExportTruncatedConfirmed"
+                           data-testid="sql-confirm-truncated">
+                    @(State.ExportTruncatedConfirmed ? "Truncated export armed" : "Allow truncated export")
+                </MudButton>
+            </MudStack>
+        }
+    </div>
+
+    <div class="spatial-sql-grid">
+        <div class="spatial-sql-cell spatial-sql-editor-cell" data-testid="spatial-sql-editor-cell">
+            <MudPaper Class="spec-pane pa-2 h-100" Elevation="0">
+                <MudStack Class="h-100" Spacing="2">
+                    <MudText Typo="Typo.h6">SQL editor</MudText>
+                    <SqlEditor @ref="_editorRef"
+                               Sql="@State.Sql"
+                               SqlChanged="OnSqlChanged"
+                               Schema="@State.Schema" />
+                    <SchemaExplorer Snapshot="@State.Schema"
+                                    OnInsertToken="InsertSchemaToken"
+                                    OnRefresh="RefreshSchemaAsync" />
+                </MudStack>
+            </MudPaper>
+        </div>
+
+        <div class="spatial-sql-cell spatial-sql-results-cell" data-testid="spatial-sql-results-cell">
+            <MudPaper Class="spec-pane pa-2 h-100" Elevation="0">
+                <MudStack Class="h-100" Spacing="2">
+                    <MudStack Row AlignItems="AlignItems.Center" Spacing="2">
+                        <MudText Typo="Typo.h6">Results</MudText>
+                        <MudSpacer />
+                        <MudChip T="string" Color="@StatusColor(State.Status)" Size="Size.Small" Variant="Variant.Outlined" data-testid="sql-status-chip">@State.Status</MudChip>
+                    </MudStack>
+                    <MudTabs Outlined="true" Position="Position.Top" ActivePanelIndex="@_activeTabIndex" ActivePanelIndexChanged="OnTabChanged">
+                        <MudTabPanel Text="Table" data-testid="sql-results-tab-table">
+                            <SqlTableResults Result="@State.LastResult" />
+                        </MudTabPanel>
+                        <MudTabPanel Text="Map" Disabled="@(State.LastResult is null || !State.LastResult.HasGeometry)" data-testid="sql-results-tab-map">
+                            <SqlMapPreview Features="@State.BuildMapFeatures()" BlockedReason="@State.MapPreviewBlockedReason" />
+                        </MudTabPanel>
+                    </MudTabs>
+                </MudStack>
+            </MudPaper>
+        </div>
+
+        <div class="spatial-sql-cell spatial-sql-plan-cell" data-testid="spatial-sql-plan-cell">
+            <MudPaper Class="spec-pane pa-2 h-100" Elevation="0">
+                <MudStack Class="h-100" Spacing="2">
+                    <MudText Typo="Typo.h6">Plan</MudText>
+                    <ExplainTreeView Plan="@State.LastPlan" />
+                </MudStack>
+            </MudPaper>
+        </div>
+    </div>
+</div>
+
+@code {
+    private SqlEditor? _editorRef;
+    private int _activeTabIndex;
+
+    protected override async Task OnInitializedAsync()
+    {
+        State.OnChanged += StateChanged;
+        if (State.Schema is null)
+        {
+            await State.LoadSchemaAsync();
+        }
+        SyncTabIndex();
+    }
+
+    public void Dispose()
+    {
+        State.OnChanged -= StateChanged;
+    }
+
+    private bool _isBusy => State.Status is SpatialSqlPaneStatus.Executing
+        or SpatialSqlPaneStatus.Explaining
+        or SpatialSqlPaneStatus.Saving;
+
+    private bool CanSaveView => !_isBusy && State.CanSaveCurrentResult();
+
+    private bool CanExport => State.CanExportRows();
+
+    private bool CanExportGeoJson => CanExport && State.LastResult?.HasGeometry == true;
+
+    private async Task OnRunAsync()
+    {
+        if (MutationGuard.IsMutating(State.Sql) && !State.MutationOverrideArmed)
+        {
+            var parameters = new DialogParameters { ["Sql"] = State.Sql };
+            var dialog = await DialogService.ShowAsync<MutationConfirmDialog>("Confirm mutation", parameters);
+            var result = await dialog.Result;
+            if (result is null || result.Canceled)
+            {
+                return;
+            }
+            State.ArmMutationOverride();
+        }
+        await State.RunQueryAsync();
+    }
+
+    private Task OnExplainAsync() => State.RunExplainAsync();
+
+    private async Task OnSaveAsViewAsync()
+    {
+        var parameters = new DialogParameters { ["State"] = State };
+        await DialogService.ShowAsync<SaveViewDialog>("Save as named view", parameters);
+    }
+
+    private void OnSqlChanged(string sql)
+    {
+        State.SetSql(sql);
+    }
+
+    private async Task InsertSchemaToken(string token)
+    {
+        if (_editorRef is not null)
+        {
+            await _editorRef.InsertExternalTokenAsync(token);
+        }
+        else
+        {
+            State.SetSql(string.IsNullOrWhiteSpace(State.Sql) ? token : $"{State.Sql} {token}");
+        }
+    }
+
+    private Task RefreshSchemaAsync() => State.LoadSchemaAsync();
+
+    private void StateChanged()
+    {
+        SyncTabIndex();
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void SyncTabIndex()
+    {
+        _activeTabIndex = State.ResultsTab == "map" ? 1 : 0;
+    }
+
+    private void OnTabChanged(int index)
+    {
+        _activeTabIndex = index;
+        State.SetResultsTab(index == 1 ? "map" : "table");
+    }
+
+    private void ConfirmTruncatedExport() => State.ConfirmTruncatedExport();
+
+    private async Task ExportCsvAsync()
+    {
+        if (TryExport(State.ExportCsv) is { } csv)
+        {
+            await DownloadAsync("results.csv", "text/csv", csv);
+        }
+    }
+
+    private async Task ExportGeoJsonAsync()
+    {
+        if (TryExport(State.ExportGeoJson) is { } geojson)
+        {
+            await DownloadAsync("results.geojson", "application/geo+json", geojson);
+        }
+    }
+
+    private async Task ExportClipboardAsync()
+    {
+        if (TryExport(State.ExportClipboard) is not { } text)
+        {
+            return;
+        }
+        try
+        {
+            await JS.InvokeVoidAsync("spatialSql.copyToClipboard", text);
+        }
+        catch
+        {
+            // No clipboard support — keep the export attempt non-fatal.
+        }
+    }
+
+    private string? TryExport(Func<string> exporter)
+    {
+        try
+        {
+            return exporter();
+        }
+        catch (InvalidOperationException ex)
+        {
+            State.SetExportError(ex.Message);
+            return null;
+        }
+    }
+
+    private async Task DownloadAsync(string filename, string mimeType, string content)
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("spatialSql.downloadFile", filename, mimeType, content);
+        }
+        catch
+        {
+            // Pre-render / test environments do not have the helper; the export
+            // still succeeded at the state-store level.
+        }
+    }
+
+    private static Color StatusColor(SpatialSqlPaneStatus status) => status switch
+    {
+        SpatialSqlPaneStatus.Idle => Color.Default,
+        SpatialSqlPaneStatus.Loading => Color.Info,
+        SpatialSqlPaneStatus.Executing => Color.Info,
+        SpatialSqlPaneStatus.Explaining => Color.Info,
+        SpatialSqlPaneStatus.Saving => Color.Info,
+        SpatialSqlPaneStatus.Error => Color.Error,
+        _ => Color.Default
+    };
+}
