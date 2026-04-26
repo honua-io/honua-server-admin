@@ -10,11 +10,15 @@ namespace Honua.Admin.Tests.Audit;
 
 /// <summary>
 /// Synthetic-fixture regression tests that pin the inventory generator's
-/// support for the two endpoint declaration shapes the prior
-/// line-at-a-time scanner missed:
-///   1. <c>group.Map(route, handler).WithMetadata(new HttpMethodMetadata(...))</c>
+/// support for the endpoint declaration shapes prior scanners missed:
+///   1. <c>group.Map(route, handler).WithMetadata(new HttpMethodMetadata(...))</c>.
 ///   2. <c>endpoints.MapPost(route, handler)</c> calls whose argument list
 ///      wraps onto subsequent lines.
+///   3. <c>HttpMethodMetadata([HttpMethods.X])</c> C# 12 collection-expression
+///      metadata.
+///   4. <c>group.Map(string.Empty, handler)</c> / <c>group.MapGet(string.Empty, ...)</c>
+///      where the route argument is the empty-string sentinel rather than a
+///      string literal.
 /// </summary>
 public sealed class EndpointInventoryGeneratorTests
 {
@@ -77,6 +81,103 @@ public sealed class EndpointInventoryGeneratorTests
 
         Assert.Contains(
             "FixtureFeature/FixtureMultilineEndpoints:POST:/api/v1/admin/multiline/queryClusters",
+            keys);
+    }
+
+    [Fact]
+    public void Generic_Map_With_CollectionExpression_HttpMethodMetadata_Is_Captured()
+    {
+        // C# 12+ collection-expression form: `[HttpMethods.Get]` instead of
+        // the classic `new[] { HttpMethods.Get }`. honua-server uses this in
+        // FeatureChangeEventsEndpoints.cs and FeatureStreamEndpoints.cs.
+        var honuaServerRoot = WriteFixtureFeature(
+            featureName: "FixtureFeature",
+            fileName: "FixtureCollectionExpressionEndpoints.cs",
+            source: """
+                namespace Honua.Server.Features.FixtureFeature;
+                internal static class FixtureCollectionExpressionEndpoints
+                {
+                    public static void Map(IEndpointRouteBuilder endpoints)
+                    {
+                        var group = endpoints.MapGroup("/api/v1/admin/feature-events");
+                        _ = group.Map("/replay", HandleReplay)
+                            .WithName("ReplayFeatureEvents")
+                            .WithDescription("Replays feature events.")
+                            .WithMetadata(new HttpMethodMetadata([HttpMethods.Get]));
+                    }
+                }
+                """);
+
+        var inventory = EndpointInventoryGenerator.Generate(honuaServerRoot, commitSha: "fixture");
+        var keys = inventory.Endpoints.Select(e => e.Key).ToList();
+
+        Assert.Contains(
+            "FixtureFeature/FixtureCollectionExpressionEndpoints:GET:/api/v1/admin/feature-events/replay",
+            keys);
+    }
+
+    [Fact]
+    public void Generic_Map_With_StringEmpty_Route_Is_Captured()
+    {
+        // honua-server's MetadataResourceEndpoints maps list/create on the
+        // group root via `group.Map(string.Empty, ...)`. Without
+        // string.Empty support those rows silently never enter the
+        // inventory and the drift guard passes against an incomplete set.
+        var honuaServerRoot = WriteFixtureFeature(
+            featureName: "FixtureFeature",
+            fileName: "FixtureStringEmptyEndpoints.cs",
+            source: """
+                namespace Honua.Server.Features.FixtureFeature;
+                internal static class FixtureStringEmptyEndpoints
+                {
+                    public static void Map(IEndpointRouteBuilder endpoints)
+                    {
+                        var group = endpoints.MapGroup("/api/v1/admin/metadata/resources");
+                        _ = group.Map(string.Empty, HandleList)
+                            .WithMetadata(new HttpMethodMetadata(new[] { HttpMethods.Get }));
+                        _ = group.Map(string.Empty, HandleCreate)
+                            .WithMetadata(new HttpMethodMetadata([HttpMethods.Post]));
+                    }
+                }
+                """);
+
+        var inventory = EndpointInventoryGenerator.Generate(honuaServerRoot, commitSha: "fixture");
+        var keys = inventory.Endpoints.Select(e => e.Key).ToList();
+
+        Assert.Contains(
+            "FixtureFeature/FixtureStringEmptyEndpoints:GET:/api/v1/admin/metadata/resources/",
+            keys);
+        Assert.Contains(
+            "FixtureFeature/FixtureStringEmptyEndpoints:POST:/api/v1/admin/metadata/resources/",
+            keys);
+    }
+
+    [Fact]
+    public void Verb_Map_With_StringEmpty_Route_Is_Captured()
+    {
+        // OgcMapsEndpoints uses `group.MapGet(string.Empty, ...)` for the
+        // landing page. Sibling pattern to the generic-Map case above; both
+        // share the same RoutePattern in EndpointInventoryGenerator.
+        var honuaServerRoot = WriteFixtureFeature(
+            featureName: "FixtureFeature",
+            fileName: "FixtureVerbStringEmptyEndpoints.cs",
+            source: """
+                namespace Honua.Server.Features.FixtureFeature;
+                internal static class FixtureVerbStringEmptyEndpoints
+                {
+                    public static void Map(IEndpointRouteBuilder endpoints)
+                    {
+                        var group = endpoints.MapGroup("/ogc/maps");
+                        group.MapGet(string.Empty, GetLandingPage);
+                    }
+                }
+                """);
+
+        var inventory = EndpointInventoryGenerator.Generate(honuaServerRoot, commitSha: "fixture");
+        var keys = inventory.Endpoints.Select(e => e.Key).ToList();
+
+        Assert.Contains(
+            "FixtureFeature/FixtureVerbStringEmptyEndpoints:GET:/ogc/maps/",
             keys);
     }
 

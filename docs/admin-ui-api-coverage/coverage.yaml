@@ -487,6 +487,13 @@ rows:
     out_of_scope_reason: ""
     follow_up_ticket: ""
     notes: "Plan tab previews target/current/desired revision planning."
+  - key: "Admin/FeatureChangeEventsEndpoints:GET:/api/v{version:apiVersion}/admin/feature-events/replay"
+    coverage: missing
+    admin_page: ""
+    priority: P1
+    out_of_scope_reason: ""
+    follow_up_ticket: ""
+    notes: "Change-event audit page; deferred to follow-up"
   - key: "Admin/FeatureOverviewEndpoints:GET:/api/v{version:apiVersion}/admin/features/"
     coverage: supported
     admin_page: "/ (Index dashboard)"
@@ -606,7 +613,21 @@ rows:
     out_of_scope_reason: ""
     follow_up_ticket: ""
     notes: "Metadata resource CRUD; deferred to follow-up"
+  - key: "Admin/MetadataResourceEndpoints:GET:/api/v{version:apiVersion}/admin/metadata/resources/"
+    coverage: missing
+    admin_page: ""
+    priority: P1
+    out_of_scope_reason: ""
+    follow_up_ticket: ""
+    notes: "Metadata resource CRUD; deferred to follow-up"
   - key: "Admin/MetadataResourceEndpoints:GET:/api/v{version:apiVersion}/admin/metadata/resources/{kind}/{namespace}/{name}"
+    coverage: missing
+    admin_page: ""
+    priority: P1
+    out_of_scope_reason: ""
+    follow_up_ticket: ""
+    notes: "Metadata resource CRUD; deferred to follow-up"
+  - key: "Admin/MetadataResourceEndpoints:POST:/api/v{version:apiVersion}/admin/metadata/resources/"
     coverage: missing
     admin_page: ""
     priority: P1
@@ -2833,6 +2854,13 @@ rows:
     follow_up_ticket: ""
     notes: ""
   - key: "Protocols/OgcClassicEndpoints:GET:/rest/services/{serviceId}/MapServer/WMTS/{**restPath}"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public OGC API surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: Protocols/OgcMapsEndpoints:GET:/ogc/maps/
     coverage: out-of-scope
     admin_page: ""
     priority: n/a

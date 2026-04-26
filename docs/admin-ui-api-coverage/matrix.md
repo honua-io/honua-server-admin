@@ -4,7 +4,7 @@
 
 - snapshot_date: 2026-04-26
 - honua_server_commit: `1b301c3a98e7c97ff75c394852bfc614d5db8a7a`
-- endpoints_total: 443
+- endpoints_total: 447
 
 ## Coverage Summary
 
@@ -12,8 +12,8 @@
 | -------- | ----- |
 | supported | 41 |
 | partial | 0 |
-| missing | 66 |
-| out-of-scope | 336 |
+| missing | 69 |
+| out-of-scope | 337 |
 
 ## Admin
 
@@ -79,6 +79,7 @@
 | `Admin/CacheAdminEndpoints:POST:/api/v{version:apiVersion}/admin/cache/invalidate` | P1 | missing |  | Cache invalidation pages; deferred to follow-up |
 | `Admin/CacheAdminEndpoints:GET:/api/v{version:apiVersion}/admin/cache/status` | P1 | missing |  | Cache invalidation pages; deferred to follow-up |
 | `Admin/AdminMetadataEndpoints:GET:/api/v{version:apiVersion}/admin/capabilities` | P1 | missing |  | Layer/connection metadata edit; deferred to follow-up |
+| `Admin/FeatureChangeEventsEndpoints:GET:/api/v{version:apiVersion}/admin/feature-events/replay` | P1 | missing |  | Change-event audit page; deferred to follow-up |
 | `Admin/AdminGitOpsWatchEndpoints:GET:/api/v{version:apiVersion}/admin/gitops/changes` | P1 | missing |  | GitOps watch console; deferred to follow-up |
 | `Admin/AdminGitOpsWatchEndpoints:GET:/api/v{version:apiVersion}/admin/gitops/changes/{id}` | P1 | missing |  | GitOps watch console; deferred to follow-up |
 | `Admin/AdminGitOpsWatchEndpoints:GET:/api/v{version:apiVersion}/admin/gitops/changes/{id}/diff` | P1 | missing |  | GitOps watch console; deferred to follow-up |
@@ -89,6 +90,8 @@
 | `Admin/AdminMetadataEndpoints:GET:/api/v{version:apiVersion}/admin/manifest` | P1 | missing |  | Layer/connection metadata edit; deferred to follow-up |
 | `Admin/AdminMetadataEndpoints:POST:/api/v{version:apiVersion}/admin/manifest/apply` | P1 | missing |  | Layer/connection metadata edit; deferred to follow-up |
 | `Admin/AdminStyleSuggestionEndpoints:POST:/api/v{version:apiVersion}/admin/metadata/layers/{layerId:int}/suggest-style` | P1 | missing |  | Style suggestion UX; deferred to follow-up |
+| `Admin/MetadataResourceEndpoints:GET:/api/v{version:apiVersion}/admin/metadata/resources/` | P1 | missing |  | Metadata resource CRUD; deferred to follow-up |
+| `Admin/MetadataResourceEndpoints:POST:/api/v{version:apiVersion}/admin/metadata/resources/` | P1 | missing |  | Metadata resource CRUD; deferred to follow-up |
 | `Admin/MetadataResourceEndpoints:DELETE:/api/v{version:apiVersion}/admin/metadata/resources/{kind}/{namespace}/{name}` | P1 | missing |  | Metadata resource CRUD; deferred to follow-up |
 | `Admin/MetadataResourceEndpoints:GET:/api/v{version:apiVersion}/admin/metadata/resources/{kind}/{namespace}/{name}` | P1 | missing |  | Metadata resource CRUD; deferred to follow-up |
 | `Admin/MetadataResourceEndpoints:PUT:/api/v{version:apiVersion}/admin/metadata/resources/{kind}/{namespace}/{name}` | P1 | missing |  | Metadata resource CRUD; deferred to follow-up |
@@ -326,6 +329,7 @@
 | `Protocols/CollectionsEndpoints:GET:/ogc/features/collections/{collectionId}/queryables` | n/a | out-of-scope |  | Public OGC API surface, not admin |
 | `Protocols/SpatialAnalyticsEndpoints:POST:/ogc/features/collections/{collectionId}/spatial-join` | n/a | out-of-scope |  | Public spatial-analytics surface, not admin |
 | `Protocols/CoreEndpoints:GET:/ogc/features/conformance` | n/a | out-of-scope |  | Public OGC API surface, not admin |
+| `Protocols/OgcMapsEndpoints:GET:/ogc/maps/` | n/a | out-of-scope |  | Public OGC API surface, not admin |
 | `Protocols/OgcMapsEndpoints:GET:/ogc/maps/collections/{collectionId}/map` | n/a | out-of-scope |  | Public OGC API surface, not admin |
 | `Protocols/OgcMapsEndpoints:GET:/ogc/maps/collections/{collectionId}/map/tiles` | n/a | out-of-scope |  | Public OGC API surface, not admin |
 | `Protocols/OgcMapsEndpoints:GET:/ogc/maps/collections/{collectionId}/map/tiles/{tileMatrixSetId}` | n/a | out-of-scope |  | Public OGC API surface, not admin |

@@ -19,29 +19,38 @@ public static class EndpointInventoryGenerator
         @"var\s+(?<var>[A-Za-z_][A-Za-z0-9_]*)\s*=\s*(?<source>[A-Za-z_][A-Za-z0-9_]*)\s*\.MapGroup\(\s*""(?<route>[^""]+)""\s*\)",
         RegexOptions.Compiled);
 
-    // Matches `receiver.MapGet/Post/Put/Delete/Patch("route", ...)` even when the
-    // handler argument is wrapped to a subsequent line. The route literal stays
-    // on the same line as the call by convention, but whitespace between the
-    // receiver, dot, method, and `(` may include newlines (Singleline mode).
+    // Route argument fragment shared by MapVerbCall, MapMethodsCall, and
+    // MapGenericCall. ASP.NET Core accepts a string literal (optionally
+    // $-interpolated) or `string.Empty` (`String.Empty`) as a no-suffix
+    // landing-page route. ParseRouteToken decodes the captured token to the
+    // raw route text.
+    private const string RoutePattern = @"(?:\$?""[^""]*""|(?:string|String)\.Empty)";
+
+    // Matches `receiver.MapGet/Post/Put/Delete/Patch("route" | string.Empty, ...)`
+    // even when the handler argument is wrapped to a subsequent line. The route
+    // argument stays on the same line as the call by convention, but whitespace
+    // between the receiver, dot, method, and `(` may include newlines (Singleline mode).
     private static readonly Regex MapVerbCall = new(
-        @"(?<receiver>[A-Za-z_][A-Za-z0-9_]*)\s*\.\s*Map(?<verb>Get|Post|Put|Delete|Patch)\s*\(\s*\$?""(?<route>[^""]*)""",
+        @"(?<receiver>[A-Za-z_][A-Za-z0-9_]*)\s*\.\s*Map(?<verb>Get|Post|Put|Delete|Patch)\s*\(\s*(?<route>" + RoutePattern + ")",
         RegexOptions.Compiled | RegexOptions.Singleline);
 
-    // Matches `receiver.MapMethods("route", [...] | identifier, ...)` with the
-    // same whitespace tolerance. The methods token may be a collection literal
-    // or a referenced array variable like `_nonGetMethods`.
+    // Matches `receiver.MapMethods("route" | string.Empty, [...] | identifier, ...)`
+    // with the same whitespace tolerance. The methods token may be a collection
+    // literal or a referenced array variable like `_nonGetMethods`.
     private static readonly Regex MapMethodsCall = new(
-        @"(?<receiver>[A-Za-z_][A-Za-z0-9_]*)\s*\.\s*MapMethods\s*\(\s*\$?""(?<route>[^""]*)""\s*,\s*(?<methods>\[[^\]]+\]|[A-Za-z_][A-Za-z0-9_]*)",
+        @"(?<receiver>[A-Za-z_][A-Za-z0-9_]*)\s*\.\s*MapMethods\s*\(\s*(?<route>" + RoutePattern + @")\s*,\s*(?<methods>\[[^\]]+\]|[A-Za-z_][A-Za-z0-9_]*)",
         RegexOptions.Compiled | RegexOptions.Singleline);
 
-    // Matches the generic `receiver.Map("route", handler)` call, paired below
-    // with a chained `.WithMetadata(new HttpMethodMetadata(new[] {...}))` to
-    // resolve the verbs. Used by features such as AdminGitOpsWatchEndpoints
-    // and AdminManifestApprovalEndpoints. We require a chain that eventually
-    // invokes WithMetadata to avoid matching unrelated `.Map(` calls in the
-    // codebase.
+    // Matches the generic `receiver.Map("route" | string.Empty, handler)` call,
+    // paired with a chained `.WithMetadata(new HttpMethodMetadata(...))` to
+    // resolve the verbs. Used by features such as AdminGitOpsWatchEndpoints,
+    // AdminManifestApprovalEndpoints, FeatureChangeEventsEndpoints, and
+    // MetadataResourceEndpoints. The metadata expression may be either the
+    // classic `new[] { HttpMethods.X }` array form or the C# 12+ collection
+    // expression `[HttpMethods.X]`. We require a chain that eventually invokes
+    // WithMetadata to avoid matching unrelated `.Map(` calls in the codebase.
     private static readonly Regex MapGenericCall = new(
-        @"(?<receiver>[A-Za-z_][A-Za-z0-9_]*)\s*\.\s*Map\s*\(\s*\$?""(?<route>[^""]*)""(?<chain>[^;]*?)\.WithMetadata\s*\(\s*new\s+HttpMethodMetadata\s*\(\s*new(?:\s*\[\s*\])?\s*\{\s*(?<methods>[^}]+)\s*\}\s*\)\s*\)",
+        @"(?<receiver>[A-Za-z_][A-Za-z0-9_]*)\s*\.\s*Map\s*\(\s*(?<route>" + RoutePattern + @")(?<chain>[^;]*?)\.WithMetadata\s*\(\s*new\s+HttpMethodMetadata\s*\(\s*(?<methods>new\s*(?:\[\s*\])?\s*\{[^}]+\}|\[[^\]]+\])\s*\)\s*\)",
         RegexOptions.Compiled | RegexOptions.Singleline);
 
     // const-string route declarations like `private const string TaskRoute = "/foo";`
@@ -181,7 +190,7 @@ public static class EndpointInventoryGenerator
                 continue;
             }
 
-            var route = NormalizeRoute(prefix, ExpandConstantInterpolation(m.Groups["route"].Value, constants));
+            var route = NormalizeRoute(prefix, ExpandConstantInterpolation(ParseRouteToken(m.Groups["route"].Value), constants));
             var verb = m.Groups["verb"].Value.ToUpperInvariant();
             yield return EndpointEntry.Http(
                 feature: feature,
@@ -209,7 +218,7 @@ public static class EndpointInventoryGenerator
                 continue;
             }
 
-            var route = NormalizeRoute(prefix, ExpandConstantInterpolation(m.Groups["route"].Value, constants));
+            var route = NormalizeRoute(prefix, ExpandConstantInterpolation(ParseRouteToken(m.Groups["route"].Value), constants));
             var methodsToken = m.Groups["methods"].Value;
             var line = GetLineNumber(text, m.Index);
             foreach (var method in ResolveMethods(methodsToken, text))
@@ -241,7 +250,7 @@ public static class EndpointInventoryGenerator
                 continue;
             }
 
-            var route = NormalizeRoute(prefix, ExpandConstantInterpolation(m.Groups["route"].Value, constants));
+            var route = NormalizeRoute(prefix, ExpandConstantInterpolation(ParseRouteToken(m.Groups["route"].Value), constants));
             var methods = ExtractHttpMethods(m.Groups["methods"].Value).ToList();
             if (methods.Count == 0)
             {
@@ -355,6 +364,24 @@ public static class EndpointInventoryGenerator
             combined = "/" + combined;
         }
         return combined;
+    }
+
+    private static string ParseRouteToken(string token)
+    {
+        var trimmed = token.Trim();
+        if (trimmed is "string.Empty" or "String.Empty")
+        {
+            return string.Empty;
+        }
+        if (trimmed.Length > 0 && trimmed[0] == '$')
+        {
+            trimmed = trimmed[1..];
+        }
+        if (trimmed.Length >= 2 && trimmed[0] == '"' && trimmed[^1] == '"')
+        {
+            return trimmed[1..^1];
+        }
+        return trimmed;
     }
 
     private static readonly Regex InterpolatedConstReference = new(

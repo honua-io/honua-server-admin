@@ -90,7 +90,7 @@ public sealed class AdminDestructiveTelemetryTests : TestContext
     }
 
     [Fact]
-    public async Task BulkSetServiceLayers_EmitsDestructiveAction()
+    public async Task BulkDisableServiceLayers_EmitsDestructiveAction()
     {
         var telemetry = new RecordingAdminTelemetry();
         Services.AddScoped<IAdminTelemetry>(_ => telemetry);
@@ -105,6 +105,69 @@ public sealed class AdminDestructiveTelemetryTests : TestContext
         cut.WaitForAssertion(() => Assert.Contains(
             telemetry.DestructiveActions,
             entry => entry.Action == "disable-all-service-layers"));
+    }
+
+    [Fact]
+    public async Task BulkEnableServiceLayers_EmitsDestructiveAction()
+    {
+        var telemetry = new RecordingAdminTelemetry();
+        Services.AddScoped<IAdminTelemetry>(_ => telemetry);
+        Services.AddScoped<IHonuaAdminClient>(_ => new StubHonuaAdminClient());
+
+        var cut = RenderAdminPage<LayerListPage>(builder =>
+            builder.AddAttribute(2, "ConnectionId", StubHonuaAdminClient.PrimaryConnectionId.ToString("D")));
+
+        var enableAll = await WaitForButtonAsync(cut, "Enable all");
+        await cut.InvokeAsync(() => enableAll.Click());
+
+        cut.WaitForAssertion(() => Assert.Contains(
+            telemetry.DestructiveActions,
+            entry => entry.Action == "enable-all-service-layers"));
+    }
+
+    [Fact]
+    public async Task DeleteConnection_EmitsDestructiveAction()
+    {
+        var telemetry = new RecordingAdminTelemetry();
+        Services.AddScoped<IAdminTelemetry>(_ => telemetry);
+        Services.AddScoped<IHonuaAdminClient>(_ => new StubHonuaAdminClient());
+
+        // ConnectionDetailPage's Delete button is enabled only after the
+        // connection loads and user confirms via dialog. To keep the test
+        // focused on the telemetry contract (the documented "delete, apply,
+        // submit" rule), invoke DeleteAsync directly and assert the
+        // DestructiveAction event.
+        var connectionId = StubHonuaAdminClient.PrimaryConnectionId.ToString("D");
+        var cut = RenderComponent<ConnectionDetailPage>(parameters => parameters
+            .Add(p => p.ConnectionId, connectionId));
+
+        await cut.InvokeAsync(() => InvokePrivateAsync(cut.Instance, "DeleteAsync"));
+
+        Assert.Contains(
+            telemetry.DestructiveActions,
+            entry => entry.Action == "delete-connection" && entry.TargetId == connectionId);
+    }
+
+    [Fact]
+    public async Task RollbackDeploy_EmitsDestructiveAction()
+    {
+        var telemetry = new RecordingAdminTelemetry();
+        Services.AddScoped<IAdminTelemetry>(_ => telemetry);
+        Services.AddScoped<IHonuaAdminClient>(_ => new StubHonuaAdminClient());
+
+        // Same rationale as SubmitDeploy_EmitsDestructiveAction: the Rollback
+        // button lives in a MudTabPanel that lazy-renders, so render the page
+        // to inject deps + the operation id, then invoke RollbackAsync
+        // directly. The destructive telemetry contract is what the test
+        // guards.
+        var cut = RenderComponent<DeployControlPage>();
+        SetPrivateField(cut.Instance, "_operationId", "op-test-456");
+
+        await cut.InvokeAsync(() => InvokePrivateAsync(cut.Instance, "RollbackAsync"));
+
+        Assert.Contains(
+            telemetry.DestructiveActions,
+            entry => entry.Action == "rollback-deploy" && entry.TargetId == "op-test-456");
     }
 
     private IRenderedFragment RenderAdminPage<TPage>(Action<Microsoft.AspNetCore.Components.Rendering.RenderTreeBuilder>? configurePageAttributes = null)

@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "honua_server_commit": "1b301c3a98e7c97ff75c394852bfc614d5db8a7a",
-  "generated_count": 443,
+  "generated_count": 447,
   "endpoints": [
     {
       "key": "Admin/AdminAuthEndpoints:GET:/api/v{version:apiVersion}/admin/auth/config",
@@ -694,6 +694,16 @@
       "source_line": 40
     },
     {
+      "key": "Admin/FeatureChangeEventsEndpoints:GET:/api/v{version:apiVersion}/admin/feature-events/replay",
+      "feature": "Admin",
+      "file": "FeatureChangeEventsEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/api/v{version:apiVersion}/admin/feature-events/replay",
+      "source_file": "Admin/FeatureChangeEventsEndpoints.cs",
+      "source_line": 25
+    },
+    {
       "key": "Admin/FeatureOverviewEndpoints:GET:/api/v{version:apiVersion}/admin/features/",
       "feature": "Admin",
       "file": "FeatureOverviewEndpoints",
@@ -864,6 +874,16 @@
       "source_line": 54
     },
     {
+      "key": "Admin/MetadataResourceEndpoints:GET:/api/v{version:apiVersion}/admin/metadata/resources/",
+      "feature": "Admin",
+      "file": "MetadataResourceEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/api/v{version:apiVersion}/admin/metadata/resources/",
+      "source_file": "Admin/MetadataResourceEndpoints.cs",
+      "source_line": 34
+    },
+    {
       "key": "Admin/MetadataResourceEndpoints:GET:/api/v{version:apiVersion}/admin/metadata/resources/{kind}/{namespace}/{name}",
       "feature": "Admin",
       "file": "MetadataResourceEndpoints",
@@ -872,6 +892,16 @@
       "route": "/api/v{version:apiVersion}/admin/metadata/resources/{kind}/{namespace}/{name}",
       "source_file": "Admin/MetadataResourceEndpoints.cs",
       "source_line": 39
+    },
+    {
+      "key": "Admin/MetadataResourceEndpoints:POST:/api/v{version:apiVersion}/admin/metadata/resources/",
+      "feature": "Admin",
+      "file": "MetadataResourceEndpoints",
+      "kind": "http",
+      "verb": "POST",
+      "route": "/api/v{version:apiVersion}/admin/metadata/resources/",
+      "source_file": "Admin/MetadataResourceEndpoints.cs",
+      "source_line": 44
     },
     {
       "key": "Admin/MetadataResourceEndpoints:PUT:/api/v{version:apiVersion}/admin/metadata/resources/{kind}/{namespace}/{name}",
@@ -4052,6 +4082,16 @@
       "route": "/rest/services/{serviceId}/MapServer/WMTS/{**restPath}",
       "source_file": "Protocols/Ogc/Classic/OgcClassicEndpoints.cs",
       "source_line": 30
+    },
+    {
+      "key": "Protocols/OgcMapsEndpoints:GET:/ogc/maps/",
+      "feature": "Protocols",
+      "file": "OgcMapsEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/ogc/maps/",
+      "source_file": "Protocols/Ogc/Api/Maps/OgcMapsEndpoints.cs",
+      "source_line": 35
     },
     {
       "key": "Protocols/OgcMapsEndpoints:GET:/ogc/maps/collections/{collectionId}/map",
