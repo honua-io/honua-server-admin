@@ -364,6 +364,95 @@ public sealed class SpatialSqlPlaygroundStateTests
     }
 
     [Fact]
+    public async Task RunExplainAsync_rejected_sql_clears_previous_plan()
+    {
+        var telemetry = new RecordingTelemetry();
+        var state = new SpatialSqlPlaygroundState(new StubSpatialSqlClient(), telemetry);
+
+        state.SetSql("SELECT count(*) FROM wells");
+        await state.RunExplainAsync();
+        Assert.NotNull(state.LastPlan);
+
+        state.SetSql("DELETE FROM parcels");
+        await state.RunExplainAsync();
+
+        Assert.Equal(SpatialSqlPaneStatus.Error, state.Status);
+        Assert.Null(state.LastPlan);
+        Assert.NotNull(state.LastError);
+        Assert.Contains(telemetry.Events, e => e.Event == "explain_rejected" &&
+            e.Properties is not null &&
+            e.Properties.TryGetValue("reason", out var r) &&
+            string.Equals(r as string, "mutation_blocked", System.StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task RunExplainAsync_transport_error_clears_previous_plan()
+    {
+        var telemetry = new RecordingTelemetry();
+        var state = new SpatialSqlPlaygroundState(new SecondExplainThrowsClient(), telemetry);
+
+        state.SetSql("SELECT count(*) FROM wells");
+        await state.RunExplainAsync();
+        Assert.NotNull(state.LastPlan);
+
+        state.SetSql("SELECT * FROM parcels");
+        await state.RunExplainAsync();
+
+        Assert.Equal(SpatialSqlPaneStatus.Error, state.Status);
+        Assert.Null(state.LastPlan);
+        Assert.Contains("simulated explain failure", state.LastError, System.StringComparison.Ordinal);
+        Assert.Contains(telemetry.Events, e => e.Event == "explain_rejected" &&
+            e.Properties is not null &&
+            e.Properties.TryGetValue("reason", out var r) &&
+            string.Equals(r as string, "transport_error", System.StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task RunExplainAsync_empty_sql_clears_previous_plan()
+    {
+        var state = new SpatialSqlPlaygroundState(new StubSpatialSqlClient(), new RecordingTelemetry());
+
+        state.SetSql("SELECT count(*) FROM wells");
+        await state.RunExplainAsync();
+        Assert.NotNull(state.LastPlan);
+
+        state.SetSql(string.Empty);
+        await state.RunExplainAsync();
+
+        Assert.Equal(SpatialSqlPaneStatus.Idle, state.Status);
+        Assert.Null(state.LastPlan);
+        Assert.Null(state.LastError);
+    }
+
+    [Fact]
+    public async Task RunExplainAsync_superseded_completion_does_not_overwrite_active_plan()
+    {
+        // Same ownership contract as RunQueryAsync: a slow EXPLAIN can be
+        // superseded by a later one, and its late completion must not replace the
+        // active plan pane.
+        var slowGate = new TaskCompletionSource<ExplainPlan>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var client = new GatedExplainClient(firstAttempt: () => slowGate.Task, fallback: Plan("Fast Plan"));
+        var telemetry = new RecordingTelemetry();
+        var state = new SpatialSqlPlaygroundState(client, telemetry);
+
+        state.SetSql("SELECT * FROM slow");
+        var slowTask = state.RunExplainAsync();
+
+        state.SetSql("SELECT * FROM fast");
+        await state.RunExplainAsync();
+
+        Assert.Equal("Fast Plan", state.LastPlan!.Root.NodeType);
+        Assert.Equal(SpatialSqlPaneStatus.Idle, state.Status);
+
+        slowGate.SetResult(Plan("Slow Plan"));
+        await slowTask;
+
+        Assert.Equal("Fast Plan", state.LastPlan!.Root.NodeType);
+        Assert.Equal(SpatialSqlPaneStatus.Idle, state.Status);
+        Assert.Single(telemetry.Events, e => e.Event == "explain_completed");
+    }
+
+    [Fact]
     public async Task SaveViewAsync_uses_LastResultSql_not_the_live_editor_buffer()
     {
         var capture = new RequestCapturingClient();
@@ -383,6 +472,12 @@ public sealed class SpatialSqlPlaygroundStateTests
         Assert.Equal(executedSql, capture.LastSaveRequest!.Sql);
         Assert.Equal("geom", capture.LastSaveRequest.GeometryColumn);
     }
+
+    private static ExplainPlan Plan(string rootNodeType) => new()
+    {
+        Root = new ExplainNode { NodeType = rootNodeType },
+        TotalElapsedMs = 1
+    };
 
     private sealed class NonWgs84Client : ISpatialSqlClient
     {
@@ -413,6 +508,29 @@ public sealed class SpatialSqlPlaygroundStateTests
 
         public Task<ExplainPlan> ExplainAsync(SqlExplainRequest request, CancellationToken cancellationToken) =>
             _inner.ExplainAsync(request, cancellationToken);
+
+        public Task<NamedViewRegistration> SaveViewAsync(SaveViewRequest request, CancellationToken cancellationToken) =>
+            _inner.SaveViewAsync(request, cancellationToken);
+    }
+
+    private sealed class SecondExplainThrowsClient : ISpatialSqlClient
+    {
+        private readonly StubSpatialSqlClient _inner = new();
+        private int _calls;
+
+        public Task<SchemaSnapshot> GetSchemaAsync(CancellationToken cancellationToken) =>
+            _inner.GetSchemaAsync(cancellationToken);
+
+        public Task<SqlExecuteResult> ExecuteAsync(SqlExecuteRequest request, CancellationToken cancellationToken) =>
+            _inner.ExecuteAsync(request, cancellationToken);
+
+        public Task<ExplainPlan> ExplainAsync(SqlExplainRequest request, CancellationToken cancellationToken)
+        {
+            var index = System.Threading.Interlocked.Increment(ref _calls);
+            return index == 1
+                ? _inner.ExplainAsync(request, cancellationToken)
+                : Task.FromException<ExplainPlan>(new System.InvalidOperationException("simulated explain failure"));
+        }
 
         public Task<NamedViewRegistration> SaveViewAsync(SaveViewRequest request, CancellationToken cancellationToken) =>
             _inner.SaveViewAsync(request, cancellationToken);
@@ -508,6 +626,35 @@ public sealed class SpatialSqlPlaygroundStateTests
 
         public Task<ExplainPlan> ExplainAsync(SqlExplainRequest request, CancellationToken cancellationToken) =>
             _inner.ExplainAsync(request, cancellationToken);
+
+        public Task<NamedViewRegistration> SaveViewAsync(SaveViewRequest request, CancellationToken cancellationToken) =>
+            _inner.SaveViewAsync(request, cancellationToken);
+    }
+
+    private sealed class GatedExplainClient : ISpatialSqlClient
+    {
+        private readonly StubSpatialSqlClient _inner = new();
+        private readonly System.Func<Task<ExplainPlan>> _firstAttempt;
+        private readonly ExplainPlan _fallback;
+        private int _calls;
+
+        public GatedExplainClient(System.Func<Task<ExplainPlan>> firstAttempt, ExplainPlan fallback)
+        {
+            _firstAttempt = firstAttempt;
+            _fallback = fallback;
+        }
+
+        public Task<SchemaSnapshot> GetSchemaAsync(CancellationToken cancellationToken) =>
+            _inner.GetSchemaAsync(cancellationToken);
+
+        public Task<SqlExecuteResult> ExecuteAsync(SqlExecuteRequest request, CancellationToken cancellationToken) =>
+            _inner.ExecuteAsync(request, cancellationToken);
+
+        public Task<ExplainPlan> ExplainAsync(SqlExplainRequest request, CancellationToken cancellationToken)
+        {
+            var index = System.Threading.Interlocked.Increment(ref _calls);
+            return index == 1 ? _firstAttempt() : Task.FromResult(_fallback);
+        }
 
         public Task<NamedViewRegistration> SaveViewAsync(SaveViewRequest request, CancellationToken cancellationToken) =>
             _inner.SaveViewAsync(request, cancellationToken);

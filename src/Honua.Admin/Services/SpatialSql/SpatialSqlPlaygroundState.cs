@@ -29,6 +29,7 @@ public sealed class SpatialSqlPlaygroundState : IDisposable
     private readonly ISpatialSqlTelemetry _telemetry;
     private readonly object _sync = new();
     private CancellationTokenSource? _executeCts;
+    private CancellationTokenSource? _explainCts;
     private bool _disposed;
 
     public SpatialSqlPlaygroundState(ISpatialSqlClient client, ISpatialSqlTelemetry telemetry)
@@ -365,10 +366,47 @@ public sealed class SpatialSqlPlaygroundState : IDisposable
         }
     }
 
+    private bool IsActiveExplain(CancellationTokenSource cts)
+    {
+        lock (_sync)
+        {
+            return ReferenceEquals(_explainCts, cts);
+        }
+    }
+
+    private void SupersedeActiveExplain()
+    {
+        lock (_sync)
+        {
+            _explainCts?.Cancel();
+            _explainCts?.Dispose();
+            _explainCts = null;
+        }
+    }
+
+    private CancellationTokenSource StartExplainExecution(CancellationToken cancellationToken)
+    {
+        lock (_sync)
+        {
+            _explainCts?.Cancel();
+            _explainCts?.Dispose();
+            var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            _explainCts = cts;
+            return cts;
+        }
+    }
+
     public async Task RunExplainAsync(CancellationToken cancellationToken = default)
     {
-        if (string.IsNullOrWhiteSpace(Sql))
+        var submittedSql = Sql;
+
+        if (string.IsNullOrWhiteSpace(submittedSql))
         {
+            SupersedeActiveExplain();
+            LastPlan = null;
+            LastError = null;
+            Status = SpatialSqlPaneStatus.Idle;
+            Notify();
             return;
         }
 
@@ -376,8 +414,10 @@ public sealed class SpatialSqlPlaygroundState : IDisposable
         // server-side EXPLAIN endpoint has no AllowMutation contract or audit
         // hook. Reject mutating SQL outright — the per-query override on the Run
         // path is the only audited mutation channel, EXPLAIN is not.
-        if (MutationGuard.IsMutating(Sql))
+        if (MutationGuard.IsMutating(submittedSql))
         {
+            SupersedeActiveExplain();
+            LastPlan = null;
             LastError = "EXPLAIN is rejected for mutating SQL — EXPLAIN ANALYZE would execute the statement outside the audited mutation-override flow.";
             Status = SpatialSqlPaneStatus.Error;
             _telemetry.Record("explain_rejected", new Dictionary<string, object?>
@@ -388,15 +428,27 @@ public sealed class SpatialSqlPlaygroundState : IDisposable
             return;
         }
 
+        var cts = StartExplainExecution(cancellationToken);
+
+        LastPlan = null;
         Status = SpatialSqlPaneStatus.Explaining;
         LastError = null;
         Notify();
 
         var watch = Stopwatch.StartNew();
+        var notify = false;
         try
         {
-            var plan = await _client.ExplainAsync(new SqlExplainRequest { Sql = Sql }, cancellationToken).ConfigureAwait(false);
+            var plan = await _client.ExplainAsync(new SqlExplainRequest { Sql = submittedSql }, cts.Token).ConfigureAwait(false);
             watch.Stop();
+
+            // Same ownership invariant as query execution: a later EXPLAIN attempt
+            // owns the plan pane, even if this client call completes afterwards.
+            if (!IsActiveExplain(cts))
+            {
+                return;
+            }
+
             LastPlan = plan;
             Status = plan.IsError ? SpatialSqlPaneStatus.Error : SpatialSqlPaneStatus.Idle;
             if (plan.IsError)
@@ -416,13 +468,23 @@ public sealed class SpatialSqlPlaygroundState : IDisposable
                     ["root_node"] = plan.Root.NodeType
                 });
             }
+            notify = true;
         }
         catch (OperationCanceledException)
         {
+            if (!IsActiveExplain(cts))
+            {
+                return;
+            }
             Status = SpatialSqlPaneStatus.Idle;
+            notify = true;
         }
         catch (Exception ex)
         {
+            if (!IsActiveExplain(cts))
+            {
+                return;
+            }
             Status = SpatialSqlPaneStatus.Error;
             LastError = ex.Message;
             _telemetry.Record("explain_rejected", new Dictionary<string, object?>
@@ -430,9 +492,24 @@ public sealed class SpatialSqlPlaygroundState : IDisposable
                 ["reason"] = "transport_error",
                 ["message"] = ex.Message
             });
+            notify = true;
+        }
+        finally
+        {
+            lock (_sync)
+            {
+                if (ReferenceEquals(_explainCts, cts))
+                {
+                    _explainCts.Dispose();
+                    _explainCts = null;
+                }
+            }
         }
 
-        Notify();
+        if (notify)
+        {
+            Notify();
+        }
     }
 
     /// <summary>
@@ -658,11 +735,13 @@ public sealed class SpatialSqlPlaygroundState : IDisposable
         try
         {
             _executeCts?.Cancel();
+            _explainCts?.Cancel();
         }
         catch (ObjectDisposedException)
         {
         }
         _executeCts?.Dispose();
+        _explainCts?.Dispose();
     }
 
     private void Notify() => OnChanged?.Invoke();
