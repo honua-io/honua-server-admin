@@ -101,6 +101,32 @@ public sealed class DataConnectionsStateTests
     }
 
     [Fact]
+    public async Task DeleteAsync_failure_keeps_row_and_selection_and_surfaces_error()
+    {
+        // Detail.razor.ConfirmDelete relies on this contract: when DeleteAsync
+        // fails (e.g., 409 Conflict for "in use"), the page must stay mounted
+        // so State.LastError can render the actionable error. A regression
+        // here lets the page navigate to Index, whose RefreshListAsync clears
+        // LastError before the operator sees it.
+        var seed = Sample("primary", isActive: true);
+        var stub = new FailingDeleteStubClient(seed,
+            new ConnectionOperationError(ConnectionErrorKind.Conflict, "error.conflict", "Connection is in use by services"));
+        var (state, _) = BuildState(stub);
+
+        await state.RefreshListAsync();
+        await state.LoadDetailAsync(seed.ConnectionId);
+
+        var result = await state.DeleteAsync(seed.ConnectionId);
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal(ConnectionErrorKind.Conflict, result.Error!.Kind);
+        Assert.NotNull(state.LastError);
+        Assert.Equal(ConnectionErrorKind.Conflict, state.LastError!.Kind);
+        Assert.Single(state.Connections, c => c.ConnectionId == seed.ConnectionId);
+        Assert.Equal(seed.ConnectionId, state.SelectedDetail?.ConnectionId);
+    }
+
+    [Fact]
     public async Task RunDraftPreflightAsync_healthy_response_lights_all_cells_ok()
     {
         var stub = new StubDataConnectionClient();
@@ -500,6 +526,45 @@ public sealed class DataConnectionsStateTests
 
         public Task<ConnectionResult<bool>> DeleteAsync(Guid id, System.Threading.CancellationToken cancellationToken = default) =>
             _inner.DeleteAsync(id, cancellationToken);
+
+        public Task<ConnectionResult<ConnectionTestOutcome>> TestDraftAsync(CreateConnectionRequest request, System.Threading.CancellationToken cancellationToken = default) =>
+            _inner.TestDraftAsync(request, cancellationToken);
+
+        public Task<ConnectionResult<ConnectionTestOutcome>> TestExistingAsync(Guid id, System.Threading.CancellationToken cancellationToken = default) =>
+            _inner.TestExistingAsync(id, cancellationToken);
+    }
+
+    private sealed class FailingDeleteStubClient : IDataConnectionClient
+    {
+        private readonly StubDataConnectionClient _inner;
+        private readonly ConnectionOperationError _error;
+
+        public FailingDeleteStubClient(DataConnectionDetail seed, ConnectionOperationError error)
+        {
+            _inner = new StubDataConnectionClient(new[] { seed });
+            _error = error;
+        }
+
+        public Task<ConnectionResult<IReadOnlyList<DataConnectionSummary>>> ListAsync(System.Threading.CancellationToken cancellationToken = default) =>
+            _inner.ListAsync(cancellationToken);
+
+        public Task<ConnectionResult<DataConnectionDetail>> GetAsync(Guid id, System.Threading.CancellationToken cancellationToken = default) =>
+            _inner.GetAsync(id, cancellationToken);
+
+        public Task<ConnectionResult<DataConnectionSummary>> CreateAsync(CreateConnectionRequest request, System.Threading.CancellationToken cancellationToken = default) =>
+            _inner.CreateAsync(request, cancellationToken);
+
+        public Task<ConnectionResult<DataConnectionSummary>> UpdateAsync(Guid id, UpdateConnectionRequest request, System.Threading.CancellationToken cancellationToken = default) =>
+            _inner.UpdateAsync(id, request, cancellationToken);
+
+        public Task<ConnectionResult<DataConnectionSummary>> DisableAsync(Guid id, System.Threading.CancellationToken cancellationToken = default) =>
+            _inner.DisableAsync(id, cancellationToken);
+
+        public Task<ConnectionResult<DataConnectionSummary>> EnableAsync(Guid id, System.Threading.CancellationToken cancellationToken = default) =>
+            _inner.EnableAsync(id, cancellationToken);
+
+        public Task<ConnectionResult<bool>> DeleteAsync(Guid id, System.Threading.CancellationToken cancellationToken = default) =>
+            Task.FromResult(ConnectionResult<bool>.Fail(_error));
 
         public Task<ConnectionResult<ConnectionTestOutcome>> TestDraftAsync(CreateConnectionRequest request, System.Threading.CancellationToken cancellationToken = default) =>
             _inner.TestDraftAsync(request, cancellationToken);

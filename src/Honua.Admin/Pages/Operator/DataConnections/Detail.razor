@@ -200,8 +200,14 @@
         var result = await dialog.Result;
         if (result is { Canceled: false })
         {
-            await State.DeleteAsync(Id);
-            Nav.NavigateTo("/operator/data-connections");
+            var deleteResult = await State.DeleteAsync(Id);
+            if (deleteResult.IsSuccess)
+            {
+                Nav.NavigateTo("/operator/data-connections");
+            }
+            // On failure, stay on the detail page so the existing detail-error
+            // alert renders State.LastError. Index.RefreshListAsync would clear
+            // it; the operator must be able to act on Conflict / NotFound here.
         }
     }
 
