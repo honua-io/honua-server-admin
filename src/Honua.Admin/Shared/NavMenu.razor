@@ -4,15 +4,7 @@
     <MudNavLink Href="/" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Dashboard">
         Dashboard
     </MudNavLink>
-    <MudNavLink Href="/forms" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Assignment">
-        Forms
-    </MudNavLink>
-    <MudNavLink Href="/layers" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Layers">
-        Layers
-    </MudNavLink>
-    <MudNavLink Href="/services" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.CloudQueue">
-        Services
-    </MudNavLink>
+
     <MudNavLink Href="/operator/spec" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Edit">
         Spec workspace
     </MudNavLink>
@@ -25,7 +17,38 @@
     <MudNavLink Href="/operator/data-connections" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Storage">
         Data connections
     </MudNavLink>
-    <MudNavGroup Title="Identity" Icon="@Icons.Material.Filled.VpnKey" Expanded="true">
+
+    <MudNavGroup Title="Operations" Icon="@Icons.Material.Filled.Settings" Expanded="true">
+        <MudNavLink Href="/connections" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Cable">
+            Connections
+        </MudNavLink>
+        <MudNavLink Href="/server-info" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Info">
+            Server info
+        </MudNavLink>
+    </MudNavGroup>
+
+    <MudNavGroup Title="Catalog" Icon="@Icons.Material.Filled.Layers" Expanded="false">
+        <MudNavLink Href="/layers" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Layers">
+            Layers
+        </MudNavLink>
+        <MudNavLink Href="/services" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.CloudQueue">
+            Services
+        </MudNavLink>
+    </MudNavGroup>
+
+    <MudNavGroup Title="Deploy" Icon="@Icons.Material.Filled.RocketLaunch" Expanded="false">
+        <MudNavLink Href="/deploy" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.PlayCircle">
+            Deploy control
+        </MudNavLink>
+    </MudNavGroup>
+
+    <MudNavGroup Title="Observability" Icon="@Icons.Material.Filled.MonitorHeart" Expanded="false">
+        <MudNavLink Href="/observability" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.Insights">
+            Errors / telemetry
+        </MudNavLink>
+    </MudNavGroup>
+
+    <MudNavGroup Title="Identity" Icon="@Icons.Material.Filled.VpnKey" Expanded="false">
         <MudNavLink Href="/admin/identity/providers" Match="NavLinkMatch.Prefix" Icon="@Icons.Material.Filled.AccountCircle">
             Providers
         </MudNavLink>

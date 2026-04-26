@@ -1,0 +1,80 @@
+@page "/layers/{LayerId:int}/style"
+@using System.Text.Json
+@using MudBlazor
+@inherits Honua.Admin.Shared.AdminPageBase
+
+<PageTitle>Layer style - Honua Server Admin</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="mt-4">
+    <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Class="mb-4">
+        <MudText Typo="Typo.h4">
+            <MudIcon Icon="@Icons.Material.Filled.Palette" Class="mr-2" />
+            Layer @LayerId style
+        </MudText>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Save" OnClick="SaveAsync" Disabled="IsLoading">
+            Save style
+        </MudButton>
+    </MudStack>
+
+    <ErrorBanner Message="@ErrorMessage" />
+
+    @if (IsLoading && string.IsNullOrWhiteSpace(_mapLibreStyleText))
+    {
+        <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="320px" Animation="Animation.Wave" />
+    }
+    else
+    {
+        <MudGrid>
+            <MudItem xs="12" md="6">
+                <MudTextField @bind-Value="_mapLibreStyleText" Label="MapLibre style JSON" Variant="Variant.Outlined" Lines="18" />
+            </MudItem>
+            <MudItem xs="12" md="6">
+                <MudTextField @bind-Value="_drawingInfoText" Label="GeoServices drawingInfo JSON" Variant="Variant.Outlined" Lines="18" />
+            </MudItem>
+        </MudGrid>
+    }
+</MudContainer>
+
+@code {
+    [Parameter] public int LayerId { get; set; }
+
+    private string _mapLibreStyleText = string.Empty;
+    private string _drawingInfoText = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        Telemetry.PageNavigated($"/layers/{LayerId}/style", principalId: null);
+        await ExecuteAsync(async () =>
+        {
+            var style = await AdminClient.GetLayerStyleAsync(LayerId, CancellationToken.None);
+            _mapLibreStyleText = style.MapLibreStyleText;
+            _drawingInfoText = style.DrawingInfoText;
+        });
+    }
+
+    private async Task SaveAsync()
+    {
+        await ExecuteAsync(async () =>
+        {
+            var updated = await AdminClient.UpdateLayerStyleAsync(LayerId, new LayerStyleUpdateRequest
+            {
+                MapLibreStyle = ParseOptionalJson(_mapLibreStyleText),
+                DrawingInfo = ParseOptionalJson(_drawingInfoText),
+            }, CancellationToken.None);
+            _mapLibreStyleText = updated.MapLibreStyleText;
+            _drawingInfoText = updated.DrawingInfoText;
+            Snackbar.Add("Layer style updated.", Severity.Success);
+        });
+    }
+
+    private static JsonElement? ParseOptionalJson(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return null;
+        }
+
+        using var document = JsonDocument.Parse(value);
+        return document.RootElement.Clone();
+    }
+}

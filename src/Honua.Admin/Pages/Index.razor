@@ -1,5 +1,6 @@
 @page "/"
 @using MudBlazor
+@inherits Honua.Admin.Shared.AdminPageBase
 
 <PageTitle>Honua Server Admin</PageTitle>
 
@@ -9,66 +10,130 @@
         Honua Server Administration
     </MudText>
 
-    <MudText Typo="Typo.body1" Class="mb-4">
-        Welcome to the Honua Server admin interface. Manage your geospatial services, layers, and data collection forms.
-    </MudText>
+    <ErrorBanner Message="@ErrorMessage" />
 
+    @if (IsLoading)
+    {
+        <MudGrid>
+            @for (var i = 0; i < 4; i++)
+            {
+                <MudItem xs="12" sm="6" md="3">
+                    <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="120px" Animation="Animation.Wave" />
+                </MudItem>
+            }
+        </MudGrid>
+    }
+    else if (_overview is not null)
+    {
+        <MudGrid>
+            <MudItem xs="12" sm="6" md="3">
+                <MudCard Elevation="2">
+                    <MudCardContent>
+                        <MudText Typo="Typo.overline">Edition</MudText>
+                        <MudText Typo="Typo.h4">@_overview.CurrentEdition</MudText>
+                    </MudCardContent>
+                </MudCard>
+            </MudItem>
+            <MudItem xs="12" sm="6" md="3">
+                <MudCard Elevation="2">
+                    <MudCardContent>
+                        <MudText Typo="Typo.overline">Enabled features</MudText>
+                        <MudText Typo="Typo.h4">@_overview.EnabledCount</MudText>
+                    </MudCardContent>
+                </MudCard>
+            </MudItem>
+            <MudItem xs="12" sm="6" md="3">
+                <MudCard Elevation="2">
+                    <MudCardContent>
+                        <MudText Typo="Typo.overline">Gated features</MudText>
+                        <MudText Typo="Typo.h4">@_overview.DisabledCount</MudText>
+                    </MudCardContent>
+                </MudCard>
+            </MudItem>
+            <MudItem xs="12" sm="6" md="3">
+                <MudCard Elevation="2">
+                    <MudCardContent>
+                        <MudText Typo="Typo.overline">Total features</MudText>
+                        <MudText Typo="Typo.h4">@_overview.Features.Count</MudText>
+                    </MudCardContent>
+                </MudCard>
+            </MudItem>
+        </MudGrid>
+
+        <MudText Typo="Typo.h5" Class="mt-8 mb-2">Platform features</MudText>
+        <MudTable Items="_overview.Features" Dense="true" Hover="true" Elevation="1" aria-label="Feature overview">
+            <HeaderContent>
+                <MudTh>Feature</MudTh>
+                <MudTh>Category</MudTh>
+                <MudTh>Minimum edition</MudTh>
+                <MudTh>Status</MudTh>
+            </HeaderContent>
+            <RowTemplate>
+                <MudTd DataLabel="Feature">
+                    <MudText Typo="Typo.body2">@context.DisplayName</MudText>
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">@context.Description</MudText>
+                </MudTd>
+                <MudTd DataLabel="Category">@context.Category</MudTd>
+                <MudTd DataLabel="Minimum edition">@context.MinimumEdition</MudTd>
+                <MudTd DataLabel="Status">
+                    <MudChip T="string"
+                             Size="Size.Small"
+                             Color="@(context.IsEnabled ? Color.Success : Color.Warning)"
+                             Variant="Variant.Outlined">
+                        @(context.IsEnabled ? "Enabled" : context.UpgradeMessage ?? "Gated")
+                    </MudChip>
+                </MudTd>
+            </RowTemplate>
+        </MudTable>
+    }
+
+    <MudText Typo="Typo.h5" Class="mt-8 mb-2">Quick links</MudText>
     <MudGrid>
         <MudItem xs="12" sm="6" md="4">
-            <MudCard Elevation="2">
+            <MudCard Elevation="1">
                 <MudCardContent>
-                    <MudText Typo="Typo.h6">
-                        <MudIcon Icon="@Icons.Material.Filled.Assignment" Class="mr-2" />
-                        Forms
-                    </MudText>
-                    <MudText Typo="Typo.body2">
-                        Create and manage OpenRosa-compatible data collection forms for mobile teams.
-                    </MudText>
+                    <MudText Typo="Typo.h6">Spec workspace</MudText>
+                    <MudText Typo="Typo.body2">Walking-skeleton authoring for analyses, maps and apps.</MudText>
                 </MudCardContent>
                 <MudCardActions>
-                    <MudButton Variant="Variant.Text" Color="Color.Primary" Href="/forms">
-                        Manage Forms
-                    </MudButton>
+                    <MudButton Variant="Variant.Text" Color="Color.Primary" Href="/operator/spec">Open</MudButton>
                 </MudCardActions>
             </MudCard>
         </MudItem>
-
         <MudItem xs="12" sm="6" md="4">
-            <MudCard Elevation="2">
+            <MudCard Elevation="1">
                 <MudCardContent>
-                    <MudText Typo="Typo.h6">
-                        <MudIcon Icon="@Icons.Material.Filled.Layers" Class="mr-2" />
-                        Layers
-                    </MudText>
-                    <MudText Typo="Typo.body2">
-                        Configure feature layers and manage spatial data schemas.
-                    </MudText>
+                    <MudText Typo="Typo.h6">Server info</MudText>
+                    <MudText Typo="Typo.body2">Version, environment, capabilities and configuration audit.</MudText>
                 </MudCardContent>
                 <MudCardActions>
-                    <MudButton Variant="Variant.Text" Color="Color.Primary" Href="/layers">
-                        View Layers
-                    </MudButton>
+                    <MudButton Variant="Variant.Text" Color="Color.Primary" Href="/server-info">Inspect</MudButton>
                 </MudCardActions>
             </MudCard>
         </MudItem>
-
         <MudItem xs="12" sm="6" md="4">
-            <MudCard Elevation="2">
+            <MudCard Elevation="1">
                 <MudCardContent>
-                    <MudText Typo="Typo.h6">
-                        <MudIcon Icon="@Icons.Material.Filled.CloudQueue" Class="mr-2" />
-                        Services
-                    </MudText>
-                    <MudText Typo="Typo.body2">
-                        Manage map services, endpoints, and API configurations.
-                    </MudText>
+                    <MudText Typo="Typo.h6">Connections</MudText>
+                    <MudText Typo="Typo.body2">Database connections, secrets and connection health.</MudText>
                 </MudCardContent>
                 <MudCardActions>
-                    <MudButton Variant="Variant.Text" Color="Color.Primary" Href="/services">
-                        Configure Services
-                    </MudButton>
+                    <MudButton Variant="Variant.Text" Color="Color.Primary" Href="/connections">Manage</MudButton>
                 </MudCardActions>
             </MudCard>
         </MudItem>
     </MudGrid>
 </MudContainer>
+
+@code {
+    private FeatureOverview? _overview;
+
+    protected override async Task OnInitializedAsync()
+    {
+        Telemetry.PageNavigated("/", principalId: null);
+        await ExecuteAsync(async () =>
+        {
+            _overview = await AdminClient.GetFeatureOverviewAsync(CancellationToken.None);
+        });
+    }
+}

@@ -1,0 +1,225 @@
+@page "/services/{ServiceName}/settings"
+@using MudBlazor
+@inherits Honua.Admin.Shared.AdminPageBase
+
+<PageTitle>Service settings - Honua Server Admin</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="mt-4">
+    <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-4">
+        <MudIconButton Icon="@Icons.Material.Filled.ArrowBack" OnClick="@(() => Navigation.NavigateTo("/services"))" />
+        <MudText Typo="Typo.h4">@ServiceName settings</MudText>
+    </MudStack>
+
+    <ErrorBanner Message="@ErrorMessage" />
+
+    @if (IsLoading && _settings is null)
+    {
+        <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="360px" Animation="Animation.Wave" />
+    }
+    else if (_settings is not null)
+    {
+        <MudTabs Elevation="1" Rounded="true" PanelClass="pa-4">
+            <MudTabPanel Text="Protocols" Icon="@Icons.Material.Filled.SettingsEthernet">
+                <MudTextField @bind-Value="_protocolsText" Label="Enabled protocols" HelperText="Comma-separated protocol names" Variant="Variant.Outlined" />
+                <MudButton Class="mt-3" Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Save" OnClick="SaveProtocolsAsync" Disabled="IsLoading">
+                    Save protocols
+                </MudButton>
+                <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mt-3">
+                    Available: @string.Join(", ", _settings.AvailableProtocols)
+                </MudText>
+            </MudTabPanel>
+
+            <MudTabPanel Text="Access" Icon="@Icons.Material.Filled.Lock">
+                <MudGrid>
+                    <MudItem xs="12" sm="6">
+                        <MudCheckBox T="bool" @bind-Value="_allowAnonymous" Label="Allow anonymous read" />
+                    </MudItem>
+                    <MudItem xs="12" sm="6">
+                        <MudCheckBox T="bool" @bind-Value="_allowAnonymousWrite" Label="Allow anonymous write" />
+                    </MudItem>
+                    <MudItem xs="12" sm="6">
+                        <MudTextField @bind-Value="_allowedRolesText" Label="Allowed roles" Variant="Variant.Outlined" />
+                    </MudItem>
+                    <MudItem xs="12" sm="6">
+                        <MudTextField @bind-Value="_allowedWriteRolesText" Label="Allowed write roles" Variant="Variant.Outlined" />
+                    </MudItem>
+                </MudGrid>
+                <MudButton Class="mt-3" Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Save" OnClick="SaveAccessAsync" Disabled="IsLoading">
+                    Save access
+                </MudButton>
+            </MudTabPanel>
+
+            <MudTabPanel Text="MapServer" Icon="@Icons.Material.Filled.Map">
+                <MudGrid>
+                    <MudItem xs="12" sm="3"><MudNumericField T="int?" @bind-Value="_maxImageWidth" Label="Max width" Variant="Variant.Outlined" /></MudItem>
+                    <MudItem xs="12" sm="3"><MudNumericField T="int?" @bind-Value="_maxImageHeight" Label="Max height" Variant="Variant.Outlined" /></MudItem>
+                    <MudItem xs="12" sm="3"><MudNumericField T="int?" @bind-Value="_defaultImageWidth" Label="Default width" Variant="Variant.Outlined" /></MudItem>
+                    <MudItem xs="12" sm="3"><MudNumericField T="int?" @bind-Value="_defaultImageHeight" Label="Default height" Variant="Variant.Outlined" /></MudItem>
+                    <MudItem xs="12" sm="3"><MudNumericField T="int?" @bind-Value="_defaultDpi" Label="DPI" Variant="Variant.Outlined" /></MudItem>
+                    <MudItem xs="12" sm="3"><MudTextField @bind-Value="_defaultFormat" Label="Format" Variant="Variant.Outlined" /></MudItem>
+                    <MudItem xs="12" sm="3"><MudCheckBox T="bool" @bind-Value="_defaultTransparent" Label="Transparent" /></MudItem>
+                    <MudItem xs="12" sm="3"><MudNumericField T="int?" @bind-Value="_maxFeaturesPerLayer" Label="Max features" Variant="Variant.Outlined" /></MudItem>
+                </MudGrid>
+                <MudButton Class="mt-3" Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Save" OnClick="SaveMapServerAsync" Disabled="IsLoading">
+                    Save MapServer
+                </MudButton>
+            </MudTabPanel>
+
+            <MudTabPanel Text="Time" Icon="@Icons.Material.Filled.Schedule">
+                <MudGrid>
+                    <MudItem xs="12" sm="4"><MudTextField @bind-Value="_startTimeField" Label="Start field" Variant="Variant.Outlined" /></MudItem>
+                    <MudItem xs="12" sm="4"><MudTextField @bind-Value="_endTimeField" Label="End field" Variant="Variant.Outlined" /></MudItem>
+                    <MudItem xs="12" sm="4"><MudTextField @bind-Value="_trackIdField" Label="Track field" Variant="Variant.Outlined" /></MudItem>
+                </MudGrid>
+                <MudButton Class="mt-3" Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Save" OnClick="SaveTimeAsync" Disabled="IsLoading">
+                    Save time
+                </MudButton>
+            </MudTabPanel>
+
+            <MudTabPanel Text="Layer metadata" Icon="@Icons.Material.Filled.Layers">
+                <MudGrid>
+                    <MudItem xs="12" sm="4"><MudNumericField T="int" @bind-Value="_layerId" Label="Layer ID" Variant="Variant.Outlined" /></MudItem>
+                    <MudItem xs="12" sm="4"><MudTextField @bind-Value="_layerStartTimeField" Label="Layer start field" Variant="Variant.Outlined" /></MudItem>
+                    <MudItem xs="12" sm="4"><MudTextField @bind-Value="_layerEndTimeField" Label="Layer end field" Variant="Variant.Outlined" /></MudItem>
+                </MudGrid>
+                <MudButton Class="mt-3" Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Save" OnClick="SaveLayerMetadataAsync" Disabled="IsLoading">
+                    Save layer metadata
+                </MudButton>
+            </MudTabPanel>
+        </MudTabs>
+    }
+</MudContainer>
+
+@code {
+    [Parameter] public string ServiceName { get; set; } = string.Empty;
+
+    private ServiceSettings? _settings;
+    private string _protocolsText = string.Empty;
+    private bool _allowAnonymous;
+    private bool _allowAnonymousWrite;
+    private string? _allowedRolesText;
+    private string? _allowedWriteRolesText;
+    private int? _maxImageWidth;
+    private int? _maxImageHeight;
+    private int? _defaultImageWidth;
+    private int? _defaultImageHeight;
+    private int? _defaultDpi;
+    private string? _defaultFormat;
+    private bool _defaultTransparent;
+    private int? _maxFeaturesPerLayer;
+    private string? _startTimeField;
+    private string? _endTimeField;
+    private string? _trackIdField;
+    private int _layerId = 1;
+    private string? _layerStartTimeField;
+    private string? _layerEndTimeField;
+
+    protected override async Task OnInitializedAsync()
+    {
+        Telemetry.PageNavigated($"/services/{ServiceName}/settings", principalId: null);
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        await ExecuteAsync(async () =>
+        {
+            _settings = await AdminClient.GetServiceSettingsAsync(ServiceName, CancellationToken.None);
+            HydrateFields();
+        });
+    }
+
+    private void HydrateFields()
+    {
+        if (_settings is null) return;
+        _protocolsText = string.Join(", ", _settings.EnabledProtocols);
+        _allowAnonymous = _settings.AccessPolicy?.AllowAnonymous ?? false;
+        _allowAnonymousWrite = _settings.AccessPolicy?.AllowAnonymousWrite ?? false;
+        _allowedRolesText = string.Join(", ", _settings.AccessPolicy?.AllowedRoles ?? Array.Empty<string>());
+        _allowedWriteRolesText = string.Join(", ", _settings.AccessPolicy?.AllowedWriteRoles ?? Array.Empty<string>());
+        _maxImageWidth = _settings.MapServer.MaxImageWidth;
+        _maxImageHeight = _settings.MapServer.MaxImageHeight;
+        _defaultImageWidth = _settings.MapServer.DefaultImageWidth;
+        _defaultImageHeight = _settings.MapServer.DefaultImageHeight;
+        _defaultDpi = _settings.MapServer.DefaultDpi;
+        _defaultFormat = _settings.MapServer.DefaultFormat;
+        _defaultTransparent = _settings.MapServer.DefaultTransparent ?? false;
+        _maxFeaturesPerLayer = _settings.MapServer.MaxFeaturesPerLayer;
+        _startTimeField = _settings.TimeInfo?.StartTimeField;
+        _endTimeField = _settings.TimeInfo?.EndTimeField;
+        _trackIdField = _settings.TimeInfo?.TrackIdField;
+    }
+
+    private async Task SaveProtocolsAsync()
+    {
+        await ExecuteAsync(async () =>
+        {
+            _settings = await AdminClient.UpdateServiceProtocolsAsync(ServiceName, new UpdateProtocolsRequest { EnabledProtocols = Csv(_protocolsText) }, CancellationToken.None);
+            HydrateFields();
+            Snackbar.Add("Protocols updated.", Severity.Success);
+        });
+    }
+
+    private async Task SaveAccessAsync()
+    {
+        await ExecuteAsync(async () =>
+        {
+            _settings = await AdminClient.UpdateServiceAccessPolicyAsync(ServiceName, new AccessPolicySettings
+            {
+                AllowAnonymous = _allowAnonymous,
+                AllowAnonymousWrite = _allowAnonymousWrite,
+                AllowedRoles = Csv(_allowedRolesText),
+                AllowedWriteRoles = Csv(_allowedWriteRolesText),
+            }, CancellationToken.None);
+            HydrateFields();
+            Snackbar.Add("Access policy updated.", Severity.Success);
+        });
+    }
+
+    private async Task SaveMapServerAsync()
+    {
+        await ExecuteAsync(async () =>
+        {
+            _settings = await AdminClient.UpdateServiceMapServerAsync(ServiceName, new MapServerSettings
+            {
+                MaxImageWidth = _maxImageWidth,
+                MaxImageHeight = _maxImageHeight,
+                DefaultImageWidth = _defaultImageWidth,
+                DefaultImageHeight = _defaultImageHeight,
+                DefaultDpi = _defaultDpi,
+                DefaultFormat = _defaultFormat,
+                DefaultTransparent = _defaultTransparent,
+                MaxFeaturesPerLayer = _maxFeaturesPerLayer,
+            }, CancellationToken.None);
+            HydrateFields();
+            Snackbar.Add("MapServer settings updated.", Severity.Success);
+        });
+    }
+
+    private async Task SaveTimeAsync()
+    {
+        await ExecuteAsync(async () =>
+        {
+            _settings = await AdminClient.UpdateServiceTimeInfoAsync(ServiceName, new TimeInfoSettings { StartTimeField = _startTimeField, EndTimeField = _endTimeField, TrackIdField = _trackIdField }, CancellationToken.None);
+            HydrateFields();
+            Snackbar.Add("Time metadata updated.", Severity.Success);
+        });
+    }
+
+    private async Task SaveLayerMetadataAsync()
+    {
+        await ExecuteAsync(async () =>
+        {
+            var response = await AdminClient.UpdateServiceLayerMetadataAsync(ServiceName, _layerId, new UpdateLayerMetadataRequest
+            {
+                TimeInfo = new TimeInfoSettings { StartTimeField = _layerStartTimeField, EndTimeField = _layerEndTimeField },
+            }, CancellationToken.None);
+            Snackbar.Add($"Layer metadata updated for {response.LayerName}.", Severity.Success);
+        });
+    }
+
+    private static IReadOnlyList<string> Csv(string? value)
+        => string.IsNullOrWhiteSpace(value)
+            ? Array.Empty<string>()
+            : value.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
+}

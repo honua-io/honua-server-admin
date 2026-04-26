@@ -1,0 +1,135 @@
+@page "/observability"
+@using MudBlazor
+@inherits Honua.Admin.Shared.AdminPageBase
+
+<PageTitle>Observability - Honua Server Admin</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="mt-4">
+    <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Class="mb-4">
+        <MudText Typo="Typo.h4">
+            <MudIcon Icon="@Icons.Material.Filled.MonitorHeart" Class="mr-2" />
+            Observability
+        </MudText>
+        <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Refresh" OnClick="LoadAsync" Disabled="IsLoading">
+            Refresh
+        </MudButton>
+    </MudStack>
+
+    <ErrorBanner Message="@ErrorMessage" />
+
+    @if (IsLoading && _errors is null)
+    {
+        <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="260px" Animation="Animation.Wave" />
+    }
+    else
+    {
+        <MudGrid>
+            <MudItem xs="12" md="4">
+                <MudCard Elevation="1">
+                    <MudCardContent>
+                        <MudText Typo="Typo.overline">Tracing</MudText>
+                        <MudText Typo="Typo.h6">@(_telemetry?.TracingEnabled == true ? "Enabled" : "Disabled")</MudText>
+                        <MudText Typo="Typo.caption">@(_telemetry?.OtlpEndpoint ?? "No OTLP endpoint")</MudText>
+                    </MudCardContent>
+                </MudCard>
+            </MudItem>
+            <MudItem xs="12" md="4">
+                <MudCard Elevation="1">
+                    <MudCardContent>
+                        <MudText Typo="Typo.overline">Migrations</MudText>
+                        <MudText Typo="Typo.h6">@_migrations?.Status</MudText>
+                        <MudText Typo="Typo.caption">@(_migrations?.Message ?? "No message")</MudText>
+                    </MudCardContent>
+                </MudCard>
+            </MudItem>
+            <MudItem xs="12" md="4">
+                <MudCard Elevation="1">
+                    <MudCardContent>
+                        <MudText Typo="Typo.overline">Recent errors</MudText>
+                        <MudText Typo="Typo.h6">@(_errors?.Errors.Count ?? 0)</MudText>
+                        <MudText Typo="Typo.caption">@_errors?.InstanceId</MudText>
+                    </MudCardContent>
+                </MudCard>
+            </MudItem>
+        </MudGrid>
+
+        <MudTabs Class="mt-6" Elevation="1" Rounded="true" PanelClass="pa-4">
+            <MudTabPanel Text="Errors" Icon="@Icons.Material.Filled.ErrorOutline">
+                @if (_errors?.Errors.Count > 0)
+                {
+                    <MudTable Items="_errors.Errors" Dense="true" Hover="true" aria-label="Recent errors">
+                        <HeaderContent>
+                            <MudTh>Time</MudTh>
+                            <MudTh>Status</MudTh>
+                            <MudTh>Path</MudTh>
+                            <MudTh>Correlation</MudTh>
+                            <MudTh>Message</MudTh>
+                        </HeaderContent>
+                        <RowTemplate>
+                            <MudTd>@context.Timestamp.ToString("u")</MudTd>
+                            <MudTd>@context.StatusCode</MudTd>
+                            <MudTd>@context.Path</MudTd>
+                            <MudTd>@context.CorrelationId</MudTd>
+                            <MudTd>@context.Message</MudTd>
+                        </RowTemplate>
+                    </MudTable>
+                }
+                else
+                {
+                    <EmptyState Icon="@Icons.Material.Filled.CheckCircle" Title="No recent errors" />
+                }
+            </MudTabPanel>
+
+            <MudTabPanel Text="Telemetry" Icon="@Icons.Material.Filled.Insights">
+                <MudSimpleTable Dense="true" Hover="true">
+                    <tbody>
+                        <tr><td>Tracing enabled</td><td>@(_telemetry?.TracingEnabled == true ? "yes" : "no")</td></tr>
+                        <tr><td>OTLP configured</td><td>@(_telemetry?.OtlpConfigured == true ? "yes" : "no")</td></tr>
+                        <tr><td>OTLP endpoint</td><td>@(_telemetry?.OtlpEndpoint ?? "none")</td></tr>
+                    </tbody>
+                </MudSimpleTable>
+            </MudTabPanel>
+
+            <MudTabPanel Text="Migrations" Icon="@Icons.Material.Filled.Storage">
+                @if (_migrations is not null)
+                {
+                    <MudSimpleTable Dense="true" Hover="true">
+                        <tbody>
+                            <tr><td>Status</td><td>@_migrations.Status</td></tr>
+                            <tr><td>Ready</td><td>@(_migrations.IsReady ? "yes" : "no")</td></tr>
+                            <tr><td>Plan available</td><td>@(_migrations.PlanAvailable ? "yes" : "no")</td></tr>
+                            <tr><td>Upgrade required</td><td>@(_migrations.UpgradeRequired ? "yes" : "no")</td></tr>
+                            <tr><td>Plan error</td><td>@(_migrations.PlanError ?? "none")</td></tr>
+                        </tbody>
+                    </MudSimpleTable>
+                    @foreach (var script in _migrations.PendingScripts)
+                    {
+                        <MudAlert Severity="Severity.Info" Dense="true" Class="mt-2">@script</MudAlert>
+                    }
+                }
+            </MudTabPanel>
+        </MudTabs>
+    }
+</MudContainer>
+
+@code {
+    private RecentErrorsResponse? _errors;
+    private ObservabilityStatusResponse? _telemetry;
+    private MigrationObservabilityResponse? _migrations;
+
+    protected override async Task OnInitializedAsync()
+    {
+        Telemetry.PageNavigated("/observability", principalId: null);
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        await ExecuteAsync(async () =>
+        {
+            _errors = await AdminClient.GetRecentErrorsAsync(CancellationToken.None);
+            _telemetry = await AdminClient.GetTelemetryStatusAsync(CancellationToken.None);
+            _migrations = await AdminClient.GetMigrationStatusAsync(CancellationToken.None);
+        });
+    }
+}

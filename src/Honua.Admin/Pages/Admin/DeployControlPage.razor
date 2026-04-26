@@ -1,0 +1,193 @@
+@page "/deploy"
+@using MudBlazor
+@inherits Honua.Admin.Shared.AdminPageBase
+
+<PageTitle>Deploy control - Honua Server Admin</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="mt-4">
+    <MudText Typo="Typo.h4" Class="mb-4">
+        <MudIcon Icon="@Icons.Material.Filled.RocketLaunch" Class="mr-2" />
+        Deploy control
+    </MudText>
+
+    <ErrorBanner Message="@ErrorMessage" />
+
+    <MudTabs Elevation="1" Rounded="true" PanelClass="pa-4">
+        <MudTabPanel Text="Preflight" Icon="@Icons.Material.Filled.Checklist">
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.FlightTakeoff" OnClick="RunPreflightAsync" Disabled="IsLoading">
+                Run preflight
+            </MudButton>
+            @if (_preflight is not null)
+            {
+                <MudAlert Severity="@(_preflight.ReadyForCoordinatedDeploy ? Severity.Success : Severity.Warning)" Class="mt-4">
+                    @_preflight.Message
+                </MudAlert>
+                <MudSimpleTable Dense="true" Hover="true" Class="mt-3">
+                    <tbody>
+                        <tr><td>Status</td><td>@_preflight.Status</td></tr>
+                        <tr><td>Environment</td><td>@_preflight.Environment</td></tr>
+                        <tr><td>Deployment mode</td><td>@_preflight.DeploymentMode</td></tr>
+                        <tr><td>Instance</td><td>@_preflight.InstanceName</td></tr>
+                    </tbody>
+                </MudSimpleTable>
+            }
+        </MudTabPanel>
+
+        <MudTabPanel Text="Plan" Icon="@Icons.Material.Filled.ListAlt">
+            <MudGrid>
+                <MudItem xs="12" sm="4">
+                    <MudTextField @bind-Value="_targetId" Label="Target ID" Variant="Variant.Outlined" />
+                </MudItem>
+                <MudItem xs="12" sm="4">
+                    <MudTextField @bind-Value="_currentRevision" Label="Current revision" Variant="Variant.Outlined" />
+                </MudItem>
+                <MudItem xs="12" sm="4">
+                    <MudTextField @bind-Value="_desiredRevision" Label="Desired revision" Variant="Variant.Outlined" />
+                </MudItem>
+            </MudGrid>
+            <MudStack Row="true" Spacing="1" Class="mt-3">
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.PlaylistAdd" OnClick="PlanAsync" Disabled="IsLoading">
+                    Create plan
+                </MudButton>
+                <MudButton Variant="Variant.Filled" Color="Color.Warning" StartIcon="@Icons.Material.Filled.RocketLaunch" OnClick="CreateOperationAsync" Disabled="IsLoading">
+                    Create operation
+                </MudButton>
+            </MudStack>
+            @if (_plan is not null)
+            {
+                <MudAlert Severity="@(_plan.ReadyToSubmit ? Severity.Success : Severity.Warning)" Class="mt-4">
+                    Plan for @_plan.Target.TargetName (@_plan.Target.TargetId) generated.
+                </MudAlert>
+                @foreach (var warning in _plan.Warnings)
+                {
+                    <MudAlert Severity="Severity.Warning" Dense="true" Class="mt-1">@warning</MudAlert>
+                }
+                @foreach (var blocker in _plan.BlockingReasons)
+                {
+                    <MudAlert Severity="Severity.Error" Dense="true" Class="mt-1">@blocker</MudAlert>
+                }
+            }
+        </MudTabPanel>
+
+        <MudTabPanel Text="Operations" Icon="@Icons.Material.Filled.History">
+            <MudGrid>
+                <MudItem xs="12" sm="8">
+                    <MudTextField @bind-Value="_operationId" Label="Operation ID" Variant="Variant.Outlined" />
+                </MudItem>
+                <MudItem xs="12" sm="4">
+                    <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Refresh" OnClick="RefreshOperationAsync" Disabled="IsLoading">
+                        Refresh
+                    </MudButton>
+                </MudItem>
+            </MudGrid>
+            <MudStack Row="true" Spacing="1" Class="mt-3">
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Send" OnClick="SubmitAsync" Disabled="IsLoading || string.IsNullOrWhiteSpace(_operationId)">
+                    Submit
+                </MudButton>
+                <MudButton Variant="Variant.Outlined" Color="Color.Error" StartIcon="@Icons.Material.Filled.Undo" OnClick="RollbackAsync" Disabled="IsLoading || string.IsNullOrWhiteSpace(_operationId)">
+                    Rollback
+                </MudButton>
+            </MudStack>
+            @if (_operation is not null)
+            {
+                <MudSimpleTable Dense="true" Hover="true" Class="mt-4">
+                    <tbody>
+                        <tr><td>Operation</td><td>@_operation.OperationId</td></tr>
+                        <tr><td>Status</td><td>@_operation.Status</td></tr>
+                        <tr><td>Priority</td><td>@_operation.Priority</td></tr>
+                        <tr><td>Target</td><td>@_operation.Target?.TargetName</td></tr>
+                        <tr><td>Phase</td><td>@_operation.CurrentPhase</td></tr>
+                    </tbody>
+                </MudSimpleTable>
+                @if (!string.IsNullOrWhiteSpace(_operation.ErrorMessage))
+                {
+                    <MudAlert Severity="Severity.Error" Class="mt-3">@_operation.ErrorMessage</MudAlert>
+                }
+            }
+        </MudTabPanel>
+    </MudTabs>
+</MudContainer>
+
+@code {
+    private DeployPreflightResult? _preflight;
+    private DeployPlan? _plan;
+    private DeployOperation? _operation;
+    private string _targetId = "honua-server";
+    private string? _currentRevision;
+    private string _desiredRevision = "latest";
+    private string? _operationId;
+
+    protected override void OnInitialized()
+    {
+        Telemetry.PageNavigated("/deploy", principalId: null);
+    }
+
+    private async Task RunPreflightAsync()
+    {
+        await ExecuteAsync(async () =>
+        {
+            _preflight = await AdminClient.GetDeployPreflightAsync(CancellationToken.None);
+        });
+    }
+
+    private async Task PlanAsync()
+    {
+        await ExecuteAsync(async () =>
+        {
+            _plan = await AdminClient.PlanDeployAsync(BuildPlanRequest(), CancellationToken.None);
+        });
+    }
+
+    private async Task CreateOperationAsync()
+    {
+        await ExecuteAsync(async () =>
+        {
+            _operation = await AdminClient.CreateDeployOperationAsync(new CreateDeployOperationRequest
+            {
+                TargetId = _targetId,
+                CurrentRevision = _currentRevision,
+                DesiredRevision = _desiredRevision,
+                Reason = "Created from Honua admin UI",
+                SubmitImmediately = false,
+            }, CancellationToken.None);
+            _operationId = _operation.OperationId;
+            Snackbar.Add($"Deploy operation {_operation.OperationId} created.", Severity.Success);
+        });
+    }
+
+    private async Task RefreshOperationAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_operationId)) return;
+        await ExecuteAsync(async () =>
+        {
+            _operation = await AdminClient.GetDeployOperationAsync(_operationId, CancellationToken.None);
+        });
+    }
+
+    private async Task SubmitAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_operationId)) return;
+        await ExecuteAsync(async () =>
+        {
+            Telemetry.DestructiveAction("submit-deploy", _operationId, principalId: null);
+            _operation = await AdminClient.SubmitDeployOperationAsync(_operationId, new SubmitDeployOperationRequest { Reason = "Submitted from Honua admin UI" }, CancellationToken.None);
+        });
+    }
+
+    private async Task RollbackAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_operationId)) return;
+        await ExecuteAsync(async () =>
+        {
+            Telemetry.DestructiveAction("rollback-deploy", _operationId, principalId: null);
+            _operation = await AdminClient.RollbackDeployOperationAsync(_operationId, new RollbackDeployOperationRequest { Reason = "Rollback requested from Honua admin UI" }, CancellationToken.None);
+        });
+    }
+
+    private DeployPlanRequest BuildPlanRequest() => new()
+    {
+        TargetId = _targetId,
+        CurrentRevision = _currentRevision,
+        DesiredRevision = _desiredRevision,
+    };
+}

@@ -1,0 +1,143 @@
+@page "/connections/{ConnectionId}/publish"
+@using MudBlazor
+@inherits Honua.Admin.Shared.AdminPageBase
+
+<PageTitle>Publish layer - Honua Server Admin</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Medium" Class="mt-4">
+    <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-4">
+        <MudIconButton Icon="@Icons.Material.Filled.ArrowBack" OnClick="@(() => Navigation.NavigateTo($"/connections/{ConnectionId}"))" />
+        <MudText Typo="Typo.h4">Publish layer</MudText>
+    </MudStack>
+
+    <ErrorBanner Message="@ErrorMessage" />
+
+    <MudCard Elevation="1">
+        <MudCardContent>
+            <MudStack Row="true" Justify="Justify.FlexEnd" Class="mb-3">
+                <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Search" OnClick="DiscoverAsync" Disabled="IsLoading">
+                    Discover tables
+                </MudButton>
+            </MudStack>
+            <MudGrid>
+                <MudItem xs="12" sm="6">
+                    <MudTextField @bind-Value="_schema" Label="Schema" Required="true" Variant="Variant.Outlined" />
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <MudTextField @bind-Value="_table" Label="Table" Required="true" Variant="Variant.Outlined" />
+                </MudItem>
+                <MudItem xs="12">
+                    <MudTextField @bind-Value="_layerName" Label="Layer name" Required="true" Variant="Variant.Outlined" />
+                </MudItem>
+                <MudItem xs="12">
+                    <MudTextField @bind-Value="_description" Label="Description" Variant="Variant.Outlined" Lines="2" />
+                </MudItem>
+                <MudItem xs="12" sm="4">
+                    <MudTextField @bind-Value="_geometryColumn" Label="Geometry column" Variant="Variant.Outlined" />
+                </MudItem>
+                <MudItem xs="12" sm="4">
+                    <MudTextField @bind-Value="_geometryType" Label="Geometry type" Variant="Variant.Outlined" />
+                </MudItem>
+                <MudItem xs="12" sm="4">
+                    <MudNumericField T="int?" @bind-Value="_srid" Label="SRID" Variant="Variant.Outlined" />
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <MudTextField @bind-Value="_primaryKey" Label="Primary key" Variant="Variant.Outlined" />
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <MudTextField @bind-Value="_serviceName" Label="Service" Placeholder="default" Variant="Variant.Outlined" />
+                </MudItem>
+                <MudItem xs="12">
+                    <MudCheckBox T="bool" @bind-Value="_enabled" Label="Enable after publishing" />
+                </MudItem>
+            </MudGrid>
+        </MudCardContent>
+        <MudCardActions>
+            <MudButton Variant="Variant.Outlined" OnClick="@(() => Navigation.NavigateTo($"/connections/{ConnectionId}"))">Cancel</MudButton>
+            <MudSpacer />
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Publish" OnClick="PublishAsync" Disabled="IsLoading">
+                Publish
+            </MudButton>
+        </MudCardActions>
+    </MudCard>
+
+    @if (_tables.Count > 0)
+    {
+        <MudText Typo="Typo.h6" Class="mt-6 mb-2">Discovered tables</MudText>
+        <MudTable Items="_tables" Dense="true" Hover="true">
+            <HeaderContent>
+                <MudTh>Source</MudTh>
+                <MudTh>Geometry</MudTh>
+                <MudTh></MudTh>
+            </HeaderContent>
+            <RowTemplate>
+                <MudTd>@($"{context.Schema}.{context.Table}")</MudTd>
+                <MudTd>@context.GeometryColumn (@context.GeometryType)</MudTd>
+                <MudTd>
+                    <MudButton Size="Size.Small" Variant="Variant.Text" OnClick="@(() => UseTable(context))">Use</MudButton>
+                </MudTd>
+            </RowTemplate>
+        </MudTable>
+    }
+</MudContainer>
+
+@code {
+    [Parameter] public string ConnectionId { get; set; } = string.Empty;
+
+    private IReadOnlyList<DiscoveredTable> _tables = Array.Empty<DiscoveredTable>();
+    private string _schema = "public";
+    private string _table = string.Empty;
+    private string _layerName = string.Empty;
+    private string? _description;
+    private string? _geometryColumn = "geom";
+    private string? _geometryType;
+    private int? _srid = 4326;
+    private string? _primaryKey;
+    private string? _serviceName = "default";
+    private bool _enabled = true;
+
+    protected override void OnInitialized()
+    {
+        Telemetry.PageNavigated($"/connections/{ConnectionId}/publish", principalId: null);
+    }
+
+    private async Task DiscoverAsync()
+    {
+        await ExecuteAsync(async () =>
+        {
+            _tables = await AdminClient.DiscoverConnectionTablesAsync(ConnectionId, CancellationToken.None);
+        });
+    }
+
+    private void UseTable(DiscoveredTable table)
+    {
+        _schema = table.Schema;
+        _table = table.Table;
+        _layerName = table.Table;
+        _geometryColumn = table.GeometryColumn;
+        _geometryType = table.GeometryType;
+        _srid = table.Srid;
+    }
+
+    private async Task PublishAsync()
+    {
+        await ExecuteAsync(async () =>
+        {
+            var layer = await AdminClient.PublishLayerAsync(ConnectionId, new PublishLayerRequest
+            {
+                Schema = _schema,
+                Table = _table,
+                LayerName = string.IsNullOrWhiteSpace(_layerName) ? _table : _layerName,
+                Description = _description,
+                GeometryColumn = _geometryColumn,
+                GeometryType = _geometryType,
+                Srid = _srid,
+                PrimaryKey = _primaryKey,
+                ServiceName = string.IsNullOrWhiteSpace(_serviceName) ? null : _serviceName,
+                Enabled = _enabled,
+            }, CancellationToken.None);
+            Snackbar.Add($"Layer '{layer.LayerName}' published.", Severity.Success);
+            Navigation.NavigateTo($"/connections/{ConnectionId}/layers");
+        });
+    }
+}

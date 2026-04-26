@@ -1,0 +1,144 @@
+@page "/connections"
+@using MudBlazor
+@inherits Honua.Admin.Shared.AdminPageBase
+
+<PageTitle>Connections — Honua Server Admin</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="mt-4">
+    <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Class="mb-4">
+        <MudText Typo="Typo.h4">
+            <MudIcon Icon="@Icons.Material.Filled.Cable" Class="mr-2" />
+            Connections
+        </MudText>
+        <MudStack Row="true" Spacing="1">
+            <MudButton StartIcon="@Icons.Material.Filled.EnhancedEncryption"
+                       Color="Color.Default"
+                       Variant="Variant.Outlined"
+                       OnClick="ValidateEncryptionAsync"
+                       Disabled="_busy"
+                       aria-label="Validate encryption">
+                Validate encryption
+            </MudButton>
+            <MudButton StartIcon="@Icons.Material.Filled.VpnKey"
+                       Color="Color.Warning"
+                       Variant="Variant.Outlined"
+                       OnClick="RotateKeyAsync"
+                       Disabled="_busy"
+                       aria-label="Rotate encryption key">
+                Rotate key
+            </MudButton>
+            <MudButton StartIcon="@Icons.Material.Filled.Add"
+                       Color="Color.Primary"
+                       Variant="Variant.Filled"
+                       Href="/connections/new"
+                       aria-label="Create connection">
+                New connection
+            </MudButton>
+        </MudStack>
+    </MudStack>
+
+    <ErrorBanner Message="@ErrorMessage" />
+
+    @if (IsLoading)
+    {
+        <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="240px" Animation="Animation.Wave" />
+    }
+    else if (_connections is null || _connections.Count == 0)
+    {
+        <EmptyState Icon="@Icons.Material.Filled.Cable"
+                    Title="No connections registered"
+                    Description="Add the first database connection to start exposing layers and services." />
+    }
+    else
+    {
+        <MudTable Items="_connections"
+                  Dense="true"
+                  Hover="true"
+                  Bordered="false"
+                  Striped="true"
+                  Elevation="1"
+                  aria-label="Connections list"
+                  RowsPerPage="50"
+                  Virtualize="true">
+            <HeaderContent>
+                <MudTh>Name</MudTh>
+                <MudTh>Provider</MudTh>
+                <MudTh>Status</MudTh>
+                <MudTh>Database</MudTh>
+                <MudTh>Storage</MudTh>
+                <MudTh></MudTh>
+            </HeaderContent>
+            <RowTemplate>
+                <MudTd DataLabel="Name">@context.Name</MudTd>
+                <MudTd DataLabel="Provider">@context.Provider</MudTd>
+                <MudTd DataLabel="Status">
+                    <MudChip T="string"
+                             Color="@StatusColor(context.Status)"
+                             Size="Size.Small"
+                             Variant="Variant.Outlined">
+                        @context.Status
+                    </MudChip>
+                </MudTd>
+                <MudTd DataLabel="Database">@($"{context.Host}:{context.Port}/{context.DatabaseName}")</MudTd>
+                <MudTd DataLabel="Storage">@context.StorageType</MudTd>
+                <MudTd>
+                    <MudButton Size="Size.Small"
+                               Variant="Variant.Text"
+                               Color="Color.Primary"
+                               Href="@($"/connections/{context.Id}")"
+                               aria-label="@($"Open {context.Name}")">
+                        Open
+                    </MudButton>
+                </MudTd>
+            </RowTemplate>
+            <PagerContent>
+                <MudTablePager />
+            </PagerContent>
+        </MudTable>
+    }
+</MudContainer>
+
+@code {
+    private IReadOnlyList<ConnectionSummary>? _connections;
+    private bool _busy;
+
+    protected override async Task OnInitializedAsync()
+    {
+        Telemetry.PageNavigated("/connections", principalId: null);
+        await ExecuteAsync(async () =>
+        {
+            _connections = await AdminClient.ListConnectionsAsync(CancellationToken.None);
+        });
+    }
+
+    private static Color StatusColor(string status) => status switch
+    {
+        "healthy" or "Healthy" => Color.Success,
+        "degraded" or "Degraded" => Color.Warning,
+        "down" or "Down" or "Unhealthy" => Color.Error,
+        _ => Color.Default,
+    };
+
+    private async Task ValidateEncryptionAsync()
+    {
+        _busy = true;
+        await ExecuteAsync(async () =>
+        {
+            var result = await AdminClient.ValidateEncryptionAsync(CancellationToken.None);
+            Snackbar.Add(result.Message, result.IsValid ? Severity.Success : Severity.Warning);
+        });
+        _busy = false;
+    }
+
+    private async Task RotateKeyAsync()
+    {
+        _busy = true;
+        await ExecuteAsync(async () =>
+        {
+            Telemetry.DestructiveAction("rotate-encryption-key", targetId: null, principalId: null);
+            var result = await AdminClient.RotateEncryptionKeyAsync(CancellationToken.None);
+            Snackbar.Add(result.Message, Severity.Success);
+        });
+        _busy = false;
+    }
+}

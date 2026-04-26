@@ -1,0 +1,129 @@
+@page "/connections/new"
+@using MudBlazor
+@inherits Honua.Admin.Shared.AdminPageBase
+
+<PageTitle>New connection - Honua Server Admin</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Medium" Class="mt-4">
+    <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-4">
+        <MudIconButton Icon="@Icons.Material.Filled.ArrowBack" OnClick="@(() => Navigation.NavigateTo("/connections"))" />
+        <MudText Typo="Typo.h4">New connection</MudText>
+    </MudStack>
+
+    <ErrorBanner Message="@ErrorMessage" />
+
+    <MudCard Elevation="1">
+        <MudCardContent>
+            <MudForm @ref="_form">
+                <MudTextField @bind-Value="_name" Label="Name" Required="true" Variant="Variant.Outlined" Class="mb-3" />
+                <MudTextField @bind-Value="_description" Label="Description" Variant="Variant.Outlined" Lines="2" Class="mb-3" />
+                <MudGrid>
+                    <MudItem xs="12" sm="8">
+                        <MudTextField @bind-Value="_host" Label="Host" Required="true" Variant="Variant.Outlined" />
+                    </MudItem>
+                    <MudItem xs="12" sm="4">
+                        <MudNumericField T="int" @bind-Value="_port" Label="Port" Min="1" Max="65535" Variant="Variant.Outlined" />
+                    </MudItem>
+                    <MudItem xs="12" sm="6">
+                        <MudTextField @bind-Value="_databaseName" Label="Database" Required="true" Variant="Variant.Outlined" />
+                    </MudItem>
+                    <MudItem xs="12" sm="6">
+                        <MudTextField @bind-Value="_username" Label="Username" Required="true" Variant="Variant.Outlined" />
+                    </MudItem>
+                    <MudItem xs="12" sm="6">
+                        <MudTextField @bind-Value="_password" Label="Password" InputType="InputType.Password" Variant="Variant.Outlined" />
+                    </MudItem>
+                    <MudItem xs="12" sm="6">
+                        <MudTextField @bind-Value="_secretReference" Label="Secret reference" Variant="Variant.Outlined" />
+                    </MudItem>
+                    <MudItem xs="12" sm="6">
+                        <MudTextField @bind-Value="_secretType" Label="Secret type" Variant="Variant.Outlined" />
+                    </MudItem>
+                    <MudItem xs="12" sm="3">
+                        <MudCheckBox T="bool" @bind-Value="_sslRequired" Label="Require SSL" />
+                    </MudItem>
+                    <MudItem xs="12" sm="3">
+                        <MudTextField @bind-Value="_sslMode" Label="SSL mode" Variant="Variant.Outlined" />
+                    </MudItem>
+                </MudGrid>
+            </MudForm>
+        </MudCardContent>
+        <MudCardActions>
+            <MudButton Variant="Variant.Outlined" OnClick="@(() => Navigation.NavigateTo("/connections"))">Cancel</MudButton>
+            <MudSpacer />
+            <MudButton Variant="Variant.Outlined" Color="Color.Info" StartIcon="@Icons.Material.Filled.NetworkCheck" OnClick="TestDraftAsync" Disabled="IsLoading">
+                Test draft
+            </MudButton>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Save" OnClick="SaveAsync" Disabled="IsLoading">
+                Save
+            </MudButton>
+        </MudCardActions>
+    </MudCard>
+
+    @if (_testResult is not null)
+    {
+        <MudAlert Severity="@(_testResult.IsHealthy ? Severity.Success : Severity.Warning)" Class="mt-4">
+            @_testResult.Message
+        </MudAlert>
+    }
+</MudContainer>
+
+@code {
+    private MudForm? _form;
+    private string _name = string.Empty;
+    private string? _description;
+    private string _host = string.Empty;
+    private int _port = 5432;
+    private string _databaseName = string.Empty;
+    private string _username = string.Empty;
+    private string? _password;
+    private string? _secretReference;
+    private string? _secretType;
+    private bool _sslRequired = true;
+    private string _sslMode = "Require";
+    private TestConnectionResult? _testResult;
+
+    private async Task TestDraftAsync()
+    {
+        await ValidateFormAsync();
+        await ExecuteAsync(async () =>
+        {
+            _testResult = await AdminClient.TestDraftConnectionAsync(BuildRequest(), CancellationToken.None);
+            Snackbar.Add(_testResult.Message, _testResult.IsHealthy ? Severity.Success : Severity.Warning);
+        });
+    }
+
+    private async Task SaveAsync()
+    {
+        await ValidateFormAsync();
+        await ExecuteAsync(async () =>
+        {
+            var created = await AdminClient.CreateConnectionAsync(BuildRequest(), CancellationToken.None);
+            Snackbar.Add($"Connection '{created.Name}' created.", Severity.Success);
+            Navigation.NavigateTo($"/connections/{created.Id}");
+        });
+    }
+
+    private async Task ValidateFormAsync()
+    {
+        if (_form is not null)
+        {
+            await _form.Validate();
+        }
+    }
+
+    private CreateConnectionRequest BuildRequest() => new()
+    {
+        Name = _name,
+        Description = _description,
+        Host = _host,
+        Port = _port,
+        DatabaseName = _databaseName,
+        Username = _username,
+        Password = string.IsNullOrWhiteSpace(_password) ? null : _password,
+        SecretReference = string.IsNullOrWhiteSpace(_secretReference) ? null : _secretReference,
+        SecretType = string.IsNullOrWhiteSpace(_secretType) ? null : _secretType,
+        SslRequired = _sslRequired,
+        SslMode = _sslMode,
+    };
+}

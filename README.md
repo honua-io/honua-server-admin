@@ -6,20 +6,44 @@ Web-based administration interface for Honua Server. Built with Blazor WebAssemb
 
 This is the official admin UI for managing Honua Server instances:
 
-- **OpenRosa Form Designer**: Create and manage data collection forms
-- **Layer Management**: Configure feature layers and spatial schemas
-- **Service Administration**: Manage map services and API endpoints
-- **Analytics Dashboard**: Monitor usage and performance
-- **Operator Spec Workspace**: Stub-backed three-pane NL + DSL + preview workspace for walking the spec workflow end to end
+- **Live operator dashboard** at `/` with tiles sourced from the
+  `Admin/FeatureOverviewEndpoints` family
+- **Connections** at `/connections`, `/connections/new`, and
+  `/connections/{id}` against `Admin/SecureConnectionEndpoints`
+- **Layer publishing and style editing** at `/layers`,
+  `/connections/{id}/layers`, `/connections/{id}/publish`, and
+  `/layers/{id}/style`
+- **Service settings** at `/services` and `/services/{name}/settings`
+- **Deploy control** at `/deploy` for preflight, plan, operation submit, and
+  rollback flows
+- **Observability** at `/observability` for recent errors, telemetry, and
+  migration status
+- **Server info** at `/server-info` from
+  `Admin/ConfigurationDiscoveryEndpoints`, `/admin/config`, and
+  `/admin/openapi.json`
+- **Operator Spec Workspace** at `/operator/spec` (stub-backed three-pane
+  NL + DSL + preview, shipped in #27)
 - **Identity Workspace**: OIDC provider lifecycle (list / create / edit / enable / delete), provider status, auth diagnostics, and API-key gap surface — see [Identity workspace](#identity-workspace) below
 - **License Workspace**: BYOL license status, entitlement inspection, expiry banding, replace flow, and operator-actionable diagnostics — see [License workspace](#license-workspace) below
 - **Spatial SQL Playground**: Browser-based PostGIS-aware SQL editor with schema autocomplete, MapLibre preview, EXPLAIN tree, and named-view save flow — see [Spatial SQL playground](#spatial-sql-playground) below
 - **Data Connections Workspace**: List / create / edit / soft-disable / delete / preflight data connections, with a structured diagnostic grid and a managed-Postgres capability matrix — see [Data connections workspace](#data-connections-workspace) below
 
+Coverage of the wider honua-server admin API is tracked in
+[`docs/admin-ui-api-coverage/`](docs/admin-ui-api-coverage/) — endpoint
+inventory, hand-edited coverage matrix, and a drift-guard test.
+
 ## Architecture
 
 - **Frontend**: Blazor WebAssembly with MudBlazor components
-- **Backend Communication**: Operator S1 uses the in-repo `ISpecWorkspaceClient` and `ISpatialSqlClient` stubs; identity (`HttpIdentityAdminClient`) and data connections (`HttpDataConnectionClient`) call the honua-server admin REST surface directly through `HttpClient` + source-generated JSON. The [honua-sdk-dotnet](https://github.com/honua-io/honua-sdk-dotnet) gRPC client and the SQL HTTP adapter swap in once the matching server endpoints land
+- **Backend Communication**: Admin routes use the in-repo
+  `IHonuaAdminClient` HTTP client with a deterministic stub fallback when
+  `HonuaServer:BaseUrl` is empty. Operator S1 uses the in-repo
+  `ISpecWorkspaceClient` and `ISpatialSqlClient` stubs; identity
+  (`HttpIdentityAdminClient`) and data connections
+  (`HttpDataConnectionClient`) call the honua-server admin REST surface
+  directly through `HttpClient` + source-generated JSON. The
+  [honua-sdk-dotnet](https://github.com/honua-io/honua-sdk-dotnet) gRPC client
+  and the SQL HTTP adapter swap in once the matching server endpoints land
 - **Deployment**: Static web app (can be hosted on CDN)
 
 ## Development
@@ -47,20 +71,21 @@ dotnet run --project src/Honua.Admin
 
 ### Configuration
 
-Configure server connection in `src/Honua.Admin/appsettings.json`:
+Configure server connection in `src/Honua.Admin/wwwroot/appsettings.json`:
 
 ```json
 {
   "HonuaServer": {
     "BaseUrl": "https://your-server.com",
-    "ApiKey": "your-api-key"
+    "ApiKey": "your-api-key",
+    "RequestTimeoutSeconds": 30
   }
 }
 ```
 
 `HonuaServer:BaseUrl` is the absolute URL of the Honua server. When omitted,
-the admin UI falls back to its own host base address (assumes same-origin
-deployment).
+the admin shell falls back to `StubHonuaAdminClient` — deterministic
+in-memory data so the UI is demoable before the real server is wired up.
 
 `HonuaServer:ApiKey` is **development-only**. Blazor WebAssembly ships
 configuration to the browser, so any value placed here is visible to every
@@ -549,6 +574,21 @@ each entry feeds the API audit matrix tracked in
 - Authentication management
 - Rate limiting and quotas
 - Health monitoring
+## Audit Tooling
+
+Re-derive the API surface inventory and coverage matrix from honua-server
+source (sibling `../honua-server` checkout discovered automatically;
+override with `--honua-server-root` or `HONUA_SERVER_PATH`):
+
+```bash
+dotnet run --project tools/audit-api-surface -- generate
+dotnet run --project tools/audit-api-surface -- seed-coverage
+dotnet run --project tools/audit-api-surface -- render
+```
+
+The xunit drift guard (`Honua.Admin.Tests/Audit/CoverageDriftTests.cs`)
+fails CI if the inventory and coverage rows fall out of sync, so future
+audits compute the diff rather than re-doing the inventory.
 
 ## Contributing
 
