@@ -1,0 +1,168 @@
+@using MudBlazor
+@using Honua.Admin.Components.Shared
+@using Honua.Admin.Models.DataConnections
+
+<MudGrid>
+    @* Display name is fixed once a connection is created — the server's
+       UpdateSecureConnectionRequest has no Name field, so we render it
+       read-only in edit mode rather than silently dropping operator input. *@
+    <MudItem xs="12" md="6">
+        <MudTextField T="string"
+                      Label="Display name"
+                      Value="@Draft.Name"
+                      ValueChanged="@(v => Update(d => d.Name = v ?? string.Empty))"
+                      Required="true"
+                      Immediate="true"
+                      ReadOnly="@IsEdit"
+                      Disabled="@IsEdit"
+                      HelperText="@(IsEdit ? "Display name is fixed after creation." : null)"
+                      data-testid="conn-name" />
+    </MudItem>
+    <MudItem xs="12" md="6">
+        <MudTextField T="string"
+                      Label="Description"
+                      Value="@Draft.Description"
+                      ValueChanged="@(v => Update(d => d.Description = v))"
+                      data-testid="conn-description" />
+    </MudItem>
+    <MudItem xs="12" md="8">
+        <MudTextField T="string"
+                      Label="Host"
+                      Value="@Draft.Host"
+                      ValueChanged="@(v => Update(d => d.Host = v ?? string.Empty))"
+                      Required="true"
+                      Immediate="true"
+                      data-testid="conn-host" />
+    </MudItem>
+    <MudItem xs="12" md="4">
+        <MudNumericField T="int"
+                         Label="Port"
+                         Value="@Draft.Port"
+                         ValueChanged="@(v => Update(d => d.Port = v))"
+                         Min="1"
+                         Max="65535"
+                         data-testid="conn-port" />
+    </MudItem>
+    <MudItem xs="12" md="6">
+        <MudTextField T="string"
+                      Label="Database"
+                      Value="@Draft.DatabaseName"
+                      ValueChanged="@(v => Update(d => d.DatabaseName = v ?? string.Empty))"
+                      Required="true"
+                      data-testid="conn-database" />
+    </MudItem>
+    <MudItem xs="12" md="6">
+        <MudTextField T="string"
+                      Label="Username"
+                      Value="@Draft.Username"
+                      ValueChanged="@(v => Update(d => d.Username = v ?? string.Empty))"
+                      Required="true"
+                      data-testid="conn-username" />
+    </MudItem>
+
+    @* Credential mode and external-secret bindings are creation-only:
+       the server's UpdateSecureConnectionRequest accepts a new Password
+       (re-encryption) but has no SecretReference / SecretType fields, so
+       switching modes or rotating an external reference is not honored
+       on PUT. Lock the radio group in edit mode and only expose the
+       managed-credential rotate field. Operators who need to switch
+       modes today must delete and recreate. *@
+    <MudItem xs="12">
+        <MudRadioGroup T="CredentialMode"
+                       Value="@Draft.CredentialMode"
+                       ValueChanged="@(m => Update(d => d.CredentialMode = m))"
+                       ReadOnly="@IsEdit"
+                       Disabled="@IsEdit">
+            <MudRadio Value="@CredentialMode.Managed" data-testid="conn-mode-managed">Managed (encrypted at rest)</MudRadio>
+            <MudRadio Value="@CredentialMode.External" data-testid="conn-mode-external">External secret reference</MudRadio>
+        </MudRadioGroup>
+        @if (IsEdit)
+        {
+            <MudText Typo="Typo.caption" Class="text-secondary" data-testid="conn-mode-edit-help">
+                Credential mode is fixed after creation. Delete and recreate to switch.
+            </MudText>
+        }
+    </MudItem>
+
+    @if (Draft.CredentialMode == CredentialMode.Managed)
+    {
+        <MudItem xs="12" md="8">
+            <MaskedSecretInput Label="Password"
+                               Value="@Draft.Password"
+                               ValueChanged="@(v => Update(d => d.Password = v))"
+                               Required="@(!IsEdit)"
+                               HelperText="@(IsEdit ? "Leave blank to keep the existing password" : null)"
+                               TestId="conn-password" />
+        </MudItem>
+    }
+    else if (!IsEdit)
+    {
+        <MudItem xs="12" md="8">
+            <MudTextField T="string"
+                          Label="Secret reference"
+                          Value="@Draft.SecretReference"
+                          ValueChanged="@(v => Update(d => d.SecretReference = v))"
+                          HelperText="Format: provider:path (e.g., aws:secretsmanager:prod-db-creds)"
+                          data-testid="conn-secret-ref" />
+        </MudItem>
+        <MudItem xs="12" md="4">
+            <MudTextField T="string"
+                          Label="Secret type"
+                          Value="@Draft.SecretType"
+                          ValueChanged="@(v => Update(d => d.SecretType = v))"
+                          HelperText="aws | azure | vault"
+                          data-testid="conn-secret-type" />
+        </MudItem>
+    }
+    else
+    {
+        @* External-mode edit: the secret reference is set at creation and
+           cannot be rotated through the current update contract. Display
+           it read-only so operators see what is stored without having a
+           Save button that silently drops the change. *@
+        <MudItem xs="12" md="8">
+            <MudTextField T="string"
+                          Label="Secret reference"
+                          Value="@Draft.SecretReference"
+                          ReadOnly="true"
+                          Disabled="true"
+                          HelperText="Stored secret reference is fixed after creation."
+                          data-testid="conn-secret-ref" />
+        </MudItem>
+    }
+
+    <MudItem xs="12" md="6">
+        <MudSwitch T="bool"
+                   Value="@Draft.SslRequired"
+                   ValueChanged="@(v => Update(d => d.SslRequired = v))"
+                   Label="SSL required"
+                   Color="Color.Primary"
+                   data-testid="conn-ssl-required" />
+    </MudItem>
+    <MudItem xs="12" md="6">
+        <MudSelect T="string"
+                   Label="SSL mode"
+                   Value="@Draft.SslMode"
+                   ValueChanged="@(v => Update(d => d.SslMode = v ?? "Require"))"
+                   data-testid="conn-ssl-mode">
+            <MudSelectItem Value="@("Disable")">Disable</MudSelectItem>
+            <MudSelectItem Value="@("Allow")">Allow</MudSelectItem>
+            <MudSelectItem Value="@("Prefer")">Prefer</MudSelectItem>
+            <MudSelectItem Value="@("Require")">Require</MudSelectItem>
+            <MudSelectItem Value="@("VerifyCa")">VerifyCa</MudSelectItem>
+            <MudSelectItem Value="@("VerifyFull")">VerifyFull</MudSelectItem>
+        </MudSelect>
+    </MudItem>
+</MudGrid>
+
+@code {
+    [Parameter, EditorRequired] public ConnectionDraft Draft { get; set; } = default!;
+    [Parameter] public EventCallback<ConnectionDraft> DraftChanged { get; set; }
+    [Parameter] public bool IsEdit { get; set; }
+
+    private async Task Update(Action<ConnectionDraft> mutate)
+    {
+        mutate(Draft);
+        await DraftChanged.InvokeAsync(Draft);
+    }
+}

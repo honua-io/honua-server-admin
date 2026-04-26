@@ -1,0 +1,202 @@
+@page "/operator/data-connections/new"
+@using Microsoft.AspNetCore.Authorization
+@using MudBlazor
+@using Honua.Admin.Models.DataConnections
+@using Honua.Admin.Services.DataConnections
+@using Honua.Admin.Services.DataConnections.Providers
+@attribute [Authorize]
+@inject DataConnectionsState State
+@inject NavigationManager Nav
+@implements IDisposable
+
+<PageTitle>New data connection</PageTitle>
+
+<MudStack Spacing="3">
+    <MudBreadcrumbs Items="_crumbs" />
+
+    @if (_provider is null)
+    {
+        <MudAlert Severity="Severity.Warning" data-testid="provider-missing">
+            Pick a provider from the list page to begin.
+        </MudAlert>
+    }
+    else
+    {
+        <MudText Typo="Typo.h5">New @_provider.DisplayName connection</MudText>
+        <MudText Typo="Typo.body2" Class="text-secondary">@_provider.Description</MudText>
+
+        @if (State.LastError is { } err)
+        {
+            <MudAlert Severity="Severity.Error" data-testid="create-error">
+                @err.CopyKey @(err.Detail is null ? string.Empty : $" — {err.Detail}")
+            </MudAlert>
+        }
+
+        @if (State.Draft is not null && !_provider.IsStub)
+        {
+            <DynamicComponent Type="@_provider.CreateFormComponentType"
+                              Parameters="@FormParameters" />
+        }
+        else if (_provider.IsStub)
+        {
+            <DynamicComponent Type="@_provider.CreateFormComponentType"
+                              Parameters="@StubFormParameters" />
+        }
+
+        @if (LatestDiagnostic is not null)
+        {
+            <DiagnosticGrid Diagnostic="LatestDiagnostic" />
+        }
+
+        <MudStack Row="true">
+            <MudButton Variant="Variant.Outlined"
+                       OnClick="Cancel"
+                       data-testid="create-cancel">
+                Cancel
+            </MudButton>
+            <MudSpacer />
+            <MudButton Variant="Variant.Outlined"
+                       Color="Color.Info"
+                       OnClick="RunPreflight"
+                       Disabled="@(_provider.IsStub || _testing)"
+                       data-testid="create-test">
+                @(_testing ? "Testing…" : "Test connection")
+            </MudButton>
+            <MudButton Variant="Variant.Filled"
+                       Color="Color.Primary"
+                       OnClick="Submit"
+                       Disabled="@(_provider.IsStub || _saving)"
+                       data-testid="create-save">
+                @(_saving ? "Saving…" : "Save connection")
+            </MudButton>
+        </MudStack>
+    }
+</MudStack>
+
+@code {
+    private IProviderRegistration? _provider;
+    private bool _saving;
+    private bool _testing;
+    private List<BreadcrumbItem> _crumbs = new();
+
+    private ConnectionDiagnostic? LatestDiagnostic => State.LatestDiagnostic;
+
+    private Dictionary<string, object> FormParameters => new()
+    {
+        ["Draft"] = State.Draft!,
+        ["DraftChanged"] = EventCallback.Factory.Create<ConnectionDraft>(this, OnDraftChanged),
+        ["IsEdit"] = false
+    };
+
+    private Dictionary<string, object> StubFormParameters => new()
+    {
+        ["DisplayName"] = _provider?.DisplayName ?? "this provider",
+        ["Draft"] = State.Draft!,
+        ["DraftChanged"] = EventCallback.Factory.Create<ConnectionDraft>(this, OnDraftChanged),
+        ["IsEdit"] = false
+    };
+
+    protected override void OnInitialized()
+    {
+        State.OnChanged += HandleChanged;
+        var providerId = ResolveProviderId(Nav.Uri);
+
+        // Resolve the provider before priming the draft. BeginCreateDraft
+        // throws InvalidOperationException for unknown ids, which would
+        // otherwise crash this page before the missing-provider alert can
+        // render for `/new?provider=bogus`.
+        if (State.ProviderRegistry.TryGet(providerId, out var registration))
+        {
+            _provider = registration;
+            if (State.Draft is null || !string.Equals(State.Draft.ProviderId, providerId, StringComparison.OrdinalIgnoreCase))
+            {
+                State.BeginCreateDraft(providerId);
+            }
+        }
+        else if (State.Draft is not null)
+        {
+            // Bogus provider — drop any leftover draft so the warning alert
+            // does not silently keep the prior provider's in-flight values.
+            State.ClearDraft();
+        }
+
+        _crumbs = new()
+        {
+            new BreadcrumbItem("Data connections", "/operator/data-connections"),
+            new BreadcrumbItem("New", null, true)
+        };
+    }
+
+    private void HandleChanged() => InvokeAsync(StateHasChanged);
+
+    private Task OnDraftChanged(ConnectionDraft draft)
+    {
+        State.UpdateDraft(_ => { });
+        return Task.CompletedTask;
+    }
+
+    private async Task RunPreflight()
+    {
+        _testing = true;
+        try
+        {
+            await State.RunDraftPreflightAsync();
+        }
+        finally
+        {
+            _testing = false;
+        }
+    }
+
+    private async Task Submit()
+    {
+        _saving = true;
+        try
+        {
+            var result = await State.SubmitDraftAsync();
+            if (result.IsSuccess && result.Value is { } detail)
+            {
+                Nav.NavigateTo($"/operator/data-connections/{detail.ConnectionId}");
+            }
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+
+    private void Cancel()
+    {
+        State.ClearDraft();
+        Nav.NavigateTo("/operator/data-connections");
+    }
+
+    public void Dispose()
+    {
+        State.OnChanged -= HandleChanged;
+    }
+
+    private static string ResolveProviderId(string uri)
+    {
+        var queryStart = uri.IndexOf('?', StringComparison.Ordinal);
+        if (queryStart < 0)
+        {
+            return "postgres";
+        }
+        var query = uri[(queryStart + 1)..];
+        foreach (var pair in query.Split('&', StringSplitOptions.RemoveEmptyEntries))
+        {
+            var sep = pair.IndexOf('=', StringComparison.Ordinal);
+            if (sep <= 0)
+            {
+                continue;
+            }
+            var key = Uri.UnescapeDataString(pair[..sep]);
+            if (string.Equals(key, "provider", StringComparison.OrdinalIgnoreCase))
+            {
+                return Uri.UnescapeDataString(pair[(sep + 1)..]);
+            }
+        }
+        return "postgres";
+    }
+}

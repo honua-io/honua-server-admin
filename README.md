@@ -14,11 +14,12 @@ This is the official admin UI for managing Honua Server instances:
 - **Identity Workspace**: OIDC provider lifecycle (list / create / edit / enable / delete), provider status, auth diagnostics, and API-key gap surface — see [Identity workspace](#identity-workspace) below
 - **License Workspace**: BYOL license status, entitlement inspection, expiry banding, replace flow, and operator-actionable diagnostics — see [License workspace](#license-workspace) below
 - **Spatial SQL Playground**: Browser-based PostGIS-aware SQL editor with schema autocomplete, MapLibre preview, EXPLAIN tree, and named-view save flow — see [Spatial SQL playground](#spatial-sql-playground) below
+- **Data Connections Workspace**: List / create / edit / soft-disable / delete / preflight data connections, with a structured diagnostic grid and a managed-Postgres capability matrix — see [Data connections workspace](#data-connections-workspace) below
 
 ## Architecture
 
 - **Frontend**: Blazor WebAssembly with MudBlazor components
-- **Backend Communication**: Operator S1 uses the in-repo `ISpecWorkspaceClient` and `ISpatialSqlClient` stubs; the [honua-sdk-dotnet](https://github.com/honua-io/honua-sdk-dotnet) gRPC client and the SQL HTTP adapter swap in once the matching server endpoints land
+- **Backend Communication**: Operator S1 uses the in-repo `ISpecWorkspaceClient` and `ISpatialSqlClient` stubs; identity (`HttpIdentityAdminClient`) and data connections (`HttpDataConnectionClient`) call the honua-server admin REST surface directly through `HttpClient` + source-generated JSON. The [honua-sdk-dotnet](https://github.com/honua-io/honua-sdk-dotnet) gRPC client and the SQL HTTP adapter swap in once the matching server endpoints land
 - **Deployment**: Static web app (can be hosted on CDN)
 
 ## Development
@@ -366,6 +367,168 @@ The S1 scope deliberately excludes Monaco / CodeMirror integration, write
 SQL beyond the per-query override, multi-database routing, query history
 sharing across operators, and live `pg_proc` introspection — each is
 tracked as a follow-on against `honua-server` or a future admin ticket.
+
+### Data connections workspace
+
+The data-connections workspace (ticket `#24`) lives under
+`/operator/data-connections/*` on the same shared shell as the spec and
+identity workspaces. It backs onto the `honua-server` admin endpoints
+under `/api/v1/admin/connections` through a typed seam at
+`src/Honua.Admin/Services/DataConnections/` so a different transport
+(gRPC, generated client) can be DI-swapped without touching the page
+layer.
+
+Pages:
+
+- `Pages/Operator/DataConnections/Index.razor`
+  (`/operator/data-connections`) — list view (provider, host, status,
+  last-checked) with a provider-aware "New connection" menu. The health
+  column normalizes case before mapping to MudBlazor chip colors. The
+  list endpoint hides disabled rows (server uses `WHERE is_active =
+  true`); the `disabled` chip in the row template only fires when a
+  future server filter surfaces them — see gap #9.
+- `Pages/Operator/DataConnections/Create.razor`
+  (`/operator/data-connections/new?provider={id}`) — provider-specific
+  create form, in-flight preflight test, and a confirmation gate before
+  save. Stub providers (e.g., SQL Server) reach this page but cannot
+  submit.
+- `Pages/Operator/DataConnections/Detail.razor`
+  (`/operator/data-connections/{id}`) — read / edit / soft-disable /
+  delete a saved connection. Soft-disable maps to
+  `PUT /api/v1/admin/connections/{id}` with `{ isActive: false }` (no
+  dedicated disable endpoint); delete is gated behind a typed-name
+  confirm dialog and removes audit history server-side. The edit form
+  is narrower than the create form: Display name and credential mode /
+  external secret reference are rendered read-only because the server's
+  `UpdateSecureConnectionRequest` has no slots for them — see gap #11.
+  Navigating between connection ids while editing clears the in-flight
+  draft so a Save never PUTs the prior connection's body against the new
+  route id.
+- `Pages/Operator/DataConnections/Diagnostics.razor`
+  (`/operator/data-connections/{id}/diagnostics`) — six-row preflight
+  grid (`Dns → Tcp → Auth → Ssl → Capability → Version`) plus a
+  managed-Postgres capability matrix.
+
+Wire contract. Every honua-server admin response is wrapped in the
+shared `ApiResponse<T>` envelope (`{ success, data, message, timestamp }`);
+`HttpDataConnectionClient` unwraps via `Data` exactly like the identity
+client. DTOs live in `src/Honua.Admin/Models/DataConnections/` and
+mirror the server shapes verbatim with `[JsonPropertyName]` attributes.
+Serialization runs through the source-generated
+`DataConnectionsJsonContext` (with both raw DTOs and `ApiResponse<T>`
+shapes registered) so the WASM build stays trim/AOT-safe. Every method
+funnels through a single `ExecuteRequestAsync<T>` helper so network
+(`HttpRequestException`), malformed-response (`JsonException`), and
+cancellation / timeout (`OperationCanceledException`) failures all land
+as typed `ConnectionOperationError` values rather than exceptions
+escaping to Razor.
+
+The HTTP client is registered via
+`builder.Services.AddHttpClient<IDataConnectionClient, HttpDataConnectionClient>(...)`
+in `Program.cs`, picking up `HonuaServer:BaseUrl` and the dev-only
+`X-API-Key` header through the same pattern as the identity client.
+
+The endpoint surface consumed by `IDataConnectionClient`:
+
+| Method | Route                                               | Purpose                                |
+| ------ | --------------------------------------------------- | -------------------------------------- |
+| GET    | `/api/v1/admin/connections`                         | List summaries                          |
+| GET    | `/api/v1/admin/connections/{id}`                    | Full detail                             |
+| POST   | `/api/v1/admin/connections`                         | Create (returns Summary)                |
+| PUT    | `/api/v1/admin/connections/{id}`                    | Edit / soft-disable / re-enable        |
+| DELETE | `/api/v1/admin/connections/{id}`                    | Hard delete (typed-name confirm)        |
+| POST   | `/api/v1/admin/connections/test`                    | Preflight a draft before save           |
+| POST   | `/api/v1/admin/connections/{id}/test`               | Preflight a saved record                |
+
+`DisableAsync` / `EnableAsync` on `IDataConnectionClient` are
+convenience wrappers around `UpdateAsync` and do not map to dedicated
+server routes. `CreateAsync` and `UpdateAsync` return
+`DataConnectionSummary` — the projection honua-server returns today —
+and `DataConnectionsState` issues a follow-up
+`GetAsync` via `TryRefreshSelectedDetailAsync` so Detail-only fields
+(`CredentialReference`, `EncryptionVersion`, `UpdatedAt`) are available
+to the page after a save. The extra round-trip is tracked as gap #8 in
+[`docs/data-connection-api-gaps.md`](docs/data-connection-api-gaps.md).
+
+Server policy: `RequireAdminAuthorization`. The admin UI does not
+duplicate the policy check; `401` / `403` map to a
+`ConnectionOperationError(Auth)` and a banner alert. The UI's typed
+error kinds are `Network`, `Auth`, `Validation`, `Server`, `Conflict`,
+`NotFound`; the typed copy-keys it raises are `error.network`,
+`error.timeout`, `error.malformed_response`, `error.empty_response`,
+plus the kind-specific `error.{kind}` keys parsed from the response
+body. honua-server returns 4xx admin failures as
+`ApiResponse<object>.Failure(message)` (e.g., `"Invalid SSL mode"`,
+`"Connection is in use by services"`) rather than RFC7807
+`ProblemDetails`, so `HttpDataConnectionClient.ParseProblemAsync` reads
+the body once and tries both shapes — `ProblemDetails.Detail`/`.Title`
+first, then the failure-envelope `Message` — so the operator-actionable
+message survives into the banner alert.
+
+Diagnostic contract. Preflight always renders a six-row grid in
+deterministic order (`Dns → Tcp → Auth → Ssl → Capability → Version`).
+The server today returns only `{ connectionId, connectionName,
+isHealthy, testedAt, message }`; `Services/DataConnections/DiagnosticMapper.cs`
+is the single seam that distributes the signal across cells via a
+narrow substring heuristic. Unmatched failure messages light only
+`Auth`; unrelated cells stay `NotAssessed` so the UI never produces
+false negatives. Pages never render the raw message as the primary
+signal. Per-step diagnostic codes are tracked as gap #1 in the gap
+report; the mapper becomes a pass-through once they ship.
+
+After a successful preflight against a saved connection,
+`DataConnectionsState.RunExistingPreflightAsync` patches the new
+`HealthStatus` ("Healthy"/"Unhealthy") and `LastHealthCheck` into both
+`SelectedDetail` and the corresponding list summary so Detail and Index
+chips reflect the latest test result without a manual refresh. The
+server's test endpoint does not persist the outcome to the row today
+(gap #10), so this local reconciliation is the only thing keeping the UI
+honest until that ships.
+
+Managed-Postgres capability matrix. Driven by
+`PostgresProviderRegistration.ManagedHostingChecks` (server version,
+SSL enforced, primary-vs-replica role, PostGIS, pgaudit, Aurora IAM,
+Azure AAD). Every cell renders `NotAssessed` with an
+"Awaiting honua-server#644" hover until the certification endpoint
+lands. The matrix carries `IsServerSourced=false` so renderers stay
+honest about provenance.
+
+Credential handling. Credentials only live in the in-memory
+`ConnectionDraft` for the lifetime of one submission. The state store
+(`DataConnectionsState`) clears the draft on save / cancel, never
+persists it to `localStorage`, and never accepts a credential back
+from the server. The detail view shows only `StorageType`
+(`managed` | `external`) plus `CredentialReference` for external
+secrets via `Components/Shared/MaskedSecretField` — no last-N-chars
+preview today (gap #4).
+
+Provider extensibility. `IProviderRegistration` (provider id, display
+name, default port, create form, capability renderer, managed-hosting
+check list) plus `IProviderRegistry` (DI-driven lookup by id) decouple
+the workspace shell from provider-specific UI. Postgres is concrete;
+SQL Server is the registered stub (`IsStub = true`, empty check list,
+"coming soon" placeholder form). Stubs are reachable from the New-connection
+menu but cannot submit. New providers ship by registering an additional
+`IProviderRegistration` — no workspace shell changes required. The
+load-bearing constraint is `honua-io/honua-server#362` (multi-database
+epic), which must surface a real `providerId` per connection before a
+second concrete provider can ship; tracked as gap #3.
+
+Telemetry. `LoggingDataConnectionTelemetry` is the default sink for
+`IDataConnectionTelemetry`. Events:
+`data_connections.list_loaded` / `list_failed`,
+`data_connections.create_submitted` / `create_succeeded` /
+`create_failed`, `data_connections.update_succeeded` / `update_failed`,
+`data_connections.test_started` / `test_completed` (`result_kind` is
+`healthy | failed | not_assessed | error`, `failed_step` is set on
+failures, latency in ms), `data_connections.enabled` / `disabled` /
+`deleted`, `data_connections.provider_stub_viewed`.
+
+The full set of server-side gaps surfaced while building this
+workspace lives in
+[`docs/data-connection-api-gaps.md`](docs/data-connection-api-gaps.md);
+each entry feeds the API audit matrix tracked in
+`honua-io/honua-server-admin#28`.
 
 ## Features
 

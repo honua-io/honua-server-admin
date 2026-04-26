@@ -1,0 +1,62 @@
+@using MudBlazor
+@using Honua.Admin.Models.DataConnections
+
+<MudPaper Class="pa-3" Outlined="true" data-testid="diagnostic-grid">
+    <MudText Typo="Typo.h6">Preflight diagnostic</MudText>
+    <MudText Typo="Typo.body2" Class="text-secondary mb-3">
+        Six structured checks. <em>Not assessed</em> means the server did not return
+        a verdict for that step (server gap — see
+        <code>docs/data-connection-api-gaps.md</code>).
+    </MudText>
+    <MudSimpleTable Dense="true" Hover="true">
+        <thead>
+            <tr>
+                <th>Step</th>
+                <th>Status</th>
+                <th>Detail</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var cell in Diagnostic.Cells)
+            {
+                <tr data-testid="@($"diagnostic-row-{cell.Step.ToString().ToLowerInvariant()}")">
+                    <td>@cell.Step</td>
+                    <td>
+                        <MudChip T="string" Color="@StatusColor(cell.Status)" Size="Size.Small">
+                            @StatusLabel(cell.Status)
+                        </MudChip>
+                    </td>
+                    <td>@(cell.Detail ?? Hint(cell))</td>
+                </tr>
+            }
+        </tbody>
+    </MudSimpleTable>
+    <MudText Typo="Typo.caption" Class="mt-2">
+        Tested at @Diagnostic.RawOutcome.TestedAt.ToString("u").
+    </MudText>
+</MudPaper>
+
+@code {
+    [Parameter, EditorRequired] public ConnectionDiagnostic Diagnostic { get; set; } = default!;
+
+    private static Color StatusColor(DiagnosticStatus status) => status switch
+    {
+        DiagnosticStatus.Ok => Color.Success,
+        DiagnosticStatus.Failed => Color.Error,
+        _ => Color.Default
+    };
+
+    private static string StatusLabel(DiagnosticStatus status) => status switch
+    {
+        DiagnosticStatus.Ok => "OK",
+        DiagnosticStatus.Failed => "Failed",
+        _ => "Not assessed"
+    };
+
+    private static string Hint(DiagnosticCell cell) => cell.Status switch
+    {
+        DiagnosticStatus.NotAssessed => "Awaiting structured server response (see gap report).",
+        DiagnosticStatus.Ok => string.Empty,
+        _ => string.Empty
+    };
+}

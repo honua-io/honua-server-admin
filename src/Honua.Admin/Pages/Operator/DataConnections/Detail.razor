@@ -1,0 +1,261 @@
+@page "/operator/data-connections/{id:guid}"
+@using Microsoft.AspNetCore.Authorization
+@using MudBlazor
+@using Honua.Admin.Components.Shared
+@using Honua.Admin.Models.DataConnections
+@using Honua.Admin.Services.DataConnections
+@using Honua.Admin.Services.DataConnections.Providers
+@attribute [Authorize]
+@inject DataConnectionsState State
+@inject NavigationManager Nav
+@inject IDialogService Dialogs
+@implements IDisposable
+
+<PageTitle>Connection detail</PageTitle>
+
+<MudStack Spacing="3">
+    <MudBreadcrumbs Items="_crumbs" />
+
+    @if (State.LastError is { } err)
+    {
+        <MudAlert Severity="Severity.Error" data-testid="detail-error">
+            @err.CopyKey @(err.Detail is null ? string.Empty : $" — {err.Detail}")
+        </MudAlert>
+    }
+
+    @if (State.SelectedDetail is { } detail)
+    {
+        <MudStack Row="true" AlignItems="AlignItems.Center">
+            <MudText Typo="Typo.h5">@detail.Name</MudText>
+            @if (!detail.IsActive)
+            {
+                <MudChip T="string" Color="Color.Warning" Size="Size.Small">disabled</MudChip>
+            }
+            <MudSpacer />
+            <MudButton Variant="Variant.Outlined"
+                       OnClick="OpenDiagnostics"
+                       StartIcon="@Icons.Material.Filled.Science"
+                       data-testid="open-diagnostics">
+                Open diagnostics
+            </MudButton>
+            @if (!_editing)
+            {
+                <MudButton Variant="Variant.Outlined"
+                           Color="Color.Primary"
+                           OnClick="StartEdit"
+                           StartIcon="@Icons.Material.Filled.Edit"
+                           data-testid="start-edit">
+                    Edit
+                </MudButton>
+            }
+            <MudButton Variant="Variant.Outlined"
+                       Color="@(detail.IsActive ? Color.Warning : Color.Success)"
+                       OnClick="ToggleActive"
+                       data-testid="toggle-active">
+                @(detail.IsActive ? "Disable" : "Enable")
+            </MudButton>
+            <MudMenu Icon="@Icons.Material.Filled.MoreVert" data-testid="overflow-menu">
+                <MudMenuItem OnClick="ConfirmDelete" data-testid="overflow-delete">
+                    <MudText Color="Color.Error">Delete connection…</MudText>
+                </MudMenuItem>
+            </MudMenu>
+        </MudStack>
+
+        @if (_editing && State.Draft is not null && _editProvider is not null)
+        {
+            <MudPaper Class="pa-3" Outlined="true" data-testid="edit-form">
+                <DynamicComponent Type="@_editProvider.CreateFormComponentType"
+                                  Parameters="@EditFormParameters" />
+                <MudStack Row="true" Class="mt-3">
+                    <MudButton Variant="Variant.Outlined"
+                               OnClick="CancelEdit"
+                               data-testid="edit-cancel">
+                        Cancel
+                    </MudButton>
+                    <MudSpacer />
+                    <MudButton Variant="Variant.Filled"
+                               Color="Color.Primary"
+                               OnClick="SubmitEdit"
+                               Disabled="@_savingEdit"
+                               data-testid="edit-save">
+                        @(_savingEdit ? "Saving…" : "Save changes")
+                    </MudButton>
+                </MudStack>
+            </MudPaper>
+        }
+        else
+        {
+            <MudGrid>
+                <MudItem xs="12" md="6">
+                    <MudPaper Class="pa-3" Outlined="true">
+                        <MudText Typo="Typo.h6">Endpoint</MudText>
+                        <MudText>Host: <strong>@detail.Host:@detail.Port</strong></MudText>
+                        <MudText>Database: <strong>@detail.DatabaseName</strong></MudText>
+                        <MudText>Username: <strong>@detail.Username</strong></MudText>
+                        <MudText>SSL: <strong>@(detail.SslRequired ? "required" : "optional") (@detail.SslMode)</strong></MudText>
+                    </MudPaper>
+                </MudItem>
+                <MudItem xs="12" md="6">
+                    <MaskedSecretField Label="Stored credential"
+                                       StorageType="@detail.StorageType"
+                                       Hint="@(detail.CredentialReference ?? "encrypted at rest")"
+                                       TestId="detail-credential" />
+                    <MudPaper Class="pa-3 mt-3" Outlined="true">
+                        <MudText Typo="Typo.h6">Health</MudText>
+                        <MudText>Status: <strong>@detail.HealthStatus</strong></MudText>
+                        <MudText>Last checked: <strong>@(detail.LastHealthCheck?.ToString("u") ?? "never")</strong></MudText>
+                    </MudPaper>
+                </MudItem>
+            </MudGrid>
+        }
+    }
+    else
+    {
+        <MudProgressCircular Indeterminate="true" Size="Size.Small" />
+    }
+</MudStack>
+
+@code {
+    [Parameter] public Guid Id { get; set; }
+
+    private List<BreadcrumbItem> _crumbs = new();
+    private bool _editing;
+    private bool _savingEdit;
+    private IProviderRegistration? _editProvider;
+
+    private Dictionary<string, object> EditFormParameters => new()
+    {
+        ["Draft"] = State.Draft!,
+        ["DraftChanged"] = EventCallback.Factory.Create<ConnectionDraft>(this, OnDraftChanged),
+        ["IsEdit"] = true
+    };
+
+    private Task OnDraftChanged(ConnectionDraft draft)
+    {
+        // Mirror Create.razor: the form mutates Draft by reference, but we still
+        // need to push a Notify() through the state so any future page-level
+        // bindings (validation, dirty indicators) re-render.
+        State.UpdateDraft(_ => { });
+        return Task.CompletedTask;
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        State.OnChanged += HandleChanged;
+        _crumbs = new()
+        {
+            new BreadcrumbItem("Data connections", "/operator/data-connections"),
+            new BreadcrumbItem("Detail", null, true)
+        };
+        await State.LoadDetailAsync(Id);
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (State.SelectedDetail?.ConnectionId != Id)
+        {
+            // Blazor reuses this component when the route id changes. Drop
+            // any in-flight edit state and any draft tied to the previous
+            // connection before loading the new detail — otherwise SubmitEdit
+            // would PUT the prior connection's draft against the new id.
+            ResetEditState();
+            await State.LoadDetailAsync(Id);
+        }
+    }
+
+    private void ResetEditState()
+    {
+        _editing = false;
+        _editProvider = null;
+        _savingEdit = false;
+        if (State.Draft is { } draft && draft.ConnectionId != Id)
+        {
+            State.ClearDraft();
+        }
+    }
+
+    private void HandleChanged() => InvokeAsync(StateHasChanged);
+
+    private async Task ToggleActive()
+    {
+        if (State.SelectedDetail is null)
+        {
+            return;
+        }
+        var current = State.SelectedDetail.IsActive;
+        await State.SetActiveAsync(Id, !current);
+    }
+
+    private async Task ConfirmDelete()
+    {
+        var name = State.SelectedDetail?.Name ?? "this connection";
+        var parameters = new DialogParameters
+        {
+            ["ContentText"] = $"Type the connection name '{name}' to confirm. This also removes audit history on the server.",
+            ["ButtonText"] = "Delete",
+            ["Color"] = Color.Error,
+            ["ConfirmName"] = name
+        };
+        var dialog = await Dialogs.ShowAsync<DeleteConfirmDialog>("Delete connection", parameters);
+        var result = await dialog.Result;
+        if (result is { Canceled: false })
+        {
+            var deleteResult = await State.DeleteAsync(Id);
+            if (deleteResult.IsSuccess)
+            {
+                Nav.NavigateTo("/operator/data-connections");
+            }
+            // On failure, stay on the detail page so the existing detail-error
+            // alert renders State.LastError. Index.RefreshListAsync would clear
+            // it; the operator must be able to act on Conflict / NotFound here.
+        }
+    }
+
+    private void OpenDiagnostics() => Nav.NavigateTo($"/operator/data-connections/{Id}/diagnostics");
+
+    private void StartEdit()
+    {
+        if (State.SelectedDetail is null)
+        {
+            return;
+        }
+        if (!State.ProviderRegistry.TryGet(State.SelectedDetail.ProviderId, out var registration) || registration.IsStub)
+        {
+            // Stub providers are read-only — fall through with no edit form.
+            return;
+        }
+        _editProvider = registration;
+        State.BeginEditDraft(State.SelectedDetail);
+        _editing = true;
+    }
+
+    private void CancelEdit()
+    {
+        _editing = false;
+        _editProvider = null;
+        State.ClearDraft();
+    }
+
+    private async Task SubmitEdit()
+    {
+        _savingEdit = true;
+        try
+        {
+            var result = await State.SubmitEditAsync();
+            if (result.IsSuccess)
+            {
+                _editing = false;
+                _editProvider = null;
+            }
+        }
+        finally
+        {
+            _savingEdit = false;
+        }
+    }
+
+    public void Dispose()
+    {
+        State.OnChanged -= HandleChanged;
+    }
+}

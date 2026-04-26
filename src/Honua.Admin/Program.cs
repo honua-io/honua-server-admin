@@ -1,4 +1,6 @@
 using Honua.Admin;
+using Honua.Admin.Services.DataConnections;
+using Honua.Admin.Services.DataConnections.Providers;
 using Honua.Admin.Services.Identity;
 using Honua.Admin.Services.LicenseWorkspace;
 using Honua.Admin.Services.SpatialSql;
@@ -91,6 +93,41 @@ builder.Services.AddHttpClient<ILicenseWorkspaceClient, HttpLicenseWorkspaceClie
     }
 });
 builder.Services.AddScoped<LicenseWorkspaceState>();
+
+// Data connections workspace services (ticket #24). HttpDataConnectionClient
+// is the default; StubDataConnectionClient stays available for tests. Mirrors
+// the identity / license HonuaServer:BaseUrl + Development-only X-API-Key
+// handling so the workspace targets the real server, not the WASM host.
+builder.Services.AddSingleton<IProviderRegistration, PostgresProviderRegistration>();
+builder.Services.AddSingleton<IProviderRegistration, SqlServerStubProviderRegistration>();
+builder.Services.AddSingleton<IProviderRegistry, ProviderRegistry>();
+builder.Services.AddScoped<IDataConnectionTelemetry, LoggingDataConnectionTelemetry>();
+builder.Services.AddHttpClient<IDataConnectionClient, HttpDataConnectionClient>(client =>
+{
+    var baseUrl = builder.Configuration["HonuaServer:BaseUrl"];
+    client.BaseAddress = !string.IsNullOrWhiteSpace(baseUrl)
+        ? new Uri(baseUrl)
+        : new Uri(builder.HostEnvironment.BaseAddress);
+
+    // X-API-Key handling mirrors the identity client: dev-only forwarding,
+    // production must front the admin UI with a same-origin BFF.
+    var apiKey = builder.Configuration["HonuaServer:ApiKey"];
+    if (!string.IsNullOrWhiteSpace(apiKey))
+    {
+        if (builder.HostEnvironment.IsDevelopment())
+        {
+            client.DefaultRequestHeaders.Add("X-API-Key", apiKey);
+        }
+        else
+        {
+            Console.Error.WriteLine(
+                "[Honua.Admin] HonuaServer:ApiKey is set in a non-Development build. " +
+                "Refusing to forward it from the browser. Front the admin UI with a same-origin " +
+                "BFF that injects credentials server-side.");
+        }
+    }
+});
+builder.Services.AddScoped<DataConnectionsState>();
 
 // Dev auth scaffold — replaced once the real admin auth provider lands.
 builder.Services.AddAuthorizationCore();

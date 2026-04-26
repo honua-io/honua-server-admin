@@ -1,0 +1,130 @@
+@page "/operator/data-connections/{id:guid}/diagnostics"
+@using Microsoft.AspNetCore.Authorization
+@using MudBlazor
+@using Honua.Admin.Models.DataConnections
+@using Honua.Admin.Services.DataConnections
+@using Honua.Admin.Services.DataConnections.Providers
+@attribute [Authorize]
+@inject DataConnectionsState State
+@inject NavigationManager Nav
+@implements IDisposable
+
+<PageTitle>Connection diagnostics</PageTitle>
+
+<MudStack Spacing="3">
+    <MudBreadcrumbs Items="_crumbs" />
+
+    @if (State.LastError is { } err)
+    {
+        <MudAlert Severity="Severity.Error" data-testid="diag-error">
+            @err.CopyKey @(err.Detail is null ? string.Empty : $" — {err.Detail}")
+        </MudAlert>
+    }
+
+    @if (State.SelectedDetail is { } detail)
+    {
+        <MudStack Row="true" AlignItems="AlignItems.Center">
+            <MudText Typo="Typo.h5">Diagnostics — @detail.Name</MudText>
+            <MudSpacer />
+            <MudButton Variant="Variant.Filled"
+                       Color="Color.Primary"
+                       OnClick="RunPreflight"
+                       Disabled="@_running"
+                       data-testid="run-preflight">
+                @(_running ? "Running…" : "Run preflight")
+            </MudButton>
+        </MudStack>
+
+        <MudText Typo="Typo.body2" Class="text-secondary">
+            Preflight is read-only — only metadata + permission probes; no DDL or
+            schema mutations are issued.
+        </MudText>
+
+        @if (State.LatestDiagnostic is { } diagnostic)
+        {
+            <DiagnosticGrid Diagnostic="diagnostic" />
+        }
+
+        @if (_provider is not null)
+        {
+            <DynamicComponent Type="@_provider.CapabilityRendererComponentType"
+                              Parameters="@MatrixParameters" />
+        }
+    }
+    else
+    {
+        <MudProgressCircular Indeterminate="true" Size="Size.Small" />
+    }
+</MudStack>
+
+@code {
+    [Parameter] public Guid Id { get; set; }
+
+    private IProviderRegistration? _provider;
+    private bool _running;
+    private List<BreadcrumbItem> _crumbs = new();
+    private ProviderCapabilityMatrix? _matrix;
+
+    private Dictionary<string, object> MatrixParameters => new()
+    {
+        ["Matrix"] = _matrix!
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+        State.OnChanged += HandleChanged;
+        _crumbs = new()
+        {
+            new BreadcrumbItem("Data connections", "/operator/data-connections"),
+            new BreadcrumbItem("Diagnostics", null, true)
+        };
+
+        if (State.SelectedDetail?.ConnectionId != Id)
+        {
+            await State.LoadDetailAsync(Id);
+        }
+        ResolveProvider();
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (State.SelectedDetail?.ConnectionId != Id)
+        {
+            await State.LoadDetailAsync(Id);
+        }
+        ResolveProvider();
+    }
+
+    private void ResolveProvider()
+    {
+        if (State.SelectedDetail is null)
+        {
+            return;
+        }
+        if (State.ProviderRegistry.TryGet(State.SelectedDetail.ProviderId, out var registration))
+        {
+            _provider = registration;
+            _matrix = State.GetCapabilityMatrix(registration.ProviderId);
+        }
+    }
+
+    private void HandleChanged() => InvokeAsync(StateHasChanged);
+
+    private async Task RunPreflight()
+    {
+        _running = true;
+        try
+        {
+            await State.RunExistingPreflightAsync(Id);
+        }
+        finally
+        {
+            _running = false;
+        }
+    }
+
+    public void Dispose()
+    {
+        State.OnChanged -= HandleChanged;
+    }
+}
