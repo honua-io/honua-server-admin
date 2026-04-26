@@ -34,6 +34,27 @@ public sealed class DataConnectionsState
 
     private readonly List<DataConnectionSummary> _connections = new();
 
+    // Per-slot monotonic generations. Any async load that completes after a
+    // newer operation (load/test/refresh) — or after a user action that
+    // explicitly cleared the slot (BeginCreateDraft, ClearDraft, DeleteAsync,
+    // mutating-success clears) — must drop its post-await writes. Without
+    // these, a slow response for connection A can overwrite SelectedDetail /
+    // LatestDiagnostic that the user has since switched to connection B.
+    // Blazor WASM is single-threaded, so plain int increments are atomic.
+    private int _detailGeneration;
+    private int _preflightGeneration;
+    private int _listGeneration;
+
+    // The user-intended owner of SelectedDetail. LoadDetailAsync sets it to
+    // its incoming route id; user-driven clears (BeginCreateDraft, DeleteAsync
+    // matching the current selection) reset it to null. TryRefreshSelectedDetailAsync
+    // — a follower called after mutating endpoints — checks this snapshot post-await
+    // so a route change mid-flight cannot resurrect the just-edited row over
+    // the new selection. The generation counter alone is not enough here:
+    // TryRefresh starts AFTER the new LoadDetail has bumped, so a pure-counter
+    // model would let TryRefresh's stale write through.
+    private Guid? _selectedConnectionId;
+
     public DataConnectionsState(IDataConnectionClient client, IDataConnectionTelemetry telemetry, IProviderRegistry registry)
     {
         _client = client;
@@ -59,6 +80,7 @@ public sealed class DataConnectionsState
 
     public async Task RefreshListAsync(CancellationToken cancellationToken = default)
     {
+        var generation = ++_listGeneration;
         Status = WorkspaceListStatus.Loading;
         LastError = null;
         Notify();
@@ -66,6 +88,13 @@ public sealed class DataConnectionsState
         var watch = Stopwatch.StartNew();
         var result = await _client.ListAsync(cancellationToken).ConfigureAwait(false);
         watch.Stop();
+
+        if (generation != _listGeneration)
+        {
+            // A newer refresh has taken ownership — drop this stale list so it
+            // cannot stomp the fresher snapshot or undo a concurrent mutation.
+            return;
+        }
 
         if (!result.IsSuccess)
         {
@@ -103,6 +132,12 @@ public sealed class DataConnectionsState
         };
         SelectedDetail = null;
         LatestDiagnostic = null;
+        // User explicitly switched to "create new" — supersede any in-flight
+        // detail load or preflight test so a late response cannot resurrect the
+        // prior connection's data over the new draft.
+        _detailGeneration++;
+        _preflightGeneration++;
+        _selectedConnectionId = null;
         Notify();
 
         if (registration.IsStub)
@@ -130,6 +165,9 @@ public sealed class DataConnectionsState
     {
         Draft = null;
         LatestDiagnostic = null;
+        // Supersede any in-flight draft preflight so its result cannot repaint
+        // the diagnostic grid after the user has cancelled the create flow.
+        _preflightGeneration++;
         Notify();
     }
 
@@ -174,6 +212,9 @@ public sealed class DataConnectionsState
         await TryRefreshSelectedDetailAsync(summary.ConnectionId, cancellationToken).ConfigureAwait(false);
         Draft = null;
         LatestDiagnostic = null;
+        // Mutating-success clears LatestDiagnostic — supersede any in-flight
+        // preflight so its post-await write cannot repaint the grid.
+        _preflightGeneration++;
         Status = WorkspaceListStatus.Idle;
         _telemetry.Record("data_connections.create_succeeded", new Dictionary<string, object?>
         {
@@ -186,6 +227,8 @@ public sealed class DataConnectionsState
 
     public async Task LoadDetailAsync(Guid id, CancellationToken cancellationToken = default)
     {
+        var generation = ++_detailGeneration;
+        _selectedConnectionId = id;
         if (SelectedDetail?.ConnectionId != id)
         {
             // Navigating to a different connection — clear the prior selection
@@ -195,12 +238,23 @@ public sealed class DataConnectionsState
             // does not blank the page.
             SelectedDetail = null;
             LatestDiagnostic = null;
+            // Switching connections also invalidates any in-flight preflight
+            // for the prior id.
+            _preflightGeneration++;
         }
         Status = WorkspaceListStatus.Loading;
         LastError = null;
         Notify();
 
         var result = await _client.GetAsync(id, cancellationToken).ConfigureAwait(false);
+        if (generation != _detailGeneration)
+        {
+            // A newer load (or user-driven supersede) has taken ownership of
+            // SelectedDetail. Drop this stale response so it cannot overwrite
+            // the current connection's data with the prior one's.
+            return;
+        }
+
         if (!result.IsSuccess)
         {
             Status = WorkspaceListStatus.Error;
@@ -235,6 +289,10 @@ public sealed class DataConnectionsState
         ReplaceInList(result.Value!);
         await TryRefreshSelectedDetailAsync(id, cancellationToken).ConfigureAwait(false);
         LatestDiagnostic = null;
+        // Mutating-success clears LatestDiagnostic — supersede any in-flight
+        // preflight so its post-await write cannot repaint the grid against
+        // the freshly-toggled connection state.
+        _preflightGeneration++;
         Status = WorkspaceListStatus.Idle;
         _telemetry.Record(active ? "data_connections.enabled" : "data_connections.disabled", new Dictionary<string, object?>
         {
@@ -313,6 +371,10 @@ public sealed class DataConnectionsState
         await TryRefreshSelectedDetailAsync(summary.ConnectionId, cancellationToken).ConfigureAwait(false);
         Draft = null;
         LatestDiagnostic = null;
+        // Mutating-success clears LatestDiagnostic — supersede any in-flight
+        // preflight so its post-await write cannot repaint the grid against
+        // the freshly-edited connection state.
+        _preflightGeneration++;
         Status = WorkspaceListStatus.Idle;
         _telemetry.Record("data_connections.update_succeeded", new Dictionary<string, object?>
         {
@@ -342,6 +404,12 @@ public sealed class DataConnectionsState
         {
             SelectedDetail = null;
             LatestDiagnostic = null;
+            // Deleting the active selection invalidates any in-flight detail
+            // load or preflight so a late response cannot resurrect the
+            // just-deleted connection's data.
+            _detailGeneration++;
+            _preflightGeneration++;
+            _selectedConnectionId = null;
         }
         Status = WorkspaceListStatus.Idle;
         _telemetry.Record("data_connections.deleted", new Dictionary<string, object?>
@@ -359,6 +427,7 @@ public sealed class DataConnectionsState
             return null;
         }
 
+        var generation = ++_preflightGeneration;
         Status = WorkspaceListStatus.Testing;
         LastError = null;
         Notify();
@@ -374,11 +443,12 @@ public sealed class DataConnectionsState
         var result = await _client.TestDraftAsync(request, cancellationToken).ConfigureAwait(false);
         watch.Stop();
 
-        return CompletePreflight(result, detail: null, watch.ElapsedMilliseconds);
+        return CompletePreflight(result, detail: null, watch.ElapsedMilliseconds, generation);
     }
 
     public async Task<ConnectionDiagnostic?> RunExistingPreflightAsync(Guid id, CancellationToken cancellationToken = default)
     {
+        var generation = ++_preflightGeneration;
         Status = WorkspaceListStatus.Testing;
         LastError = null;
         Notify();
@@ -393,11 +463,19 @@ public sealed class DataConnectionsState
         var result = await _client.TestExistingAsync(id, cancellationToken).ConfigureAwait(false);
         watch.Stop();
 
-        return CompletePreflight(result, SelectedDetail, watch.ElapsedMilliseconds);
+        return CompletePreflight(result, SelectedDetail, watch.ElapsedMilliseconds, generation);
     }
 
-    private ConnectionDiagnostic? CompletePreflight(ConnectionResult<ConnectionTestOutcome> result, DataConnectionDetail? detail, long elapsedMs)
+    private ConnectionDiagnostic? CompletePreflight(ConnectionResult<ConnectionTestOutcome> result, DataConnectionDetail? detail, long elapsedMs, int generation)
     {
+        if (generation != _preflightGeneration)
+        {
+            // A newer preflight (or user-driven supersede) has taken ownership
+            // of LatestDiagnostic. Drop this stale outcome so it cannot
+            // overwrite the current connection's grid with the prior one's.
+            return null;
+        }
+
         if (!result.IsSuccess)
         {
             Status = WorkspaceListStatus.Error;
@@ -477,7 +555,20 @@ public sealed class DataConnectionsState
         // Mutating endpoints (POST/PUT) return a Summary; the page expects a
         // full Detail. Best-effort follow-up: on success, populate SelectedDetail;
         // on failure leave the prior value unchanged so the page does not blank.
+        // TryRefresh is a follower of whatever LoadDetail/BeginCreateDraft has
+        // already claimed: capture the generation without bumping (a bump
+        // would invalidate a concurrent LoadDetail for an unrelated id), then
+        // drop on return if a newer load superseded us OR if the user-intended
+        // owner id no longer matches our target. Both checks are necessary —
+        // generation alone misses the case where TryRefresh starts AFTER the
+        // newer LoadDetail has already bumped, and id alone misses same-id
+        // concurrent loads.
+        var generation = _detailGeneration;
         var result = await _client.GetAsync(id, cancellationToken).ConfigureAwait(false);
+        if (generation != _detailGeneration || _selectedConnectionId != id)
+        {
+            return;
+        }
         if (result.IsSuccess)
         {
             SelectedDetail = result.Value;
