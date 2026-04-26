@@ -306,7 +306,10 @@ The route includes:
   carries a geometry column. The geometry column is identified from the
   server-supplied `GeometryColumnIndex`, never from client guessing.
 - A collapsible EXPLAIN tree with per-node row counts, actual time, and a
-  warning chip when the planner row estimate is off by ≥10×.
+  warning chip when the planner row estimate is off by ≥10×. EXPLAIN
+  refuses mutating SQL outright — `EXPLAIN ANALYZE` would execute the
+  statement on the server and the EXPLAIN endpoint has no audited
+  mutation-override hook, so the per-query override applies to Run only.
 - Save-as-view dialog that returns FeatureServer / OGC API Features /
   OData URLs once the named view is registered. The dialog stays open on
   success and renders each URL with a copy-to-clipboard button so the

@@ -199,6 +199,12 @@ public sealed class SpatialSqlPlaygroundState : IDisposable
         }
 
         var allowMutation = MutationOverrideArmed;
+        // Consume the override the moment we snapshot it so a single armed
+        // confirmation is single-shot regardless of how this attempt terminates
+        // (success, server error, transport error, cancellation). Without this
+        // consumption, a transport failure would leak the armed state into the
+        // next click of Run and silently re-submit with allowMutation=true.
+        MutationOverrideArmed = false;
 
         if (!allowMutation && MutationGuard.IsMutating(Sql))
         {
@@ -301,9 +307,9 @@ public sealed class SpatialSqlPlaygroundState : IDisposable
                 }
             }
 
-            // Reset override after each submit so the next mutation requires a fresh
-            // confirmation. The audit log on the server records this single statement.
-            MutationOverrideArmed = false;
+            // Override consumption already happened up front (before the request was
+            // submitted) so cancellation / transport failures cannot leak the armed
+            // state into a follow-up click of Run.
             notify = true;
         }
         catch (OperationCanceledException)
@@ -363,6 +369,22 @@ public sealed class SpatialSqlPlaygroundState : IDisposable
     {
         if (string.IsNullOrWhiteSpace(Sql))
         {
+            return;
+        }
+
+        // EXPLAIN ANALYZE actually executes the statement on the server, and the
+        // server-side EXPLAIN endpoint has no AllowMutation contract or audit
+        // hook. Reject mutating SQL outright — the per-query override on the Run
+        // path is the only audited mutation channel, EXPLAIN is not.
+        if (MutationGuard.IsMutating(Sql))
+        {
+            LastError = "EXPLAIN is rejected for mutating SQL — EXPLAIN ANALYZE would execute the statement outside the audited mutation-override flow.";
+            Status = SpatialSqlPaneStatus.Error;
+            _telemetry.Record("explain_rejected", new Dictionary<string, object?>
+            {
+                ["reason"] = "mutation_blocked"
+            });
+            Notify();
             return;
         }
 

@@ -300,6 +300,70 @@ public sealed class SpatialSqlPlaygroundStateTests
     }
 
     [Fact]
+    public async Task RunQueryAsync_clears_mutation_override_when_execute_throws()
+    {
+        // Without consuming the override at snapshot, a transport failure leaves
+        // MutationOverrideArmed=true; the next click of Run silently resubmits
+        // with allowMutation=true. Pin the consumption-on-failure contract.
+        var telemetry = new RecordingTelemetry();
+        var state = new SpatialSqlPlaygroundState(new ThrowingExecuteClient(), telemetry);
+
+        state.SetSql("DELETE FROM parcels");
+        state.ArmMutationOverride();
+        Assert.True(state.MutationOverrideArmed);
+
+        await state.RunQueryAsync();
+
+        Assert.Equal(SpatialSqlPaneStatus.Error, state.Status);
+        Assert.False(state.MutationOverrideArmed);
+        Assert.Contains(telemetry.Events, e => e.Event == "query_rejected" &&
+            e.Properties is not null &&
+            e.Properties.TryGetValue("reason", out var r) &&
+            string.Equals(r as string, "transport_error", System.StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task RunQueryAsync_clears_mutation_override_when_execute_is_cancelled()
+    {
+        var telemetry = new RecordingTelemetry();
+        var state = new SpatialSqlPlaygroundState(new CancellingExecuteClient(), telemetry);
+
+        state.SetSql("DELETE FROM parcels");
+        state.ArmMutationOverride();
+
+        await state.RunQueryAsync();
+
+        // OCE path lands in Idle (not Error), but the override must still be
+        // consumed — otherwise a cancelled mutation re-arms invisibly.
+        Assert.Equal(SpatialSqlPaneStatus.Idle, state.Status);
+        Assert.False(state.MutationOverrideArmed);
+    }
+
+    [Fact]
+    public async Task RunExplainAsync_rejects_mutating_sql_with_mutation_blocked_reason()
+    {
+        // EXPLAIN ANALYZE actually runs the statement; the server's EXPLAIN
+        // endpoint has no AllowMutation contract or audit hook, so mutating SQL
+        // must be rejected outright on the EXPLAIN path even when the operator
+        // armed the per-query Run override.
+        var telemetry = new RecordingTelemetry();
+        var state = new SpatialSqlPlaygroundState(new StubSpatialSqlClient(), telemetry);
+
+        state.SetSql("DELETE FROM parcels");
+        state.ArmMutationOverride();
+        await state.RunExplainAsync();
+
+        Assert.Equal(SpatialSqlPaneStatus.Error, state.Status);
+        Assert.NotNull(state.LastError);
+        Assert.Null(state.LastPlan);
+        Assert.Contains(telemetry.Events, e => e.Event == "explain_rejected" &&
+            e.Properties is not null &&
+            e.Properties.TryGetValue("reason", out var r) &&
+            string.Equals(r as string, "mutation_blocked", System.StringComparison.Ordinal));
+        Assert.DoesNotContain(telemetry.Events, e => e.Event == "explain_completed");
+    }
+
+    [Fact]
     public async Task SaveViewAsync_uses_LastResultSql_not_the_live_editor_buffer()
     {
         var capture = new RequestCapturingClient();
@@ -384,6 +448,40 @@ public sealed class SpatialSqlPlaygroundStateTests
 
         public Task<NamedViewRegistration> SaveViewAsync(SaveViewRequest request, CancellationToken cancellationToken) =>
             throw new System.NotSupportedException();
+    }
+
+    private sealed class ThrowingExecuteClient : ISpatialSqlClient
+    {
+        private readonly StubSpatialSqlClient _inner = new();
+
+        public Task<SchemaSnapshot> GetSchemaAsync(CancellationToken cancellationToken) =>
+            _inner.GetSchemaAsync(cancellationToken);
+
+        public Task<SqlExecuteResult> ExecuteAsync(SqlExecuteRequest request, CancellationToken cancellationToken) =>
+            Task.FromException<SqlExecuteResult>(new System.InvalidOperationException("simulated transport failure"));
+
+        public Task<ExplainPlan> ExplainAsync(SqlExplainRequest request, CancellationToken cancellationToken) =>
+            _inner.ExplainAsync(request, cancellationToken);
+
+        public Task<NamedViewRegistration> SaveViewAsync(SaveViewRequest request, CancellationToken cancellationToken) =>
+            _inner.SaveViewAsync(request, cancellationToken);
+    }
+
+    private sealed class CancellingExecuteClient : ISpatialSqlClient
+    {
+        private readonly StubSpatialSqlClient _inner = new();
+
+        public Task<SchemaSnapshot> GetSchemaAsync(CancellationToken cancellationToken) =>
+            _inner.GetSchemaAsync(cancellationToken);
+
+        public Task<SqlExecuteResult> ExecuteAsync(SqlExecuteRequest request, CancellationToken cancellationToken) =>
+            Task.FromException<SqlExecuteResult>(new OperationCanceledException());
+
+        public Task<ExplainPlan> ExplainAsync(SqlExplainRequest request, CancellationToken cancellationToken) =>
+            _inner.ExplainAsync(request, cancellationToken);
+
+        public Task<NamedViewRegistration> SaveViewAsync(SaveViewRequest request, CancellationToken cancellationToken) =>
+            _inner.SaveViewAsync(request, cancellationToken);
     }
 
     private sealed class GatedExecuteClient : ISpatialSqlClient
