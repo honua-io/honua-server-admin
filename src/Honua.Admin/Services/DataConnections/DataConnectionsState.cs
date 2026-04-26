@@ -44,6 +44,7 @@ public sealed class DataConnectionsState
     private int _detailGeneration;
     private int _preflightGeneration;
     private int _listGeneration;
+    private int _draftGeneration;
 
     // The user-intended owner of SelectedDetail. LoadDetailAsync sets it to
     // its incoming route id; user-driven clears (BeginCreateDraft, DeleteAsync
@@ -137,6 +138,7 @@ public sealed class DataConnectionsState
         // prior connection's data over the new draft.
         _detailGeneration++;
         _preflightGeneration++;
+        _draftGeneration++;
         _selectedConnectionId = null;
         Notify();
 
@@ -158,6 +160,13 @@ public sealed class DataConnectionsState
             return;
         }
         mutate(Draft);
+        LatestDiagnostic = null;
+        _preflightGeneration++;
+        _draftGeneration++;
+        if (Status == WorkspaceListStatus.Testing)
+        {
+            Status = WorkspaceListStatus.Idle;
+        }
         Notify();
     }
 
@@ -168,6 +177,11 @@ public sealed class DataConnectionsState
         // Supersede any in-flight draft preflight so its result cannot repaint
         // the diagnostic grid after the user has cancelled the create flow.
         _preflightGeneration++;
+        _draftGeneration++;
+        if (Status == WorkspaceListStatus.Testing)
+        {
+            Status = WorkspaceListStatus.Idle;
+        }
         Notify();
     }
 
@@ -179,7 +193,9 @@ public sealed class DataConnectionsState
                 new ConnectionOperationError(ConnectionErrorKind.Validation, "error.no_draft"));
         }
 
-        var providerId = Draft.ProviderId;
+        var draft = Draft;
+        var draftGeneration = _draftGeneration;
+        var providerId = draft.ProviderId;
 
         Status = WorkspaceListStatus.Mutating;
         LastError = null;
@@ -190,8 +206,13 @@ public sealed class DataConnectionsState
             ["provider"] = providerId
         });
 
-        var request = ToCreateRequest(Draft);
+        var request = ToCreateRequest(draft);
         var result = await _client.CreateAsync(request, cancellationToken).ConfigureAwait(false);
+
+        if (!IsCurrentDraft(draft, draftGeneration))
+        {
+            return DropStaleDraftSubmit<DataConnectionSummary>();
+        }
 
         if (!result.IsSuccess)
         {
@@ -210,6 +231,10 @@ public sealed class DataConnectionsState
         var summary = result.Value!;
         _connections.Add(summary);
         await TryRefreshSelectedDetailAsync(summary.ConnectionId, cancellationToken).ConfigureAwait(false);
+        if (!IsCurrentDraft(draft, draftGeneration))
+        {
+            return DropStaleDraftSubmit<DataConnectionSummary>();
+        }
         Draft = null;
         LatestDiagnostic = null;
         // Mutating-success clears LatestDiagnostic — supersede any in-flight
@@ -320,6 +345,13 @@ public sealed class DataConnectionsState
             SecretReference = detail.CredentialReference,
             IsActive = detail.IsActive
         };
+        LatestDiagnostic = null;
+        _preflightGeneration++;
+        _draftGeneration++;
+        if (Status == WorkspaceListStatus.Testing)
+        {
+            Status = WorkspaceListStatus.Idle;
+        }
         Notify();
         return Draft;
     }
@@ -332,26 +364,35 @@ public sealed class DataConnectionsState
                 new ConnectionOperationError(ConnectionErrorKind.Validation, "error.no_draft"));
         }
 
+        var draft = Draft;
+        var draftGeneration = _draftGeneration;
+        var connectionId = draft.ConnectionId.Value;
+
         Status = WorkspaceListStatus.Mutating;
         LastError = null;
         Notify();
 
         var request = new UpdateConnectionRequest
         {
-            Description = Draft.Description,
-            Host = Draft.Host,
-            Port = Draft.Port,
-            DatabaseName = Draft.DatabaseName,
-            Username = Draft.Username,
-            Password = Draft.CredentialMode == CredentialMode.Managed && !string.IsNullOrEmpty(Draft.Password)
-                ? Draft.Password
+            Description = draft.Description,
+            Host = draft.Host,
+            Port = draft.Port,
+            DatabaseName = draft.DatabaseName,
+            Username = draft.Username,
+            Password = draft.CredentialMode == CredentialMode.Managed && !string.IsNullOrEmpty(draft.Password)
+                ? draft.Password
                 : null,
-            SslRequired = Draft.SslRequired,
-            SslMode = Draft.SslMode,
-            IsActive = Draft.IsActive
+            SslRequired = draft.SslRequired,
+            SslMode = draft.SslMode,
+            IsActive = draft.IsActive
         };
 
-        var result = await _client.UpdateAsync(Draft.ConnectionId.Value, request, cancellationToken).ConfigureAwait(false);
+        var result = await _client.UpdateAsync(connectionId, request, cancellationToken).ConfigureAwait(false);
+
+        if (!IsCurrentDraft(draft, draftGeneration))
+        {
+            return DropStaleDraftSubmit<DataConnectionSummary>();
+        }
 
         if (!result.IsSuccess)
         {
@@ -359,7 +400,7 @@ public sealed class DataConnectionsState
             LastError = result.Error;
             _telemetry.Record("data_connections.update_failed", new Dictionary<string, object?>
             {
-                ["connection_id"] = Draft.ConnectionId,
+                ["connection_id"] = connectionId,
                 ["failure_code"] = result.Error!.Kind.ToString()
             });
             Notify();
@@ -369,6 +410,10 @@ public sealed class DataConnectionsState
         var summary = result.Value!;
         ReplaceInList(summary);
         await TryRefreshSelectedDetailAsync(summary.ConnectionId, cancellationToken).ConfigureAwait(false);
+        if (!IsCurrentDraft(draft, draftGeneration))
+        {
+            return DropStaleDraftSubmit<DataConnectionSummary>();
+        }
         Draft = null;
         LatestDiagnostic = null;
         // Mutating-success clears LatestDiagnostic — supersede any in-flight
@@ -427,6 +472,8 @@ public sealed class DataConnectionsState
             return null;
         }
 
+        var draft = Draft;
+        var draftGeneration = _draftGeneration;
         var generation = ++_preflightGeneration;
         Status = WorkspaceListStatus.Testing;
         LastError = null;
@@ -435,15 +482,15 @@ public sealed class DataConnectionsState
         _telemetry.Record("data_connections.test_started", new Dictionary<string, object?>
         {
             ["mode"] = "draft",
-            ["provider"] = Draft.ProviderId
+            ["provider"] = draft.ProviderId
         });
 
         var watch = Stopwatch.StartNew();
-        var request = ToCreateRequest(Draft);
+        var request = ToCreateRequest(draft);
         var result = await _client.TestDraftAsync(request, cancellationToken).ConfigureAwait(false);
         watch.Stop();
 
-        return CompletePreflight(result, detail: null, watch.ElapsedMilliseconds, generation);
+        return CompletePreflight(result, detail: null, watch.ElapsedMilliseconds, generation, draft, draftGeneration);
     }
 
     public async Task<ConnectionDiagnostic?> RunExistingPreflightAsync(Guid id, CancellationToken cancellationToken = default)
@@ -466,13 +513,25 @@ public sealed class DataConnectionsState
         return CompletePreflight(result, SelectedDetail, watch.ElapsedMilliseconds, generation);
     }
 
-    private ConnectionDiagnostic? CompletePreflight(ConnectionResult<ConnectionTestOutcome> result, DataConnectionDetail? detail, long elapsedMs, int generation)
+    private ConnectionDiagnostic? CompletePreflight(
+        ConnectionResult<ConnectionTestOutcome> result,
+        DataConnectionDetail? detail,
+        long elapsedMs,
+        int generation,
+        ConnectionDraft? draft = null,
+        int draftGeneration = 0)
     {
         if (generation != _preflightGeneration)
         {
             // A newer preflight (or user-driven supersede) has taken ownership
             // of LatestDiagnostic. Drop this stale outcome so it cannot
             // overwrite the current connection's grid with the prior one's.
+            return null;
+        }
+        if (draft is not null && !IsCurrentDraft(draft, draftGeneration))
+        {
+            Status = WorkspaceListStatus.Idle;
+            Notify();
             return null;
         }
 
@@ -573,6 +632,21 @@ public sealed class DataConnectionsState
         {
             SelectedDetail = result.Value;
         }
+    }
+
+    private bool IsCurrentDraft(ConnectionDraft draft, int generation) =>
+        ReferenceEquals(Draft, draft) && _draftGeneration == generation;
+
+    private ConnectionResult<T> DropStaleDraftSubmit<T>()
+    {
+        if (Status == WorkspaceListStatus.Mutating)
+        {
+            Status = WorkspaceListStatus.Idle;
+            Notify();
+        }
+
+        return ConnectionResult<T>.Fail(
+            new ConnectionOperationError(ConnectionErrorKind.Validation, "error.stale_draft"));
     }
 
     private void ReplaceInList(DataConnectionSummary summary)

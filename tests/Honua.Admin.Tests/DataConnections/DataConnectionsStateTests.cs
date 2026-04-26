@@ -753,6 +753,146 @@ public sealed class DataConnectionsStateTests
         Assert.Null(state.LatestDiagnostic);
     }
 
+    [Fact]
+    public async Task Stale_RunDraftPreflight_after_UpdateDraft_does_not_repaint_grid()
+    {
+        // Updating any draft field supersedes the in-flight preflight. The
+        // late result describes the old request body and must not become the
+        // visible diagnostic for the newer draft values.
+        var stub = new GatedDataConnectionClient(Array.Empty<DataConnectionDetail>())
+        {
+            FailureMessageForHost = host => host == "broken.example.com" ? "SSL handshake failed" : null
+        };
+        var (state, _) = BuildState(stub);
+
+        var draft = state.BeginCreateDraft("postgres");
+        draft.Name = "demo";
+        draft.Host = "broken.example.com";
+        draft.DatabaseName = "honua";
+        draft.Username = "honua";
+        draft.Password = "secret";
+
+        stub.HoldTestDraft();
+        var slow = state.RunDraftPreflightAsync();
+
+        state.UpdateDraft(d => d.Host = "fixed.example.com");
+
+        stub.ReleaseTestDraft();
+        var diagnostic = await slow;
+
+        Assert.Null(diagnostic);
+        Assert.Null(state.LatestDiagnostic);
+        Assert.Equal("fixed.example.com", state.Draft!.Host);
+        Assert.Equal(WorkspaceListStatus.Idle, state.Status);
+    }
+
+    [Fact]
+    public async Task Stale_SubmitDraft_after_UpdateDraft_keeps_newer_draft_for_retry()
+    {
+        // The old save may complete on the server, but the state store must
+        // not clear the form or return success to Create.razor once the
+        // operator has edited the draft again. Returning a failure prevents
+        // late navigation to the stale connection.
+        var stub = new GatedDataConnectionClient(Array.Empty<DataConnectionDetail>());
+        var (state, _) = BuildState(stub);
+
+        var draft = state.BeginCreateDraft("postgres");
+        draft.Name = "old";
+        draft.Host = "db.example.com";
+        draft.DatabaseName = "honua";
+        draft.Username = "honua";
+        draft.Password = "secret";
+
+        stub.HoldCreate();
+        var staleSubmit = state.SubmitDraftAsync();
+
+        state.UpdateDraft(d => d.Name = "new");
+        stub.ReleaseCreate();
+        var staleResult = await staleSubmit;
+
+        Assert.False(staleResult.IsSuccess);
+        Assert.Equal("error.stale_draft", staleResult.Error!.CopyKey);
+        Assert.Null(state.LastError);
+        Assert.NotNull(state.Draft);
+        Assert.Equal("new", state.Draft!.Name);
+        Assert.Empty(state.Connections);
+        Assert.Equal(WorkspaceListStatus.Idle, state.Status);
+
+        var retry = await state.SubmitDraftAsync();
+
+        Assert.True(retry.IsSuccess);
+        Assert.Null(state.Draft);
+        Assert.Single(state.Connections);
+        Assert.Equal("new", state.Connections[0].Name);
+    }
+
+    [Fact]
+    public async Task Stale_SubmitDraft_after_ClearDraft_does_not_restore_or_error()
+    {
+        // Cancel is the terminal sibling of edit-while-save: a late create
+        // completion must not recreate a draft, surface an error, or leave the
+        // workspace stuck in Mutating.
+        var stub = new GatedDataConnectionClient(Array.Empty<DataConnectionDetail>());
+        var (state, _) = BuildState(stub);
+
+        var draft = state.BeginCreateDraft("postgres");
+        draft.Name = "demo";
+        draft.Host = "db.example.com";
+        draft.DatabaseName = "honua";
+        draft.Username = "honua";
+        draft.Password = "secret";
+
+        stub.HoldCreate();
+        var staleSubmit = state.SubmitDraftAsync();
+
+        state.ClearDraft();
+        stub.ReleaseCreate();
+        var staleResult = await staleSubmit;
+
+        Assert.False(staleResult.IsSuccess);
+        Assert.Equal("error.stale_draft", staleResult.Error!.CopyKey);
+        Assert.Null(state.Draft);
+        Assert.Null(state.LastError);
+        Assert.Empty(state.Connections);
+        Assert.Equal(WorkspaceListStatus.Idle, state.Status);
+    }
+
+    [Fact]
+    public async Task Stale_SubmitEdit_after_UpdateDraft_keeps_newer_edit_buffer_for_retry()
+    {
+        // Same ownership invariant for edit saves: a late update response
+        // should not clear a draft that now contains newer operator edits.
+        var seed = Sample("primary", isActive: true);
+        var stub = new GatedDataConnectionClient(new[] { seed });
+        var (state, _) = BuildState(stub);
+
+        await state.RefreshListAsync();
+        await state.LoadDetailAsync(seed.ConnectionId);
+        var draft = state.BeginEditDraft(state.SelectedDetail!);
+        draft.Description = "old edit";
+
+        stub.HoldUpdate(seed.ConnectionId);
+        var staleSubmit = state.SubmitEditAsync();
+
+        state.UpdateDraft(d => d.Description = "new edit");
+        stub.ReleaseUpdate(seed.ConnectionId);
+        var staleResult = await staleSubmit;
+
+        Assert.False(staleResult.IsSuccess);
+        Assert.Equal("error.stale_draft", staleResult.Error!.CopyKey);
+        Assert.Null(state.LastError);
+        Assert.NotNull(state.Draft);
+        Assert.Equal("new edit", state.Draft!.Description);
+        Assert.Equal(seed.ConnectionId, state.SelectedDetail!.ConnectionId);
+        Assert.Equal(WorkspaceListStatus.Idle, state.Status);
+
+        var retry = await state.SubmitEditAsync();
+
+        Assert.True(retry.IsSuccess);
+        Assert.Null(state.Draft);
+        Assert.Equal("new edit", retry.Value!.Description);
+    }
+
     /// <summary>
     /// Per-method gates that hold a single in-flight call until released, so
     /// tests can pin the stale-write invariants in <c>DataConnectionsState</c>
@@ -764,6 +904,8 @@ public sealed class DataConnectionsStateTests
         private readonly StubDataConnectionClient _inner;
         private readonly Dictionary<Guid, TaskCompletionSource> _getGates = new();
         private readonly Dictionary<Guid, TaskCompletionSource> _testExistingGates = new();
+        private readonly Dictionary<Guid, TaskCompletionSource> _updateGates = new();
+        private TaskCompletionSource? _createGate;
         private TaskCompletionSource? _testDraftGate;
 
         public GatedDataConnectionClient(IEnumerable<DataConnectionDetail> seed)
@@ -785,6 +927,14 @@ public sealed class DataConnectionsStateTests
 
         public void ReleaseTestExisting(Guid id) => _testExistingGates[id].TrySetResult();
 
+        public void HoldCreate() => _createGate = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public void ReleaseCreate() => _createGate!.TrySetResult();
+
+        public void HoldUpdate(Guid id) => _updateGates[id] = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public void ReleaseUpdate(Guid id) => _updateGates[id].TrySetResult();
+
         public void HoldTestDraft() => _testDraftGate = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
 
         public void ReleaseTestDraft() => _testDraftGate!.TrySetResult();
@@ -801,11 +951,23 @@ public sealed class DataConnectionsStateTests
             return await _inner.GetAsync(id, cancellationToken).ConfigureAwait(false);
         }
 
-        public Task<ConnectionResult<DataConnectionSummary>> CreateAsync(CreateConnectionRequest request, System.Threading.CancellationToken cancellationToken = default) =>
-            _inner.CreateAsync(request, cancellationToken);
+        public async Task<ConnectionResult<DataConnectionSummary>> CreateAsync(CreateConnectionRequest request, System.Threading.CancellationToken cancellationToken = default)
+        {
+            if (_createGate is { } gate)
+            {
+                await gate.Task.ConfigureAwait(false);
+            }
+            return await _inner.CreateAsync(request, cancellationToken).ConfigureAwait(false);
+        }
 
-        public Task<ConnectionResult<DataConnectionSummary>> UpdateAsync(Guid id, UpdateConnectionRequest request, System.Threading.CancellationToken cancellationToken = default) =>
-            _inner.UpdateAsync(id, request, cancellationToken);
+        public async Task<ConnectionResult<DataConnectionSummary>> UpdateAsync(Guid id, UpdateConnectionRequest request, System.Threading.CancellationToken cancellationToken = default)
+        {
+            if (_updateGates.TryGetValue(id, out var gate))
+            {
+                await gate.Task.ConfigureAwait(false);
+            }
+            return await _inner.UpdateAsync(id, request, cancellationToken).ConfigureAwait(false);
+        }
 
         public Task<ConnectionResult<DataConnectionSummary>> DisableAsync(Guid id, System.Threading.CancellationToken cancellationToken = default) =>
             _inner.DisableAsync(id, cancellationToken);
