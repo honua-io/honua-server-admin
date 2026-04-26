@@ -193,6 +193,7 @@ public sealed class SpatialSqlPlaygroundState : IDisposable
     {
         if (string.IsNullOrWhiteSpace(Sql))
         {
+            SupersedeActiveExecution();
             LastError = "Enter a SQL statement to run.";
             Status = SpatialSqlPaneStatus.Error;
             Notify();
@@ -209,6 +210,7 @@ public sealed class SpatialSqlPlaygroundState : IDisposable
 
         if (!allowMutation && MutationGuard.IsMutating(Sql))
         {
+            SupersedeActiveExecution();
             LastError = "Mutating SQL is rejected by default. Use the override dialog to confirm and resubmit.";
             Status = SpatialSqlPaneStatus.Error;
             LastResult = new SqlExecuteResult
@@ -355,6 +357,16 @@ public sealed class SpatialSqlPlaygroundState : IDisposable
         if (notify)
         {
             Notify();
+        }
+    }
+
+    private void SupersedeActiveExecution()
+    {
+        lock (_sync)
+        {
+            _executeCts?.Cancel();
+            _executeCts?.Dispose();
+            _executeCts = null;
         }
     }
 

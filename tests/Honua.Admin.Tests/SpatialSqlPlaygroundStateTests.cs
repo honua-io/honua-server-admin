@@ -279,6 +279,67 @@ public sealed class SpatialSqlPlaygroundStateTests
     }
 
     [Fact]
+    public async Task RunQueryAsync_empty_sql_supersedes_active_execution()
+    {
+        var slowGate = new TaskCompletionSource<SqlExecuteResult>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var client = new GatedExecuteClient(firstAttempt: () => slowGate.Task, fallback: new SqlExecuteResult());
+        var telemetry = new RecordingTelemetry();
+        var state = new SpatialSqlPlaygroundState(client, telemetry);
+
+        state.SetSql("SELECT * FROM slow");
+        var slowTask = state.RunQueryAsync();
+
+        state.SetSql("   ");
+        await state.RunQueryAsync();
+
+        Assert.Equal(SpatialSqlPaneStatus.Error, state.Status);
+        Assert.Equal("Enter a SQL statement to run.", state.LastError);
+        Assert.Null(state.LastResult);
+
+        slowGate.SetResult(new SqlExecuteResult
+        {
+            Columns = new[] { new SqlColumn("payload", "text") },
+            Rows = new[] { new SqlRow(new string?[] { "slow-result" }) }
+        });
+        await slowTask;
+
+        Assert.Equal(SpatialSqlPaneStatus.Error, state.Status);
+        Assert.Equal("Enter a SQL statement to run.", state.LastError);
+        Assert.Null(state.LastResult);
+        Assert.DoesNotContain(telemetry.Events, e => e.Event == "query_completed");
+    }
+
+    [Fact]
+    public async Task RunQueryAsync_mutation_rejection_supersedes_active_execution()
+    {
+        var slowGate = new TaskCompletionSource<SqlExecuteResult>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var client = new GatedExecuteClient(firstAttempt: () => slowGate.Task, fallback: new SqlExecuteResult());
+        var telemetry = new RecordingTelemetry();
+        var state = new SpatialSqlPlaygroundState(client, telemetry);
+
+        state.SetSql("SELECT * FROM slow");
+        var slowTask = state.RunQueryAsync();
+
+        state.SetSql("DELETE FROM parcels");
+        await state.RunQueryAsync();
+
+        Assert.Equal(SpatialSqlPaneStatus.Error, state.Status);
+        Assert.Equal("mutation_blocked", state.LastResult!.Error!.Code);
+
+        slowGate.SetResult(new SqlExecuteResult
+        {
+            Columns = new[] { new SqlColumn("payload", "text") },
+            Rows = new[] { new SqlRow(new string?[] { "slow-result" }) }
+        });
+        await slowTask;
+
+        Assert.Equal(SpatialSqlPaneStatus.Error, state.Status);
+        Assert.Equal("mutation_blocked", state.LastResult!.Error!.Code);
+        Assert.Equal("DELETE FROM parcels", state.LastResultSql);
+        Assert.DoesNotContain(telemetry.Events, e => e.Event == "query_completed");
+    }
+
+    [Fact]
     public async Task RunQueryAsync_pairs_LastResult_with_the_SQL_that_produced_it()
     {
         var state = new SpatialSqlPlaygroundState(new StubSpatialSqlClient(), new RecordingTelemetry());
