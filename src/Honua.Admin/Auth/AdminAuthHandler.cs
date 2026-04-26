@@ -27,8 +27,13 @@ public sealed class AdminAuthHandler : DelegatingHandler
         HttpRequestMessage request,
         CancellationToken cancellationToken)
     {
+        // The typed HttpClient may already carry an X-API-Key from
+        // HonuaServer:ApiKey (Development-only). When the operator runtime
+        // override is set, replace that default rather than appending a
+        // duplicate header value.
         if (!string.IsNullOrEmpty(_auth.ApiKey))
         {
+            request.Headers.Remove("X-API-Key");
             request.Headers.TryAddWithoutValidation("X-API-Key", _auth.ApiKey);
         }
 

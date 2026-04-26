@@ -14,6 +14,9 @@ public sealed class HonuaAdminOptions
 {
     public const string SectionName = "HonuaServer";
 
+    /// <summary>Default per-request timeout (seconds) when the option is unset.</summary>
+    public const int DefaultRequestTimeoutSeconds = 30;
+
     /// <summary>The base address of the honua-server admin API.</summary>
     public string BaseUrl { get; set; } = string.Empty;
 
@@ -21,5 +24,5 @@ public sealed class HonuaAdminOptions
     public string ApiKey { get; set; } = string.Empty;
 
     /// <summary>Default timeout for admin requests (seconds).</summary>
-    public int RequestTimeoutSeconds { get; set; } = 30;
+    public int RequestTimeoutSeconds { get; set; } = DefaultRequestTimeoutSeconds;
 }

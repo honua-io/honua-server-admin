@@ -19,13 +19,30 @@ public static class EndpointInventoryGenerator
         @"var\s+(?<var>[A-Za-z_][A-Za-z0-9_]*)\s*=\s*(?<source>[A-Za-z_][A-Za-z0-9_]*)\s*\.MapGroup\(\s*""(?<route>[^""]+)""\s*\)",
         RegexOptions.Compiled);
 
+    // Matches `receiver.MapGet/Post/Put/Delete/Patch("route", ...)` even when the
+    // handler argument is wrapped to a subsequent line. The route literal stays
+    // on the same line as the call by convention, but whitespace between the
+    // receiver, dot, method, and `(` may include newlines (Singleline mode).
     private static readonly Regex MapVerbCall = new(
-        @"(?<receiver>[A-Za-z_][A-Za-z0-9_]*)\s*\.\s*Map(?<verb>Get|Post|Put|Delete|Patch)\(\s*\$?""(?<route>[^""]*)""",
-        RegexOptions.Compiled);
+        @"(?<receiver>[A-Za-z_][A-Za-z0-9_]*)\s*\.\s*Map(?<verb>Get|Post|Put|Delete|Patch)\s*\(\s*\$?""(?<route>[^""]*)""",
+        RegexOptions.Compiled | RegexOptions.Singleline);
 
+    // Matches `receiver.MapMethods("route", [...] | identifier, ...)` with the
+    // same whitespace tolerance. The methods token may be a collection literal
+    // or a referenced array variable like `_nonGetMethods`.
     private static readonly Regex MapMethodsCall = new(
-        @"(?<receiver>[A-Za-z_][A-Za-z0-9_]*)\s*\.\s*MapMethods\(\s*\$?""(?<route>[^""]*)""\s*,\s*(?<methods>\[[^\]]+\]|[A-Za-z_][A-Za-z0-9_]*)",
-        RegexOptions.Compiled);
+        @"(?<receiver>[A-Za-z_][A-Za-z0-9_]*)\s*\.\s*MapMethods\s*\(\s*\$?""(?<route>[^""]*)""\s*,\s*(?<methods>\[[^\]]+\]|[A-Za-z_][A-Za-z0-9_]*)",
+        RegexOptions.Compiled | RegexOptions.Singleline);
+
+    // Matches the generic `receiver.Map("route", handler)` call, paired below
+    // with a chained `.WithMetadata(new HttpMethodMetadata(new[] {...}))` to
+    // resolve the verbs. Used by features such as AdminGitOpsWatchEndpoints
+    // and AdminManifestApprovalEndpoints. We require a chain that eventually
+    // invokes WithMetadata to avoid matching unrelated `.Map(` calls in the
+    // codebase.
+    private static readonly Regex MapGenericCall = new(
+        @"(?<receiver>[A-Za-z_][A-Za-z0-9_]*)\s*\.\s*Map\s*\(\s*\$?""(?<route>[^""]*)""(?<chain>[^;]*?)\.WithMetadata\s*\(\s*new\s+HttpMethodMetadata\s*\(\s*new(?:\s*\[\s*\])?\s*\{\s*(?<methods>[^}]+)\s*\}\s*\)\s*\)",
+        RegexOptions.Compiled | RegexOptions.Singleline);
 
     // const-string route declarations like `private const string TaskRoute = "/foo";`
     private static readonly Regex ConstRouteDeclaration = new(
@@ -82,10 +99,10 @@ public static class EndpointInventoryGenerator
     private static IEnumerable<EndpointEntry> ExtractFromHttpEndpointFile(string filePath, string featuresRoot)
     {
         var text = File.ReadAllText(filePath);
-        var lines = text.Split('\n');
 
         var feature = GetFeatureName(filePath, featuresRoot);
         var fileName = Path.GetFileNameWithoutExtension(filePath);
+        var sourceFile = GetRelativePath(filePath, featuresRoot);
 
         // Inline const string declarations so route templates that reference them
         // (e.g. `MapGet($"{TaskRoute}/execute", ...)`) resolve correctly.
@@ -116,62 +133,130 @@ public static class EndpointInventoryGenerator
             groups[variable] = NormalizeRoute(prefix, route);
         }
 
-        // `var x = endpoints.MapXxx(...)` style — capture the receiver too so that
-        // the assigned variable participates in subsequent receiver lookups (e.g.
-        // chained `.RequireAuthorization()` is irrelevant; we only need it for the
-        // MapXxx call itself, which is already matched below).
         var seenKeys = new HashSet<string>(System.StringComparer.Ordinal);
-        for (var i = 0; i < lines.Length; i++)
+
+        // Single-pass over the full file text. Multiline-aware regexes mean a
+        // wrapped argument list (e.g. `MapPost(\n    "/route",\n    handler)`)
+        // still resolves on its opening line and the line number is derived
+        // from the match position.
+        foreach (var entry in CollectMapVerbEntries(text, MapVerbCall, groups, constants, feature, fileName, sourceFile))
         {
-            var line = lines[i];
-
-            foreach (Match m in MapVerbCall.Matches(line))
+            if (seenKeys.Add(entry.Key))
             {
-                var receiver = m.Groups["receiver"].Value;
-                if (!groups.TryGetValue(receiver, out var prefix))
-                {
-                    continue;
-                }
+                yield return entry;
+            }
+        }
 
-                var route = NormalizeRoute(prefix, ExpandConstantInterpolation(m.Groups["route"].Value, constants));
-                var verb = m.Groups["verb"].Value.ToUpperInvariant();
-                var entry = EndpointEntry.Http(
-                    feature: feature,
-                    file: fileName,
-                    verb: verb,
-                    route: route,
-                    sourceFile: GetRelativePath(filePath, featuresRoot),
-                    sourceLine: i + 1);
-                if (seenKeys.Add(entry.Key))
-                {
-                    yield return entry;
-                }
+        foreach (var entry in CollectMapMethodsEntries(text, groups, constants, feature, fileName, sourceFile))
+        {
+            if (seenKeys.Add(entry.Key))
+            {
+                yield return entry;
+            }
+        }
+
+        foreach (var entry in CollectMapGenericEntries(text, groups, constants, feature, fileName, sourceFile))
+        {
+            if (seenKeys.Add(entry.Key))
+            {
+                yield return entry;
+            }
+        }
+    }
+
+    private static IEnumerable<EndpointEntry> CollectMapVerbEntries(
+        string text,
+        Regex pattern,
+        IReadOnlyDictionary<string, string> groups,
+        IReadOnlyDictionary<string, string> constants,
+        string feature,
+        string fileName,
+        string sourceFile)
+    {
+        foreach (Match m in pattern.Matches(text))
+        {
+            var receiver = m.Groups["receiver"].Value;
+            if (!groups.TryGetValue(receiver, out var prefix))
+            {
+                continue;
             }
 
-            foreach (Match m in MapMethodsCall.Matches(line))
-            {
-                var receiver = m.Groups["receiver"].Value;
-                if (!groups.TryGetValue(receiver, out var prefix))
-                {
-                    continue;
-                }
+            var route = NormalizeRoute(prefix, ExpandConstantInterpolation(m.Groups["route"].Value, constants));
+            var verb = m.Groups["verb"].Value.ToUpperInvariant();
+            yield return EndpointEntry.Http(
+                feature: feature,
+                file: fileName,
+                verb: verb,
+                route: route,
+                sourceFile: sourceFile,
+                sourceLine: GetLineNumber(text, m.Index));
+        }
+    }
 
-                var route = NormalizeRoute(prefix, ExpandConstantInterpolation(m.Groups["route"].Value, constants));
-                var methodsToken = m.Groups["methods"].Value;
-                foreach (var method in ResolveMethods(methodsToken, text))
-                {
-                    var entry = EndpointEntry.Http(
-                        feature: feature,
-                        file: fileName,
-                        verb: method,
-                        route: route,
-                        sourceFile: GetRelativePath(filePath, featuresRoot),
-                        sourceLine: i + 1);
-                    if (seenKeys.Add(entry.Key))
-                    {
-                        yield return entry;
-                    }
-                }
+    private static IEnumerable<EndpointEntry> CollectMapMethodsEntries(
+        string text,
+        IReadOnlyDictionary<string, string> groups,
+        IReadOnlyDictionary<string, string> constants,
+        string feature,
+        string fileName,
+        string sourceFile)
+    {
+        foreach (Match m in MapMethodsCall.Matches(text))
+        {
+            var receiver = m.Groups["receiver"].Value;
+            if (!groups.TryGetValue(receiver, out var prefix))
+            {
+                continue;
+            }
+
+            var route = NormalizeRoute(prefix, ExpandConstantInterpolation(m.Groups["route"].Value, constants));
+            var methodsToken = m.Groups["methods"].Value;
+            var line = GetLineNumber(text, m.Index);
+            foreach (var method in ResolveMethods(methodsToken, text))
+            {
+                yield return EndpointEntry.Http(
+                    feature: feature,
+                    file: fileName,
+                    verb: method,
+                    route: route,
+                    sourceFile: sourceFile,
+                    sourceLine: line);
+            }
+        }
+    }
+
+    private static IEnumerable<EndpointEntry> CollectMapGenericEntries(
+        string text,
+        IReadOnlyDictionary<string, string> groups,
+        IReadOnlyDictionary<string, string> constants,
+        string feature,
+        string fileName,
+        string sourceFile)
+    {
+        foreach (Match m in MapGenericCall.Matches(text))
+        {
+            var receiver = m.Groups["receiver"].Value;
+            if (!groups.TryGetValue(receiver, out var prefix))
+            {
+                continue;
+            }
+
+            var route = NormalizeRoute(prefix, ExpandConstantInterpolation(m.Groups["route"].Value, constants));
+            var methods = ExtractHttpMethods(m.Groups["methods"].Value).ToList();
+            if (methods.Count == 0)
+            {
+                continue;
+            }
+            var line = GetLineNumber(text, m.Index);
+            foreach (var method in methods)
+            {
+                yield return EndpointEntry.Http(
+                    feature: feature,
+                    file: fileName,
+                    verb: method,
+                    route: route,
+                    sourceFile: sourceFile,
+                    sourceLine: line);
             }
         }
     }
@@ -243,6 +328,23 @@ public static class EndpointInventoryGenerator
     private static string GetRelativePath(string filePath, string featuresRoot)
     {
         return Path.GetRelativePath(featuresRoot, filePath).Replace('\\', '/');
+    }
+
+    private static int GetLineNumber(string text, int index)
+    {
+        // Cheap O(n) line counter; called once per match. The endpoint inventory
+        // generator is not a hot path so we can prefer simplicity over a prefix
+        // sum. Lines are 1-indexed to match editor conventions.
+        var line = 1;
+        var limit = System.Math.Min(index, text.Length);
+        for (var i = 0; i < limit; i++)
+        {
+            if (text[i] == '\n')
+            {
+                line++;
+            }
+        }
+        return line;
     }
 
     private static string NormalizeRoute(string prefix, string route)

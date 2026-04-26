@@ -102,8 +102,14 @@
         _activeConnectionId = ConnectionId;
         if (string.IsNullOrWhiteSpace(_activeConnectionId))
         {
-            var connections = await AdminClient.ListConnectionsAsync(CancellationToken.None);
-            _activeConnectionId = connections.Count > 0 ? connections[0].Id : null;
+            // Initial connection discovery goes through ExecuteAsync so transport
+            // failures surface in the shared ErrorBanner / snackbar instead of
+            // throwing past the page lifecycle.
+            await ExecuteAsync(async () =>
+            {
+                var connections = await AdminClient.ListConnectionsAsync(CancellationToken.None);
+                _activeConnectionId = connections.Count > 0 ? connections[0].Id : null;
+            });
         }
 
         if (!string.IsNullOrWhiteSpace(_activeConnectionId))
@@ -140,6 +146,13 @@
         if (string.IsNullOrWhiteSpace(_activeConnectionId)) return;
         await ExecuteAsync(async () =>
         {
+            // Bulk apply that flips every layer in the service simultaneously —
+            // wider blast radius than the per-layer toggle, so it joins the
+            // documented destructive set ("delete, apply, submit").
+            Telemetry.DestructiveAction(
+                enabled ? "enable-all-service-layers" : "disable-all-service-layers",
+                _activeConnectionId,
+                principalId: null);
             _layers = await AdminClient.SetServiceLayersEnabledAsync(_activeConnectionId, enabled, Normalize(_serviceName), CancellationToken.None);
         });
     }

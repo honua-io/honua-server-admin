@@ -1,6 +1,8 @@
 // Copyright (c) Honua. All rights reserved.
 // Licensed under the Elastic License 2.0. See LICENSE in the project root.
 
+using System.Net;
+using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
 using Honua.Admin.IntegrationTests.Fixtures;
@@ -53,5 +55,20 @@ public sealed class AdminClientEndToEndTests : IClassFixture<HonuaServerFixture>
         Assert.Equal("managed", rows[0].Provider);
         Assert.Equal("Healthy", rows[0].Status);
         Assert.Equal("db.integration", rows[0].Host);
+    }
+
+    [Fact]
+    public async Task SecuredEndpoint_AcceptsRequestsThroughAdminAuthHandlerChain()
+    {
+        // The fixture builds an HttpClient through the same AddHttpClient +
+        // AdminAuthHandler pipeline that Program.cs uses for the real admin
+        // client. Pre-fix, the typed client only set BaseAddress so the
+        // configured X-API-Key never reached the server and this assertion
+        // would fail with 401. With the post-fix wiring, the header is
+        // attached on the typed client (Development-only) and AdminAuthHandler
+        // becomes a no-op until the operator override (admin#22) hydrates.
+        var response = await _fixture.AuthAwareClient.GetAsync("/api/v1/admin/secured-probe");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
     }
 }

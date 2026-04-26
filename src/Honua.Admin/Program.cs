@@ -52,6 +52,33 @@ if (!string.IsNullOrWhiteSpace(honuaBaseUrl))
     builder.Services.AddHttpClient<IHonuaAdminClient, HonuaAdminClient>(client =>
     {
         client.BaseAddress = new Uri(honuaBaseUrl, UriKind.Absolute);
+
+        // RequestTimeoutSeconds advertised in README + appsettings is the per-request
+        // ceiling. Floor at 1s so a misconfigured zero never disables the timeout.
+        var timeoutSeconds = honuaServerSection.GetValue<int?>("RequestTimeoutSeconds")
+            ?? HonuaAdminOptions.DefaultRequestTimeoutSeconds;
+        client.Timeout = TimeSpan.FromSeconds(Math.Max(1, timeoutSeconds));
+
+        // X-API-Key carries server-admin credentials. Mirrors the identity /
+        // license clients: only attach in Development; production deployments
+        // must front the admin UI with a same-origin BFF that injects
+        // credentials server-side. Once admin#22 wires up operator login,
+        // `AdminAuthHandler` will override this default with a runtime token.
+        var apiKey = honuaServerSection.GetValue<string>("ApiKey");
+        if (!string.IsNullOrWhiteSpace(apiKey))
+        {
+            if (builder.HostEnvironment.IsDevelopment())
+            {
+                client.DefaultRequestHeaders.Add("X-API-Key", apiKey);
+            }
+            else
+            {
+                Console.Error.WriteLine(
+                    "[Honua.Admin] HonuaServer:ApiKey is set in a non-Development build. " +
+                    "Refusing to forward it from the browser. Front the admin UI with a same-origin " +
+                    "BFF that injects credentials server-side.");
+            }
+        }
     })
     .AddHttpMessageHandler<AdminAuthHandler>()
     .AddHttpMessageHandler<GlobalErrorHandler>();

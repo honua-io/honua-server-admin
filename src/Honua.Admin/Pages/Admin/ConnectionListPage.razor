@@ -135,6 +135,7 @@
         _busy = true;
         await ExecuteAsync(async () =>
         {
+            Telemetry.DestructiveAction("rotate-encryption-key", targetId: null, principalId: null);
             var result = await AdminClient.RotateEncryptionKeyAsync(CancellationToken.None);
             Snackbar.Add(result.Message, Severity.Success);
         });

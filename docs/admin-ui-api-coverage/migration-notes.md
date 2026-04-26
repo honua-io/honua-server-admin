@@ -77,9 +77,16 @@ handlers or defensive invalid-route handlers (`/config` non-GET,
 missing-id/catch-all table-discovery routes). Those are intentionally never
 invoked by the UI; the supported GET rows cover the operator workflow.
 
-No manifest page landed because the current `honua-server` inventory for the
-configured snapshot does not expose manifest approval/drift routes. If those
-endpoints return, the drift guard will add rows and force a new UI decision.
+The inventory generator now resolves both the generic
+`group.Map(route, handler).WithMetadata(new HttpMethodMetadata(...))` shape
+and `MapPost(/MapMethods)` calls whose argument list wraps to subsequent
+lines. That extends coverage to the `manifest/pending`, `manifest/drift`,
+`admin/gitops`, `metadata/resources`, and `SpatialAnalyticsEndpoints`
+families that the prior line-at-a-time scanner silently skipped. Those
+rows currently land as `coverage: missing` with no admin page assignment;
+the next admin UI iteration will reclassify them as planned pages and
+move them through the `supported`/`out-of-scope` decision the same way
+the existing rows did.
 
 ## Coordination with sibling tickets
 

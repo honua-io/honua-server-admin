@@ -169,6 +169,7 @@
         if (string.IsNullOrWhiteSpace(_operationId)) return;
         await ExecuteAsync(async () =>
         {
+            Telemetry.DestructiveAction("submit-deploy", _operationId, principalId: null);
             _operation = await AdminClient.SubmitDeployOperationAsync(_operationId, new SubmitDeployOperationRequest { Reason = "Submitted from Honua admin UI" }, CancellationToken.None);
         });
     }

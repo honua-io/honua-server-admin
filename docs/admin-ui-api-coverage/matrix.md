@@ -4,7 +4,7 @@
 
 - snapshot_date: 2026-04-26
 - honua_server_commit: `1b301c3a98e7c97ff75c394852bfc614d5db8a7a`
-- endpoints_total: 410
+- endpoints_total: 443
 
 ## Coverage Summary
 
@@ -12,8 +12,8 @@
 | -------- | ----- |
 | supported | 41 |
 | partial | 0 |
-| missing | 44 |
-| out-of-scope | 325 |
+| missing | 66 |
+| out-of-scope | 336 |
 
 ## Admin
 
@@ -47,6 +47,14 @@
 | `Admin/DeployControlEndpoints:POST:/api/v{version:apiVersion}/admin/deploy/plan` | P0 | supported | /deploy (DeployControlPage) | Plan tab previews target/current/desired revision planning. |
 | `Admin/DeployControlEndpoints:GET:/api/v{version:apiVersion}/admin/deploy/preflight` | P0 | supported | /deploy (DeployControlPage) | Preflight tab runs diagnostics with includeDiagnostics=true. |
 | `Admin/FeatureOverviewEndpoints:GET:/api/v{version:apiVersion}/admin/features/` | P0 | supported | / (Index dashboard) | Index dashboard renders edition and feature-gating overview. |
+| `Admin/AdminManifestDriftEndpoints:GET:/api/v{version:apiVersion}/admin/manifest/drift` | P0 | missing |  | Manifest drift display; planned ManifestPage |
+| `Admin/AdminManifestApprovalEndpoints:GET:/api/v{version:apiVersion}/admin/manifest/pending/` | P0 | missing |  | Manifest apply with dry-run/prune; planned ManifestPage |
+| `Admin/AdminManifestApprovalEndpoints:GET:/api/v{version:apiVersion}/admin/manifest/pending/history` | P0 | missing |  | Manifest apply with dry-run/prune; planned ManifestPage |
+| `Admin/AdminManifestApprovalEndpoints:GET:/api/v{version:apiVersion}/admin/manifest/pending/{id}` | P0 | missing |  | Manifest apply with dry-run/prune; planned ManifestPage |
+| `Admin/AdminManifestApprovalEndpoints:POST:/api/v{version:apiVersion}/admin/manifest/pending/{id}/approve` | P0 | missing |  | Manifest apply with dry-run/prune; planned ManifestPage |
+| `Admin/AdminManifestApprovalEndpoints:POST:/api/v{version:apiVersion}/admin/manifest/pending/{id}/reject` | P0 | missing |  | Manifest apply with dry-run/prune; planned ManifestPage |
+| `Admin/AdminManifestDriftEndpoints:GET:/api/v{version:apiVersion}/admin/manifest/versions` | P0 | missing |  | Manifest drift display; planned ManifestPage |
+| `Admin/AdminManifestDriftEndpoints:GET:/api/v{version:apiVersion}/admin/manifest/versions/{versionId}` | P0 | missing |  | Manifest drift display; planned ManifestPage |
 | `Admin/AdminLayerStyleEndpoints:GET:/api/v{version:apiVersion}/admin/metadata/layers/{layerId:int}/style` | P0 | supported | /layers/{layerId}/style (LayerStylePage) | LayerStylePage loads MapLibre and drawingInfo JSON. |
 | `Admin/AdminLayerStyleEndpoints:PUT:/api/v{version:apiVersion}/admin/metadata/layers/{layerId:int}/style` | P0 | supported | /layers/{layerId}/style (LayerStylePage) | LayerStylePage saves MapLibre and drawingInfo JSON. |
 | `Admin/ObservabilityEndpoints:GET:/api/v{version:apiVersion}/admin/observability/errors` | P0 | supported | /observability (ObservabilityPage) | Errors tab renders the recent-error buffer. |
@@ -70,7 +78,20 @@
 | `Admin/AlertAdminEndpoints:PUT:/api/v{version:apiVersion}/admin/alerts/zones/{zoneId:long}` | P1 | missing |  | Alert admin pages; deferred to follow-up |
 | `Admin/CacheAdminEndpoints:POST:/api/v{version:apiVersion}/admin/cache/invalidate` | P1 | missing |  | Cache invalidation pages; deferred to follow-up |
 | `Admin/CacheAdminEndpoints:GET:/api/v{version:apiVersion}/admin/cache/status` | P1 | missing |  | Cache invalidation pages; deferred to follow-up |
+| `Admin/AdminMetadataEndpoints:GET:/api/v{version:apiVersion}/admin/capabilities` | P1 | missing |  | Layer/connection metadata edit; deferred to follow-up |
+| `Admin/AdminGitOpsWatchEndpoints:GET:/api/v{version:apiVersion}/admin/gitops/changes` | P1 | missing |  | GitOps watch console; deferred to follow-up |
+| `Admin/AdminGitOpsWatchEndpoints:GET:/api/v{version:apiVersion}/admin/gitops/changes/{id}` | P1 | missing |  | GitOps watch console; deferred to follow-up |
+| `Admin/AdminGitOpsWatchEndpoints:GET:/api/v{version:apiVersion}/admin/gitops/changes/{id}/diff` | P1 | missing |  | GitOps watch console; deferred to follow-up |
+| `Admin/AdminGitOpsWatchEndpoints:DELETE:/api/v{version:apiVersion}/admin/gitops/watch` | P1 | missing |  | GitOps watch console; deferred to follow-up |
+| `Admin/AdminGitOpsWatchEndpoints:GET:/api/v{version:apiVersion}/admin/gitops/watch` | P1 | missing |  | GitOps watch console; deferred to follow-up |
+| `Admin/AdminGitOpsWatchEndpoints:POST:/api/v{version:apiVersion}/admin/gitops/watch` | P1 | missing |  | GitOps watch console; deferred to follow-up |
+| `Admin/AdminGitOpsWatchEndpoints:PUT:/api/v{version:apiVersion}/admin/gitops/watch` | P1 | missing |  | GitOps watch console; deferred to follow-up |
+| `Admin/AdminMetadataEndpoints:GET:/api/v{version:apiVersion}/admin/manifest` | P1 | missing |  | Layer/connection metadata edit; deferred to follow-up |
+| `Admin/AdminMetadataEndpoints:POST:/api/v{version:apiVersion}/admin/manifest/apply` | P1 | missing |  | Layer/connection metadata edit; deferred to follow-up |
 | `Admin/AdminStyleSuggestionEndpoints:POST:/api/v{version:apiVersion}/admin/metadata/layers/{layerId:int}/suggest-style` | P1 | missing |  | Style suggestion UX; deferred to follow-up |
+| `Admin/MetadataResourceEndpoints:DELETE:/api/v{version:apiVersion}/admin/metadata/resources/{kind}/{namespace}/{name}` | P1 | missing |  | Metadata resource CRUD; deferred to follow-up |
+| `Admin/MetadataResourceEndpoints:GET:/api/v{version:apiVersion}/admin/metadata/resources/{kind}/{namespace}/{name}` | P1 | missing |  | Metadata resource CRUD; deferred to follow-up |
+| `Admin/MetadataResourceEndpoints:PUT:/api/v{version:apiVersion}/admin/metadata/resources/{kind}/{namespace}/{name}` | P1 | missing |  | Metadata resource CRUD; deferred to follow-up |
 | `Admin/OperationsProgressEndpoints:GET:/api/v{version:apiVersion}/admin/operations/active` | P1 | missing |  | Operations progress page; deferred to follow-up |
 | `Admin/CacheOperationsEndpoints:GET:/api/v{version:apiVersion}/admin/operations/cache/health` | P1 | missing |  | Cache ops console; deferred to follow-up |
 | `Admin/CacheOperationsEndpoints:POST:/api/v{version:apiVersion}/admin/operations/cache/invalidate` | P1 | missing |  | Cache ops console; deferred to follow-up |
@@ -83,6 +104,7 @@
 | `Admin/RateLimitEndpoints:DELETE:/api/v{version:apiVersion}/admin/rate-limits/{id:guid}` | P1 | missing |  | Rate-limit admin page; deferred to follow-up |
 | `Admin/RateLimitEndpoints:GET:/api/v{version:apiVersion}/admin/rate-limits/{id:guid}` | P1 | missing |  | Rate-limit admin page; deferred to follow-up |
 | `Admin/RateLimitEndpoints:PUT:/api/v{version:apiVersion}/admin/rate-limits/{id:guid}` | P1 | missing |  | Rate-limit admin page; deferred to follow-up |
+| `Admin/AdminMetadataEndpoints:GET:/api/v{version:apiVersion}/admin/version` | P1 | missing |  | Layer/connection metadata edit; deferred to follow-up |
 | `Admin/GeocodingOperationsEndpoints:GET:/api/v{version:apiVersion}/admin/operations/geocoding/configuration` | P2 | missing |  | Geocoding ops console |
 | `Admin/GeocodingOperationsEndpoints:GET:/api/v{version:apiVersion}/admin/operations/geocoding/providers` | P2 | missing |  | Geocoding ops console |
 | `Admin/StreamingOperationsEndpoints:GET:/api/v{version:apiVersion}/admin/operations/streaming/alerts` | P2 | missing |  | Streaming ops console |
@@ -291,6 +313,9 @@
 | `Protocols/CoreEndpoints:GET:/ogc/features/api` | n/a | out-of-scope |  | Public OGC API surface, not admin |
 | `Protocols/CollectionsEndpoints:GET:/ogc/features/collections` | n/a | out-of-scope |  | Public OGC API surface, not admin |
 | `Protocols/CollectionsEndpoints:GET:/ogc/features/collections/{collectionId}` | n/a | out-of-scope |  | Public OGC API surface, not admin |
+| `Protocols/SpatialAnalyticsEndpoints:POST:/ogc/features/collections/{collectionId}/buffer-aggregate` | n/a | out-of-scope |  | Public spatial-analytics surface, not admin |
+| `Protocols/SpatialAnalyticsEndpoints:POST:/ogc/features/collections/{collectionId}/clusters` | n/a | out-of-scope |  | Public spatial-analytics surface, not admin |
+| `Protocols/SpatialAnalyticsEndpoints:POST:/ogc/features/collections/{collectionId}/density` | n/a | out-of-scope |  | Public spatial-analytics surface, not admin |
 | `Protocols/H3Endpoints:GET:/ogc/features/collections/{collectionId}/h3` | n/a | out-of-scope |  | Public OGC API surface, not admin |
 | `Protocols/FeaturesEndpoints:GET:/ogc/features/collections/{collectionId}/items` | n/a | out-of-scope |  | Public OGC API surface, not admin |
 | `Protocols/FeaturesEndpoints:POST:/ogc/features/collections/{collectionId}/items` | n/a | out-of-scope |  | Public OGC API surface, not admin |
@@ -299,6 +324,7 @@
 | `Protocols/FeaturesEndpoints:GET:/ogc/features/collections/{collectionId}/items/{featureId}` | n/a | out-of-scope |  | Public OGC API surface, not admin |
 | `Protocols/FeaturesEndpoints:PUT:/ogc/features/collections/{collectionId}/items/{featureId}` | n/a | out-of-scope |  | Public OGC API surface, not admin |
 | `Protocols/CollectionsEndpoints:GET:/ogc/features/collections/{collectionId}/queryables` | n/a | out-of-scope |  | Public OGC API surface, not admin |
+| `Protocols/SpatialAnalyticsEndpoints:POST:/ogc/features/collections/{collectionId}/spatial-join` | n/a | out-of-scope |  | Public spatial-analytics surface, not admin |
 | `Protocols/CoreEndpoints:GET:/ogc/features/conformance` | n/a | out-of-scope |  | Public OGC API surface, not admin |
 | `Protocols/OgcMapsEndpoints:GET:/ogc/maps/collections/{collectionId}/map` | n/a | out-of-scope |  | Public OGC API surface, not admin |
 | `Protocols/OgcMapsEndpoints:GET:/ogc/maps/collections/{collectionId}/map/tiles` | n/a | out-of-scope |  | Public OGC API surface, not admin |
@@ -402,20 +428,27 @@
 | `Protocols/FeatureServerEndpoints:GET:/rest/services/{serviceId}/FeatureServer/{layerId:int}/getEstimates` | n/a | out-of-scope |  | Public GeoServices REST surface, not admin |
 | `Protocols/FeatureServerEndpoints:GET:/rest/services/{serviceId}/FeatureServer/{layerId:int}/query` | n/a | out-of-scope |  | Public GeoServices REST surface, not admin |
 | `Protocols/FeatureServerEndpoints:POST:/rest/services/{serviceId}/FeatureServer/{layerId:int}/query` | n/a | out-of-scope |  | Public GeoServices REST surface, not admin |
+| `Protocols/AttachmentEndpoints:GET:/rest/services/{serviceId}/FeatureServer/{layerId:int}/queryAttachments` | n/a | out-of-scope |  | Public GeoServices REST surface, not admin |
+| `Protocols/AttachmentEndpoints:POST:/rest/services/{serviceId}/FeatureServer/{layerId:int}/queryAttachments` | n/a | out-of-scope |  | Public GeoServices REST surface, not admin |
 | `Protocols/FeatureServerEndpoints:GET:/rest/services/{serviceId}/FeatureServer/{layerId:int}/queryBins` | n/a | out-of-scope |  | Public GeoServices REST surface, not admin |
 | `Protocols/FeatureServerEndpoints:POST:/rest/services/{serviceId}/FeatureServer/{layerId:int}/queryBins` | n/a | out-of-scope |  | Public GeoServices REST surface, not admin |
+| `Protocols/SpatialAnalyticsEndpoints:POST:/rest/services/{serviceId}/FeatureServer/{layerId:int}/queryBufferAggregate` | n/a | out-of-scope |  | Public spatial-analytics surface, not admin |
+| `Protocols/SpatialAnalyticsEndpoints:POST:/rest/services/{serviceId}/FeatureServer/{layerId:int}/queryClusters` | n/a | out-of-scope |  | Public spatial-analytics surface, not admin |
 | `Protocols/FeatureServerEndpoints:GET:/rest/services/{serviceId}/FeatureServer/{layerId:int}/queryDateBins` | n/a | out-of-scope |  | Public GeoServices REST surface, not admin |
 | `Protocols/FeatureServerEndpoints:POST:/rest/services/{serviceId}/FeatureServer/{layerId:int}/queryDateBins` | n/a | out-of-scope |  | Public GeoServices REST surface, not admin |
+| `Protocols/SpatialAnalyticsEndpoints:POST:/rest/services/{serviceId}/FeatureServer/{layerId:int}/queryDensity` | n/a | out-of-scope |  | Public spatial-analytics surface, not admin |
 | `Protocols/FeatureServerEndpoints:GET:/rest/services/{serviceId}/FeatureServer/{layerId:int}/queryH3` | n/a | out-of-scope |  | Public GeoServices REST surface, not admin |
 | `Protocols/FeatureServerEndpoints:POST:/rest/services/{serviceId}/FeatureServer/{layerId:int}/queryH3` | n/a | out-of-scope |  | Public GeoServices REST surface, not admin |
 | `Protocols/FeatureServerEndpoints:GET:/rest/services/{serviceId}/FeatureServer/{layerId:int}/queryRelatedRecords` | n/a | out-of-scope |  | Public GeoServices REST surface, not admin |
 | `Protocols/FeatureServerEndpoints:POST:/rest/services/{serviceId}/FeatureServer/{layerId:int}/queryRelatedRecords` | n/a | out-of-scope |  | Public GeoServices REST surface, not admin |
 | `Protocols/FeatureServerEndpoints:GET:/rest/services/{serviceId}/FeatureServer/{layerId:int}/queryTopFeatures` | n/a | out-of-scope |  | Public GeoServices REST surface, not admin |
 | `Protocols/FeatureServerEndpoints:POST:/rest/services/{serviceId}/FeatureServer/{layerId:int}/queryTopFeatures` | n/a | out-of-scope |  | Public GeoServices REST surface, not admin |
+| `Protocols/SpatialAnalyticsEndpoints:POST:/rest/services/{serviceId}/FeatureServer/{layerId:int}/spatialJoin` | n/a | out-of-scope |  | Public spatial-analytics surface, not admin |
 | `Protocols/FeatureServerEndpoints:POST:/rest/services/{serviceId}/FeatureServer/{layerId:int}/updateFeatures` | n/a | out-of-scope |  | Public GeoServices REST surface, not admin |
 | `Protocols/FeatureServerEndpoints:GET:/rest/services/{serviceId}/FeatureServer/{layerId:int}/validateSQL` | n/a | out-of-scope |  | Public GeoServices REST surface, not admin |
 | `Protocols/AttachmentEndpoints:POST:/rest/services/{serviceId}/FeatureServer/{layerId:int}/{featureId:long}/addAttachment` | n/a | out-of-scope |  | Public GeoServices REST surface, not admin |
 | `Protocols/AttachmentEndpoints:GET:/rest/services/{serviceId}/FeatureServer/{layerId:int}/{featureId:long}/attachments` | n/a | out-of-scope |  | Public GeoServices REST surface, not admin |
+| `Protocols/AttachmentEndpoints:GET:/rest/services/{serviceId}/FeatureServer/{layerId:int}/{featureId:long}/attachments/{attachmentId:long}` | n/a | out-of-scope |  | Public GeoServices REST surface, not admin |
 | `Protocols/AttachmentEndpoints:POST:/rest/services/{serviceId}/FeatureServer/{layerId:int}/{featureId:long}/deleteAttachments` | n/a | out-of-scope |  | Public GeoServices REST surface, not admin |
 | `Protocols/AttachmentEndpoints:POST:/rest/services/{serviceId}/FeatureServer/{layerId:int}/{featureId:long}/updateAttachment` | n/a | out-of-scope |  | Public GeoServices REST surface, not admin |
 | `Protocols/GPServerEndpoints:GET:/rest/services/{serviceId}/GPServer/{{taskName}}` | n/a | out-of-scope |  | Public GeoServices REST surface, not admin |

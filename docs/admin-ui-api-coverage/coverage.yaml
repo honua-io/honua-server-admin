@@ -165,6 +165,55 @@ rows:
     out_of_scope_reason: "Generated method-not-allowed handler; admin UI intentionally never invokes unsupported verbs"
     follow_up_ticket: ""
     notes: ""
+  - key: "Admin/AdminGitOpsWatchEndpoints:DELETE:/api/v{version:apiVersion}/admin/gitops/watch"
+    coverage: missing
+    admin_page: ""
+    priority: P1
+    out_of_scope_reason: ""
+    follow_up_ticket: ""
+    notes: "GitOps watch console; deferred to follow-up"
+  - key: "Admin/AdminGitOpsWatchEndpoints:GET:/api/v{version:apiVersion}/admin/gitops/changes"
+    coverage: missing
+    admin_page: ""
+    priority: P1
+    out_of_scope_reason: ""
+    follow_up_ticket: ""
+    notes: "GitOps watch console; deferred to follow-up"
+  - key: "Admin/AdminGitOpsWatchEndpoints:GET:/api/v{version:apiVersion}/admin/gitops/changes/{id}"
+    coverage: missing
+    admin_page: ""
+    priority: P1
+    out_of_scope_reason: ""
+    follow_up_ticket: ""
+    notes: "GitOps watch console; deferred to follow-up"
+  - key: "Admin/AdminGitOpsWatchEndpoints:GET:/api/v{version:apiVersion}/admin/gitops/changes/{id}/diff"
+    coverage: missing
+    admin_page: ""
+    priority: P1
+    out_of_scope_reason: ""
+    follow_up_ticket: ""
+    notes: "GitOps watch console; deferred to follow-up"
+  - key: "Admin/AdminGitOpsWatchEndpoints:GET:/api/v{version:apiVersion}/admin/gitops/watch"
+    coverage: missing
+    admin_page: ""
+    priority: P1
+    out_of_scope_reason: ""
+    follow_up_ticket: ""
+    notes: "GitOps watch console; deferred to follow-up"
+  - key: "Admin/AdminGitOpsWatchEndpoints:POST:/api/v{version:apiVersion}/admin/gitops/watch"
+    coverage: missing
+    admin_page: ""
+    priority: P1
+    out_of_scope_reason: ""
+    follow_up_ticket: ""
+    notes: "GitOps watch console; deferred to follow-up"
+  - key: "Admin/AdminGitOpsWatchEndpoints:PUT:/api/v{version:apiVersion}/admin/gitops/watch"
+    coverage: missing
+    admin_page: ""
+    priority: P1
+    out_of_scope_reason: ""
+    follow_up_ticket: ""
+    notes: "GitOps watch console; deferred to follow-up"
   - key: "Admin/AdminLayerStyleEndpoints:GET:/api/v{version:apiVersion}/admin/metadata/layers/{layerId:int}/style"
     coverage: supported
     admin_page: "/layers/{layerId}/style (LayerStylePage)"
@@ -179,6 +228,90 @@ rows:
     out_of_scope_reason: ""
     follow_up_ticket: ""
     notes: "LayerStylePage saves MapLibre and drawingInfo JSON."
+  - key: "Admin/AdminManifestApprovalEndpoints:GET:/api/v{version:apiVersion}/admin/manifest/pending/"
+    coverage: missing
+    admin_page: ""
+    priority: P0
+    out_of_scope_reason: ""
+    follow_up_ticket: ""
+    notes: "Manifest apply with dry-run/prune; planned ManifestPage"
+  - key: "Admin/AdminManifestApprovalEndpoints:GET:/api/v{version:apiVersion}/admin/manifest/pending/history"
+    coverage: missing
+    admin_page: ""
+    priority: P0
+    out_of_scope_reason: ""
+    follow_up_ticket: ""
+    notes: "Manifest apply with dry-run/prune; planned ManifestPage"
+  - key: "Admin/AdminManifestApprovalEndpoints:GET:/api/v{version:apiVersion}/admin/manifest/pending/{id}"
+    coverage: missing
+    admin_page: ""
+    priority: P0
+    out_of_scope_reason: ""
+    follow_up_ticket: ""
+    notes: "Manifest apply with dry-run/prune; planned ManifestPage"
+  - key: "Admin/AdminManifestApprovalEndpoints:POST:/api/v{version:apiVersion}/admin/manifest/pending/{id}/approve"
+    coverage: missing
+    admin_page: ""
+    priority: P0
+    out_of_scope_reason: ""
+    follow_up_ticket: ""
+    notes: "Manifest apply with dry-run/prune; planned ManifestPage"
+  - key: "Admin/AdminManifestApprovalEndpoints:POST:/api/v{version:apiVersion}/admin/manifest/pending/{id}/reject"
+    coverage: missing
+    admin_page: ""
+    priority: P0
+    out_of_scope_reason: ""
+    follow_up_ticket: ""
+    notes: "Manifest apply with dry-run/prune; planned ManifestPage"
+  - key: "Admin/AdminManifestDriftEndpoints:GET:/api/v{version:apiVersion}/admin/manifest/drift"
+    coverage: missing
+    admin_page: ""
+    priority: P0
+    out_of_scope_reason: ""
+    follow_up_ticket: ""
+    notes: "Manifest drift display; planned ManifestPage"
+  - key: "Admin/AdminManifestDriftEndpoints:GET:/api/v{version:apiVersion}/admin/manifest/versions"
+    coverage: missing
+    admin_page: ""
+    priority: P0
+    out_of_scope_reason: ""
+    follow_up_ticket: ""
+    notes: "Manifest drift display; planned ManifestPage"
+  - key: "Admin/AdminManifestDriftEndpoints:GET:/api/v{version:apiVersion}/admin/manifest/versions/{versionId}"
+    coverage: missing
+    admin_page: ""
+    priority: P0
+    out_of_scope_reason: ""
+    follow_up_ticket: ""
+    notes: "Manifest drift display; planned ManifestPage"
+  - key: "Admin/AdminMetadataEndpoints:GET:/api/v{version:apiVersion}/admin/capabilities"
+    coverage: missing
+    admin_page: ""
+    priority: P1
+    out_of_scope_reason: ""
+    follow_up_ticket: ""
+    notes: "Layer/connection metadata edit; deferred to follow-up"
+  - key: "Admin/AdminMetadataEndpoints:GET:/api/v{version:apiVersion}/admin/manifest"
+    coverage: missing
+    admin_page: ""
+    priority: P1
+    out_of_scope_reason: ""
+    follow_up_ticket: ""
+    notes: "Layer/connection metadata edit; deferred to follow-up"
+  - key: "Admin/AdminMetadataEndpoints:GET:/api/v{version:apiVersion}/admin/version"
+    coverage: missing
+    admin_page: ""
+    priority: P1
+    out_of_scope_reason: ""
+    follow_up_ticket: ""
+    notes: "Layer/connection metadata edit; deferred to follow-up"
+  - key: "Admin/AdminMetadataEndpoints:POST:/api/v{version:apiVersion}/admin/manifest/apply"
+    coverage: missing
+    admin_page: ""
+    priority: P1
+    out_of_scope_reason: ""
+    follow_up_ticket: ""
+    notes: "Layer/connection metadata edit; deferred to follow-up"
   - key: "Admin/AdminStyleSuggestionEndpoints:POST:/api/v{version:apiVersion}/admin/metadata/layers/{layerId:int}/suggest-style"
     coverage: missing
     admin_page: ""
@@ -466,6 +599,27 @@ rows:
     out_of_scope_reason: "Owned by license workspace workstream"
     follow_up_ticket: honua-server-admin#23
     notes: ""
+  - key: "Admin/MetadataResourceEndpoints:DELETE:/api/v{version:apiVersion}/admin/metadata/resources/{kind}/{namespace}/{name}"
+    coverage: missing
+    admin_page: ""
+    priority: P1
+    out_of_scope_reason: ""
+    follow_up_ticket: ""
+    notes: "Metadata resource CRUD; deferred to follow-up"
+  - key: "Admin/MetadataResourceEndpoints:GET:/api/v{version:apiVersion}/admin/metadata/resources/{kind}/{namespace}/{name}"
+    coverage: missing
+    admin_page: ""
+    priority: P1
+    out_of_scope_reason: ""
+    follow_up_ticket: ""
+    notes: "Metadata resource CRUD; deferred to follow-up"
+  - key: "Admin/MetadataResourceEndpoints:PUT:/api/v{version:apiVersion}/admin/metadata/resources/{kind}/{namespace}/{name}"
+    coverage: missing
+    admin_page: ""
+    priority: P1
+    out_of_scope_reason: ""
+    follow_up_ticket: ""
+    notes: "Metadata resource CRUD; deferred to follow-up"
   - key: "Admin/ObservabilityEndpoints:GET:/api/v{version:apiVersion}/admin/observability/errors"
     coverage: supported
     admin_page: "/observability (ObservabilityPage)"
@@ -1390,7 +1544,28 @@ rows:
     out_of_scope_reason: "Public ArcGIS-compatible printing API, not admin"
     follow_up_ticket: ""
     notes: ""
+  - key: "Protocols/AttachmentEndpoints:GET:/rest/services/{serviceId}/FeatureServer/{layerId:int}/queryAttachments"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public GeoServices REST surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
   - key: "Protocols/AttachmentEndpoints:GET:/rest/services/{serviceId}/FeatureServer/{layerId:int}/{featureId:long}/attachments"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public GeoServices REST surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: "Protocols/AttachmentEndpoints:GET:/rest/services/{serviceId}/FeatureServer/{layerId:int}/{featureId:long}/attachments/{attachmentId:long}"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public GeoServices REST surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: "Protocols/AttachmentEndpoints:POST:/rest/services/{serviceId}/FeatureServer/{layerId:int}/queryAttachments"
     coverage: out-of-scope
     admin_page: ""
     priority: n/a
@@ -2746,6 +2921,62 @@ rows:
     admin_page: ""
     priority: n/a
     out_of_scope_reason: "Public STAC API surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: "Protocols/SpatialAnalyticsEndpoints:POST:/ogc/features/collections/{collectionId}/buffer-aggregate"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public spatial-analytics surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: "Protocols/SpatialAnalyticsEndpoints:POST:/ogc/features/collections/{collectionId}/clusters"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public spatial-analytics surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: "Protocols/SpatialAnalyticsEndpoints:POST:/ogc/features/collections/{collectionId}/density"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public spatial-analytics surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: "Protocols/SpatialAnalyticsEndpoints:POST:/ogc/features/collections/{collectionId}/spatial-join"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public spatial-analytics surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: "Protocols/SpatialAnalyticsEndpoints:POST:/rest/services/{serviceId}/FeatureServer/{layerId:int}/queryBufferAggregate"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public spatial-analytics surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: "Protocols/SpatialAnalyticsEndpoints:POST:/rest/services/{serviceId}/FeatureServer/{layerId:int}/queryClusters"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public spatial-analytics surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: "Protocols/SpatialAnalyticsEndpoints:POST:/rest/services/{serviceId}/FeatureServer/{layerId:int}/queryDensity"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public spatial-analytics surface, not admin"
+    follow_up_ticket: ""
+    notes: ""
+  - key: "Protocols/SpatialAnalyticsEndpoints:POST:/rest/services/{serviceId}/FeatureServer/{layerId:int}/spatialJoin"
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Public spatial-analytics surface, not admin"
     follow_up_ticket: ""
     notes: ""
   - key: "Protocols/TileJsonEndpoints:GET:/tiles/{layerId:int}/tile.json"
