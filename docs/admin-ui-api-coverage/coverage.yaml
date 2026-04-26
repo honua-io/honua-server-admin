@@ -1,8 +1,8 @@
 # Admin UI ↔ honua-server API coverage matrix.
 # Authored by `dotnet run --project tools/audit-api-surface -- seed-coverage`.
 # Hand-edit rows for per-endpoint classifications; the seeder preserves them on re-run.
-snapshot_date: 2026-04-25
-honua_server_commit: f1e643aab225162a8daea0cca91a03f9655b1a03
+snapshot_date: 2026-04-26
+honua_server_commit: 1b301c3a98e7c97ff75c394852bfc614d5db8a7a
 rows:
   - key: "Admin/AdminAuthEndpoints:GET:/api/v{version:apiVersion}/admin/auth/config"
     coverage: out-of-scope

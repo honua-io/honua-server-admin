@@ -2,8 +2,8 @@
 
 > **Generated** — do not edit by hand. Run `dotnet run --project tools/audit-api-surface -- render` to regenerate.
 
-- snapshot_date: 2026-04-25
-- honua_server_commit: `f1e643aab225162a8daea0cca91a03f9655b1a03`
+- snapshot_date: 2026-04-26
+- honua_server_commit: `1b301c3a98e7c97ff75c394852bfc614d5db8a7a`
 - endpoints_total: 410
 
 ## Coverage Summary
