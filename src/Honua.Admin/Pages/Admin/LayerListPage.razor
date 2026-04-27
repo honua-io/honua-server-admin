@@ -25,10 +25,10 @@
         <MudCardContent>
             <MudGrid>
                 <MudItem xs="12" md="6">
-                    <MudTextField @bind-Value="_activeConnectionId" Label="Connection id or name" Variant="Variant.Outlined" />
+                    <MudTextField @bind-Value="_activeConnectionId" Label="Connection id or name" Variant="Variant.Outlined" aria-label="Connection id or name" />
                 </MudItem>
                 <MudItem xs="12" md="3">
-                    <MudTextField @bind-Value="_serviceName" Label="Service" Placeholder="default" Variant="Variant.Outlined" />
+                    <MudTextField @bind-Value="_serviceName" Label="Service" Placeholder="default" Variant="Variant.Outlined" aria-label="Service" />
                 </MudItem>
                 <MudItem xs="12" md="3">
                     <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Refresh" OnClick="LoadLayersAsync" Disabled="IsLoading">

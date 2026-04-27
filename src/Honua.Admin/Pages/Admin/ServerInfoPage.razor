@@ -75,7 +75,7 @@
             </MudTabPanel>
 
             <MudTabPanel Text="Discovery" Icon="@Icons.Material.Filled.Search">
-                <MudTable Items="@(_discovery?.DiscoveredTypes ?? Array.Empty<ConfigurationTypeInfo>())" Dense="true" Hover="true">
+                <MudTable Items="@(_discovery?.DiscoveredTypes ?? Array.Empty<ConfigurationTypeInfo>())" Dense="true" Hover="true" aria-label="Configuration discovery">
                     <HeaderContent>
                         <MudTh>Section</MudTh>
                         <MudTh>Type</MudTh>
@@ -101,7 +101,7 @@
                 }
                 else
                 {
-                    <MudTable Items="_secrets.Issues" Dense="true">
+                    <MudTable Items="_secrets.Issues" Dense="true" aria-label="Configuration secret issues">
                         <HeaderContent>
                             <MudTh>Reference</MudTh>
                             <MudTh>Severity</MudTh>
@@ -117,7 +117,7 @@
             </MudTabPanel>
 
             <MudTabPanel Text="Audit" Icon="@Icons.Material.Filled.Assignment">
-                <MudSimpleTable Dense="true" Hover="true">
+                <MudSimpleTable Dense="true" Hover="true" aria-label="Configuration audit">
                     <tbody>
                         <tr><td>Machine</td><td>@_audit.MachineName</td></tr>
                         <tr><td>Application</td><td>@_audit.ApplicationName</td></tr>
@@ -128,7 +128,7 @@
             </MudTabPanel>
 
             <MudTabPanel Text="Documentation" Icon="@Icons.Material.Filled.Article">
-                <MudTable Items="_documentation" Dense="true" Hover="true">
+                <MudTable Items="_documentation" Dense="true" Hover="true" aria-label="Configuration documentation">
                     <HeaderContent>
                         <MudTh>Section</MudTh>
                         <MudTh>Type</MudTh>
