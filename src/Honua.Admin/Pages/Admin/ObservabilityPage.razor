@@ -81,7 +81,7 @@
             </MudTabPanel>
 
             <MudTabPanel Text="Telemetry" Icon="@Icons.Material.Filled.Insights">
-                <MudSimpleTable Dense="true" Hover="true">
+                <MudSimpleTable Dense="true" Hover="true" aria-label="Telemetry status">
                     <tbody>
                         <tr><td>Tracing enabled</td><td>@(_telemetry?.TracingEnabled == true ? "yes" : "no")</td></tr>
                         <tr><td>OTLP configured</td><td>@(_telemetry?.OtlpConfigured == true ? "yes" : "no")</td></tr>
@@ -93,7 +93,7 @@
             <MudTabPanel Text="Migrations" Icon="@Icons.Material.Filled.Storage">
                 @if (_migrations is not null)
                 {
-                    <MudSimpleTable Dense="true" Hover="true">
+                    <MudSimpleTable Dense="true" Hover="true" aria-label="Migration status">
                         <tbody>
                             <tr><td>Status</td><td>@_migrations.Status</td></tr>
                             <tr><td>Ready</td><td>@(_migrations.IsReady ? "yes" : "no")</td></tr>

@@ -77,6 +77,8 @@ Post this as a dated comment on issue
 - `dotnet run --project tools/audit-api-surface -- generate`
 - `dotnet run --project tools/audit-api-surface -- seed-coverage`
 - `dotnet run --project tools/audit-api-surface -- render`
+- Release candidates must satisfy the quality-gate release checklist in
+  [`docs/admin-ui-quality-gates.md`](admin-ui-quality-gates.md).
 
 Run the audit commands when server API coverage changed or when a sibling
 `honua-server` checkout is available for drift comparison.

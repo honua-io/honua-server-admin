@@ -33,6 +33,9 @@ Coverage of the wider honua-server admin API is tracked in
 inventory, hand-edited coverage matrix, and a drift-guard test.
 Backlog review, scope gates, and done/close hygiene are tracked in
 [`docs/operating-cadence.md`](docs/operating-cadence.md).
+Admin UI performance, accessibility, smoke-test, and release gate baselines
+are tracked in
+[`docs/admin-ui-quality-gates.md`](docs/admin-ui-quality-gates.md).
 
 ## Architecture
 

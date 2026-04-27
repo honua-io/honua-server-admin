@@ -22,7 +22,7 @@
                 <MudAlert Severity="@(_preflight.ReadyForCoordinatedDeploy ? Severity.Success : Severity.Warning)" Class="mt-4">
                     @_preflight.Message
                 </MudAlert>
-                <MudSimpleTable Dense="true" Hover="true" Class="mt-3">
+                <MudSimpleTable Dense="true" Hover="true" Class="mt-3" aria-label="Deploy preflight details">
                     <tbody>
                         <tr><td>Status</td><td>@_preflight.Status</td></tr>
                         <tr><td>Environment</td><td>@_preflight.Environment</td></tr>
@@ -90,7 +90,7 @@
             </MudStack>
             @if (_operation is not null)
             {
-                <MudSimpleTable Dense="true" Hover="true" Class="mt-4">
+                <MudSimpleTable Dense="true" Hover="true" Class="mt-4" aria-label="Deploy operation details">
                     <tbody>
                         <tr><td>Operation</td><td>@_operation.OperationId</td></tr>
                         <tr><td>Status</td><td>@_operation.Status</td></tr>

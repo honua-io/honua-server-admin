@@ -13,6 +13,9 @@ env:
   DOTNET_VERSION: '10.0.x'
   DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
   DOTNET_NOLOGO: true
+  ADMIN_PUBLISH_MAX_BYTES: 62914560
+  ADMIN_FRAMEWORK_MAX_BYTES: 47185920
+  ADMIN_WASM_MAX_BYTES: 25165824
 
 jobs:
   build:
@@ -139,12 +142,26 @@ jobs:
 
       - name: Check Bundle Size
         run: |
-          DIST_SIZE=$(du -sh ./dist | cut -f1)
-          echo "📦 Published bundle size: $DIST_SIZE"
+          DIST_BYTES=$(du -sb ./dist | cut -f1)
+          FRAMEWORK_BYTES=$(du -sb ./dist/wwwroot/_framework | cut -f1)
+          WASM_BYTES=$(find ./dist/wwwroot/_framework -name "*.wasm" -printf "%s\n" | awk '{ total += $1 } END { print total + 0 }')
 
-          # Check for common size issues
-          WASM_SIZE=$(find ./dist -name "*.wasm" -exec du -ch {} + | grep total | cut -f1)
-          echo "📊 WebAssembly size: $WASM_SIZE"
+          echo "Published bundle bytes: ${DIST_BYTES} / ${ADMIN_PUBLISH_MAX_BYTES}"
+          echo "Framework payload bytes: ${FRAMEWORK_BYTES} / ${ADMIN_FRAMEWORK_MAX_BYTES}"
+          echo "WebAssembly bytes: ${WASM_BYTES} / ${ADMIN_WASM_MAX_BYTES}"
+
+          if [ "${DIST_BYTES}" -gt "${ADMIN_PUBLISH_MAX_BYTES}" ]; then
+            echo "Published output exceeds budget"
+            exit 1
+          fi
+          if [ "${FRAMEWORK_BYTES}" -gt "${ADMIN_FRAMEWORK_MAX_BYTES}" ]; then
+            echo "Framework payload exceeds budget"
+            exit 1
+          fi
+          if [ "${WASM_BYTES}" -gt "${ADMIN_WASM_MAX_BYTES}" ]; then
+            echo "WebAssembly payload exceeds budget"
+            exit 1
+          fi
 
   security:
     name: Security Scan
