@@ -36,6 +36,8 @@ Backlog review, scope gates, and done/close hygiene are tracked in
 Admin UI performance, accessibility, smoke-test, and release gate baselines
 are tracked in
 [`docs/admin-ui-quality-gates.md`](docs/admin-ui-quality-gates.md).
+Containerized admin E2E readiness and Testcontainers configuration are tracked
+in [`docs/container-e2e.md`](docs/container-e2e.md).
 
 ## Architecture
 

@@ -104,6 +104,49 @@ jobs:
           path: TestResults/
           retention-days: 7
 
+  container-e2e:
+    name: Container E2E Readiness
+    runs-on: ubuntu-latest
+    needs: build
+    permissions:
+      contents: read
+    timeout-minutes: 10
+    env:
+      HONUA_ADMIN_CONTAINER_E2E: ${{ vars.HONUA_ADMIN_CONTAINER_E2E || 'false' }}
+      HONUA_SERVER_IMAGE: ${{ vars.HONUA_SERVER_IMAGE || 'ghcr.io/honua-io/honua-server:latest' }}
+      HONUA_POSTGIS_IMAGE: ${{ vars.HONUA_POSTGIS_IMAGE || 'postgis/postgis:18-3.6' }}
+      HONUA_ADMIN_CONTAINER_API_KEY: ${{ secrets.HONUA_ADMIN_CONTAINER_API_KEY || 'test-admin-key' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Cache NuGet packages
+        uses: actions/cache@v5
+        with:
+          path: ~/.nuget/packages
+          key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj', '**/packages.lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-nuget-
+
+      - name: Restore
+        run: dotnet restore Honua.Admin.sln
+
+      - name: Verify Docker is available
+        run: docker info
+
+      - name: Run container E2E lane
+        run: |
+          dotnet test tests/Honua.Admin.IntegrationTests/Honua.Admin.IntegrationTests.csproj \
+            --configuration Release \
+            --no-restore \
+            --filter "Category=ContainerE2E" \
+            --logger "console;verbosity=minimal" \
+            -- RunConfiguration.MaxCpuCount=1
+
   publish-check:
     name: Publish Verification
     runs-on: ubuntu-latest
@@ -195,7 +238,7 @@ jobs:
   ci-gate:
     name: CI Gate
     runs-on: ubuntu-latest
-    needs: [build, test, publish-check, security]
+    needs: [build, test, container-e2e, publish-check, security]
     if: always()
     steps:
       - name: Check all jobs succeeded
@@ -206,6 +249,10 @@ jobs:
           fi
           if [[ "${{ needs.test.result }}" != "success" ]]; then
             echo "❌ Test job failed"
+            exit 1
+          fi
+          if [[ "${{ needs.container-e2e.result }}" != "success" ]]; then
+            echo "❌ Container E2E readiness failed"
             exit 1
           fi
           if [[ "${{ needs.publish-check.result }}" != "success" ]]; then
