@@ -158,10 +158,14 @@ public sealed class CoverageDriftTests
         var cursor = assemblyDir;
         while (cursor is not null)
         {
-            var sibling = Path.Combine(Path.GetDirectoryName(cursor)!, "honua-server");
-            if (Directory.Exists(Path.Combine(sibling, "src", "Honua.Server", "Features")))
+            var parent = Path.GetDirectoryName(cursor);
+            if (parent is not null)
             {
-                return sibling;
+                var sibling = Path.Combine(parent, "honua-server");
+                if (Directory.Exists(Path.Combine(sibling, "src", "Honua.Server", "Features")))
+                {
+                    return sibling;
+                }
             }
             cursor = Path.GetDirectoryName(cursor);
         }

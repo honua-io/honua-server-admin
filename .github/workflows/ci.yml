@@ -1,10 +1,11 @@
 name: CI
 
 on:
+  workflow_dispatch:
   push:
-    branches: [main, trunk]
+    branches: [master, main, trunk]
   pull_request:
-    branches: [main, trunk]
+    branches: [master, main, trunk]
 
 permissions: {}
 
@@ -130,7 +131,7 @@ jobs:
             echo "❌ Missing index.html in published output"
             exit 1
           fi
-          if [ ! -f "./dist/wwwroot/_framework/blazor.webassembly.js" ]; then
+          if ! find "./dist/wwwroot/_framework" -maxdepth 1 -name "blazor.webassembly*.js" -print -quit | grep -q .; then
             echo "❌ Missing Blazor WebAssembly runtime"
             exit 1
           fi
