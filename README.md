@@ -31,6 +31,8 @@ This is the official admin UI for managing Honua Server instances:
 Coverage of the wider honua-server admin API is tracked in
 [`docs/admin-ui-api-coverage/`](docs/admin-ui-api-coverage/) — endpoint
 inventory, hand-edited coverage matrix, and a drift-guard test.
+Backlog review, scope gates, and done/close hygiene are tracked in
+[`docs/operating-cadence.md`](docs/operating-cadence.md).
 
 ## Architecture
 
