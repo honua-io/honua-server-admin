@@ -20,6 +20,9 @@ public sealed class HonuaAdminOptions
     /// <summary>The base address of the honua-server admin API.</summary>
     public string BaseUrl { get; set; } = string.Empty;
 
+    /// <summary>Optional absolute SignalR admin hub URL. Defaults to BaseUrl + /hubs/admin.</summary>
+    public string HubUrl { get; set; } = string.Empty;
+
     /// <summary>Optional API key; only used when no operator login is in effect.</summary>
     public string ApiKey { get; set; } = string.Empty;
 

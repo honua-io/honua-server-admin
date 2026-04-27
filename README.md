@@ -84,6 +84,7 @@ Configure server connection in `src/Honua.Admin/wwwroot/appsettings.json`:
 {
   "HonuaServer": {
     "BaseUrl": "https://your-server.com",
+    "HubUrl": "https://your-server.com/hubs/admin",
     "ApiKey": "your-api-key",
     "RequestTimeoutSeconds": 30
   }
@@ -93,6 +94,9 @@ Configure server connection in `src/Honua.Admin/wwwroot/appsettings.json`:
 `HonuaServer:BaseUrl` is the absolute URL of the Honua server. When omitted,
 the admin shell falls back to `StubHonuaAdminClient` — deterministic
 in-memory data so the UI is demoable before the real server is wired up.
+`HonuaServer:HubUrl` is optional; when omitted, realtime admin updates use
+`{BaseUrl}/hubs/admin`. If neither value is present the UI keeps its normal
+request/refresh behavior and marks realtime updates as disabled.
 
 `HonuaServer:ApiKey` is **development-only**. Blazor WebAssembly ships
 configuration to the browser, so any value placed here is visible to every

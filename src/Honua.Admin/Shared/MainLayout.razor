@@ -1,4 +1,6 @@
 @inherits LayoutComponentBase
+@implements IDisposable
+@inject IAdminRealtimeConnection Realtime
 @using MudBlazor
 
 <MudThemeProvider />
@@ -10,6 +12,13 @@
         <MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit" Edge="Edge.Start" />
         <MudText Typo="Typo.h6">Honua Server Admin</MudText>
         <MudSpacer />
+        <MudChip T="string"
+                 Size="Size.Small"
+                 Color="@RealtimeColor"
+                 Variant="Variant.Outlined"
+                 aria-label="@RealtimeAriaLabel">
+            @RealtimeLabel
+        </MudChip>
     </MudAppBar>
 
     <MudDrawer Open="true" Elevation="1">
@@ -23,3 +32,47 @@
         @Body
     </MudMainContent>
 </MudLayout>
+
+@code {
+    protected override async Task OnInitializedAsync()
+    {
+        Realtime.StateChanged += OnRealtimeStateChanged;
+        await Realtime.StartAsync();
+    }
+
+    private string RealtimeLabel => Realtime.Status switch
+    {
+        AdminRealtimeConnectionStatus.Connected => "Live",
+        AdminRealtimeConnectionStatus.Connecting => "Connecting",
+        AdminRealtimeConnectionStatus.Reconnecting => "Reconnecting",
+        AdminRealtimeConnectionStatus.Unavailable => "Offline",
+        AdminRealtimeConnectionStatus.Disconnected => "Offline",
+        _ => "Static",
+    };
+
+    private string RealtimeAriaLabel => Realtime.Status switch
+    {
+        AdminRealtimeConnectionStatus.Connected => "Realtime updates connected",
+        AdminRealtimeConnectionStatus.Connecting => "Realtime updates connecting",
+        AdminRealtimeConnectionStatus.Reconnecting => "Realtime updates reconnecting",
+        AdminRealtimeConnectionStatus.Unavailable => "Realtime updates unavailable",
+        AdminRealtimeConnectionStatus.Disconnected => "Realtime updates disconnected",
+        _ => "Realtime updates disabled",
+    };
+
+    private Color RealtimeColor => Realtime.Status switch
+    {
+        AdminRealtimeConnectionStatus.Connected => Color.Success,
+        AdminRealtimeConnectionStatus.Connecting => Color.Info,
+        AdminRealtimeConnectionStatus.Reconnecting => Color.Warning,
+        AdminRealtimeConnectionStatus.Unavailable => Color.Warning,
+        AdminRealtimeConnectionStatus.Disconnected => Color.Default,
+        _ => Color.Default,
+    };
+
+    private void OnRealtimeStateChanged()
+        => _ = InvokeAsync(StateHasChanged);
+
+    public void Dispose()
+        => Realtime.StateChanged -= OnRealtimeStateChanged;
+}
