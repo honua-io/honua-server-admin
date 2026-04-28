@@ -88,6 +88,11 @@
                 <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined">
                     @State.SelectedTemplate?.Name
                 </MudChip>
+                <div class="app-builder-theme-summary" aria-label="App theme summary">
+                    <span class="app-builder-swatch" style="@SwatchStyle(State.Draft.PrimaryColor)"></span>
+                    <span class="app-builder-swatch" style="@SwatchStyle(State.Draft.AccentColor)"></span>
+                    <small>@State.Draft.ThemeName</small>
+                </div>
                 <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined">
                     @($"{State.Draft.AutoRefreshSeconds}s refresh")
                 </MudChip>
@@ -146,6 +151,16 @@
                           Variant="Variant.Outlined"
                           Margin="Margin.Dense"
                           aria-label="App name" />
+
+            <MudText Typo="Typo.subtitle2" Class="mt-3">Branding</MudText>
+            <div class="app-builder-brand-preview" style="@BrandPreviewStyle" aria-label="App builder branding preview">
+                <MudIcon Icon="@Icons.Material.Filled.Image" Size="Size.Small" />
+                <div>
+                    <strong>@State.Draft.ThemeName</strong>
+                    <span>@State.Draft.FontFamily</span>
+                    <small>@(State.Draft.WhiteLabel ? "White-label app" : "Honua co-branded app")</small>
+                </div>
+            </div>
             <MudTextField T="string"
                           Label="Theme"
                           Value="@State.Draft.ThemeName"
@@ -154,6 +169,54 @@
                           Variant="Variant.Outlined"
                           Margin="Margin.Dense"
                           aria-label="App theme" />
+            <div class="app-builder-color-grid" aria-label="App builder color controls">
+                <div class="app-builder-color-control" data-testid="app-builder-primary-color">
+                    <span class="app-builder-swatch" style="@SwatchStyle(State.Draft.PrimaryColor)"></span>
+                    <MudTextField T="string"
+                                  Label="Primary color"
+                                  Value="@State.Draft.PrimaryColor"
+                                  ValueChanged="State.SetPrimaryColor"
+                                  Disabled="@IsBusy"
+                                  Variant="Variant.Outlined"
+                                  Margin="Margin.Dense"
+                                  aria-label="Primary color" />
+                </div>
+                <div class="app-builder-color-control" data-testid="app-builder-accent-color">
+                    <span class="app-builder-swatch" style="@SwatchStyle(State.Draft.AccentColor)"></span>
+                    <MudTextField T="string"
+                                  Label="Accent color"
+                                  Value="@State.Draft.AccentColor"
+                                  ValueChanged="State.SetAccentColor"
+                                  Disabled="@IsBusy"
+                                  Variant="Variant.Outlined"
+                                  Margin="Margin.Dense"
+                                  aria-label="Accent color" />
+                </div>
+            </div>
+            <MudTextField T="string"
+                          Label="Font family"
+                          Value="@State.Draft.FontFamily"
+                          ValueChanged="State.SetFontFamily"
+                          Disabled="@IsBusy"
+                          Variant="Variant.Outlined"
+                          Margin="Margin.Dense"
+                          aria-label="Font family" />
+            <MudTextField T="string"
+                          Label="Logo URL"
+                          Value="@State.Draft.LogoUrl"
+                          ValueChanged="State.SetLogoUrl"
+                          Disabled="@IsBusy"
+                          Variant="Variant.Outlined"
+                          Margin="Margin.Dense"
+                          aria-label="Logo URL" />
+            <MudSwitch T="bool"
+                       Label="White-label"
+                       Value="@State.Draft.WhiteLabel"
+                       ValueChanged="State.SetWhiteLabel"
+                       Disabled="@IsBusy"
+                       Color="Color.Primary"
+                       aria-label="White-label"
+                       data-testid="app-builder-white-label" />
             <MudNumericField T="int"
                              Label="Auto refresh seconds"
                              Value="@State.Draft.AutoRefreshSeconds"
@@ -292,6 +355,8 @@
         ? $"{State.Quota.PublishedApps} published apps, unlimited {State.Quota.Edition} allowance."
         : $"{State.Quota.PublishedApps} of {State.Quota.AppLimit.Value} published apps used.";
 
+    private string BrandPreviewStyle => $"border-left-color: {SafeCssColor(State.Draft.PrimaryColor)}; --app-builder-accent-color: {SafeCssColor(State.Draft.AccentColor)};";
+
     private string TemplateClass(AppTemplate template)
         => string.Equals(template.TemplateId, State.Draft.TemplateId, StringComparison.OrdinalIgnoreCase)
             ? "app-builder-template selected"
@@ -308,6 +373,22 @@
         var height = Math.Clamp(widget.Height, 1, 6);
 
         return $"grid-column: {column} / span {width}; grid-row: {row} / span {height};";
+    }
+
+    private static string SwatchStyle(string color)
+        => $"background: {SafeCssColor(color)};";
+
+    private static string SafeCssColor(string color)
+        => IsCssHexColor(color) ? color : "#d7dbe0";
+
+    private static bool IsCssHexColor(string color)
+    {
+        if (color.Length != 7 || color[0] != '#')
+        {
+            return false;
+        }
+
+        return color[1..].All(Uri.IsHexDigit);
     }
 
     private static string WidgetIcon(AppWidgetKind kind) => kind switch

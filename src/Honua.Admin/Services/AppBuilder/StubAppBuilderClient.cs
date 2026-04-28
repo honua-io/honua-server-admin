@@ -92,6 +92,11 @@ public sealed class StubAppBuilderClient : IAppBuilderClient
                 Name = "Harbor operations dashboard",
                 TemplateId = "operations-dashboard",
                 ThemeName = "Civic light",
+                PrimaryColor = "#1b7895",
+                AccentColor = "#2f7d55",
+                FontFamily = "Inter",
+                LogoUrl = "https://assets.honua.local/branding/harbor-ops.svg",
+                WhiteLabel = true,
                 AutoRefreshSeconds = 60,
                 Widgets =
                 [
