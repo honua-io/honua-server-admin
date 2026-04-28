@@ -35,6 +35,7 @@ public sealed class AdminPageRenderTests : TestContext
         Services.AddScoped<UsageAnalyticsState>();
         Services.AddScoped<IPrintServiceClient, StubPrintServiceClient>();
         Services.AddScoped<PrintServiceState>();
+        Services.AddScoped<OperationsConsoleState>();
         Services.AddTestRealtime();
     }
 
@@ -155,7 +156,6 @@ public sealed class AdminPageRenderTests : TestContext
     public void OperationsConsole_RendersReleaseDriftAndTroubleshootingState()
     {
         Services.AddScoped<IHonuaAdminClient>(_ => new StubHonuaAdminClient());
-        Services.AddScoped<OperationsConsoleState>();
 
         var cut = RenderWithMudHost<Honua.Admin.Pages.Operator.OperationsConsole>();
 
@@ -174,7 +174,6 @@ public sealed class AdminPageRenderTests : TestContext
     public void OperationsConsole_RendersRecentErrorsFailureInsteadOfEmptyState()
     {
         Services.AddScoped<IHonuaAdminClient>(_ => new RecentErrorsUnavailableClient());
-        Services.AddScoped<OperationsConsoleState>();
 
         var cut = RenderWithMudHost<Honua.Admin.Pages.Operator.OperationsConsole>();
 
@@ -182,6 +181,24 @@ public sealed class AdminPageRenderTests : TestContext
         {
             cut.Markup.MarkupMatchesContaining("Recent errors unavailable");
             Assert.False(cut.Markup.Contains("No recent errors loaded.", StringComparison.OrdinalIgnoreCase), cut.Markup);
+        });
+    }
+
+    [Fact]
+    public void ControlCenter_RendersGovernanceEvidenceAndTroubleshootingHandoff()
+    {
+        Services.AddScoped<IHonuaAdminClient>(_ => new StubHonuaAdminClient());
+
+        var cut = RenderWithMudHost<Honua.Admin.Pages.Operator.ControlCenter>();
+
+        cut.WaitForAssertion(() =>
+        {
+            cut.Markup.MarkupMatchesContaining("Admin control center");
+            cut.Markup.MarkupMatchesContaining("Governance queue");
+            cut.Markup.MarkupMatchesContaining("Release evidence");
+            cut.Markup.MarkupMatchesContaining("Troubleshooting handoff");
+            cut.Markup.MarkupMatchesContaining("Promote staging manifest");
+            cut.Markup.MarkupMatchesContaining("0123456789ab - pending_approval");
         });
     }
 
