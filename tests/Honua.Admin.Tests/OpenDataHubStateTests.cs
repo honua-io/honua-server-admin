@@ -24,6 +24,8 @@ public sealed class OpenDataHubStateTests
         Assert.Contains(state.Metrics, metric => metric.Label == "Published datasets");
         Assert.Contains(state.Datasets, dataset => dataset.DatasetId == "harbor-assets");
         Assert.Equal("harbor-assets", state.SelectedDataset?.DatasetId);
+        Assert.Equal("harbor-assets-public", state.SelectedDataset?.ApiAccess.PublicKeyLabel);
+        Assert.Contains(state.SelectedDataset!.ApiAccess.CodeExamples, example => example.Language == OpenDataCodeLanguage.JavaScript);
         Assert.False(state.HasBlockingValidation);
     }
 
@@ -94,6 +96,28 @@ public sealed class OpenDataHubStateTests
         Assert.Equal(OpenDataHubStatus.Error, state.Status);
         Assert.Equal("Resolve validation checks before publishing.", state.LastError);
         Assert.Null(state.LastPublish);
+        Assert.True(state.HasBlockingValidation);
+    }
+
+    [Fact]
+    public async Task ValidationChecks_require_public_api_access_and_code_examples()
+    {
+        var snapshot = Snapshot("api-dataset", "API dataset");
+        var dataset = snapshot.Datasets[0] with
+        {
+            ApiAccess = snapshot.Datasets[0].ApiAccess with
+            {
+                PublicKeyEnabled = false,
+                CodeExamples = [],
+            },
+        };
+        var state = new OpenDataHubState(new FixedOpenDataHubClient(snapshot with { Datasets = [dataset] }));
+
+        await state.LoadAsync();
+
+        var api = Assert.Single(state.ValidationChecks, check => check.Key == "api");
+        Assert.False(api.Passed);
+        Assert.Contains("public key access", api.Message);
         Assert.True(state.HasBlockingValidation);
     }
 
@@ -219,6 +243,29 @@ public sealed class OpenDataHubStateTests
             => _loads[index].SetResult(snapshot);
     }
 
+    private sealed class FixedOpenDataHubClient : IOpenDataHubClient
+    {
+        private readonly OpenDataHubSnapshot _snapshot;
+
+        public FixedOpenDataHubClient(OpenDataHubSnapshot snapshot)
+        {
+            _snapshot = snapshot;
+        }
+
+        public Task<OpenDataHubSnapshot> GetSnapshotAsync(CancellationToken cancellationToken)
+            => Task.FromResult(_snapshot);
+
+        public Task<OpenDataPublishResult> PublishAsync(string datasetId, CancellationToken cancellationToken)
+            => Task.FromResult(new OpenDataPublishResult
+            {
+                DatasetId = datasetId,
+                CatalogUrl = "https://data.honua.local/datasets/test",
+                ApiDocsUrl = "https://data.honua.local/api/docs/test",
+                PublishedAt = DateTimeOffset.Parse("2026-04-28T00:00:00Z"),
+                Message = "Published",
+            });
+    }
+
     private sealed class FailingRetryOpenDataHubClient : IOpenDataHubClient
     {
         private readonly StubOpenDataHubClient _inner = new();
@@ -327,6 +374,21 @@ public sealed class OpenDataHubStateTests
                     EmbedEnabled = true,
                     StacCollectionId = $"collections/{datasetId}",
                     SampleResponse = "{}",
+                    ApiAccess = new OpenDataApiAccess
+                    {
+                        PublicKeyEnabled = true,
+                        PublicKeyLabel = $"{datasetId}-public",
+                        LastRotated = DateTimeOffset.Parse("2026-04-21T12:00:00Z"),
+                        AnonymousRateLimitPerMinute = 120,
+                        RegisteredRateLimitPerMinute = 600,
+                        BulkDownloadEnabled = true,
+                        CodeExamples =
+                        [
+                            CodeExample(OpenDataCodeLanguage.Curl),
+                            CodeExample(OpenDataCodeLanguage.JavaScript),
+                            CodeExample(OpenDataCodeLanguage.Python),
+                        ],
+                    },
                     Keywords = ["public"],
                     Downloads =
                     [
@@ -366,5 +428,13 @@ public sealed class OpenDataHubStateTests
             Url = $"/downloads/{format}",
             SizeBytes = 100,
             GeneratedAt = DateTimeOffset.Parse("2026-04-28T00:00:00Z"),
+        };
+
+    private static OpenDataCodeExample CodeExample(OpenDataCodeLanguage language)
+        => new()
+        {
+            Language = language,
+            Label = language.ToString(),
+            Snippet = $"{language} example",
         };
 }

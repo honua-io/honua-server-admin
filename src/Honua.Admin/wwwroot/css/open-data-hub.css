@@ -154,6 +154,8 @@
 .open-data-delivery-row span,
 .open-data-api-row strong,
 .open-data-api-row span,
+.open-data-api-access strong,
+.open-data-api-access span,
 .open-data-validation-row strong,
 .open-data-validation-row span,
 .open-data-embed-preview strong,
@@ -188,6 +190,8 @@
 .open-data-delivery-row,
 .open-data-validation-row,
 .open-data-api-row,
+.open-data-api-access,
+.open-data-code-example,
 .open-data-embed-preview {
     border: 1px solid var(--mud-palette-divider, #d7dbe0);
     border-radius: 6px;
@@ -205,6 +209,7 @@
 .open-data-delivery-row div,
 .open-data-validation-row div,
 .open-data-api-row div,
+.open-data-api-access div,
 .open-data-embed-preview div {
     display: flex;
     min-width: 0;
@@ -224,7 +229,29 @@
     gap: 8px;
 }
 
-.open-data-api-row .open-data-code {
+.open-data-api-access {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 8px;
+    background: #f8fbff;
+}
+
+.open-data-api-access small {
+    color: var(--mud-palette-text-secondary, #607d8b);
+}
+
+.open-data-code-examples {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.open-data-code-example {
+    min-width: 0;
+}
+
+.open-data-api-row .open-data-code,
+.open-data-code-example .open-data-code {
     grid-column: 1 / -1;
 }
 
@@ -255,7 +282,8 @@
 
     .open-data-metrics,
     .open-data-metadata-grid,
-    .open-data-api-row {
+    .open-data-api-row,
+    .open-data-api-access {
         grid-template-columns: 1fr;
     }
 

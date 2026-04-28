@@ -352,6 +352,11 @@ public sealed class AdminPageRenderTests : TestContext
             cut.Markup.MarkupMatchesContaining("Harbor assets");
             cut.Markup.MarkupMatchesContaining("GeoJSON");
             cut.Markup.MarkupMatchesContaining("Civic tech API");
+            cut.Markup.MarkupMatchesContaining("Public API key");
+            cut.Markup.MarkupMatchesContaining("Code examples");
+            cut.Markup.MarkupMatchesContaining("JavaScript");
+            cut.Find("[data-testid='open-data-api-access']");
+            cut.Find("[data-testid='open-data-code-example-Python']");
             cut.Markup.MarkupMatchesContaining("Readiness checks");
         });
     }

@@ -85,7 +85,10 @@ public sealed class OpenDataHubState
             var hasApis = dataset.ApiEnabled &&
                 dataset.ApiEndpoints.Any(endpoint => !endpoint.RequiresApiKey) &&
                 HasText(dataset.StacCollectionId) &&
-                HasText(dataset.SampleResponse);
+                HasText(dataset.SampleResponse) &&
+                dataset.ApiAccess.PublicKeyEnabled &&
+                dataset.ApiAccess.BulkDownloadEnabled &&
+                RequiredCodeExamples.All(language => dataset.ApiAccess.CodeExamples.Any(example => example.Language == language && HasText(example.Snippet)));
             var hasEmbed = !dataset.EmbedEnabled ||
                 dataset.EmbedConfig.Responsive &&
                 dataset.EmbedConfig.WcagReady &&
@@ -114,7 +117,7 @@ public sealed class OpenDataHubState
                     Key = "api",
                     Label = "Civic tech API",
                     Passed = hasApis,
-                    Message = hasApis ? $"{dataset.ApiEndpoints.Count} endpoint(s), including no-auth public access." : "Enable public API endpoints, STAC metadata, and a sample response."
+                    Message = hasApis ? $"{dataset.ApiEndpoints.Count} endpoint(s), public key access, and code examples are ready." : "Enable public API endpoints, STAC metadata, public key access, code examples, and a sample response."
                 },
                 new OpenDataValidationCheck
                 {
@@ -303,6 +306,13 @@ public sealed class OpenDataHubState
         OpenDataDownloadFormat.Shapefile,
         OpenDataDownloadFormat.Csv,
         OpenDataDownloadFormat.Kml
+    ];
+
+    private static readonly OpenDataCodeLanguage[] RequiredCodeExamples =
+    [
+        OpenDataCodeLanguage.Curl,
+        OpenDataCodeLanguage.JavaScript,
+        OpenDataCodeLanguage.Python
     ];
 
     private bool MatchesSearch(OpenDataDataset dataset)
