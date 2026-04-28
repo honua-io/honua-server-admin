@@ -1,0 +1,334 @@
+@page "/operator/open-data"
+@using System.Globalization
+@using Honua.Admin.Models.OpenDataHub
+@using Honua.Admin.Services.OpenDataHub
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize]
+@inject OpenDataHubState State
+@inject IAdminTelemetry Telemetry
+@implements IDisposable
+
+<PageTitle>Open data hub</PageTitle>
+
+<div class="open-data-root" data-testid="open-data-hub-root">
+    <div class="open-data-toolbar" aria-label="Open data hub toolbar">
+        <MudStack Row AlignItems="AlignItems.Center" Spacing="1" Class="open-data-toolbar-row">
+            <MudText Typo="Typo.h5">
+                <MudIcon Icon="@Icons.Material.Filled.Public" Class="mr-2" />
+                Open data hub
+            </MudText>
+            <MudChip T="string" Size="Size.Small" Color="@StatusColor(State.Status)" Variant="Variant.Outlined" data-testid="open-data-status">
+                @State.Status
+            </MudChip>
+            <MudSpacer />
+            <MudButton StartIcon="@Icons.Material.Filled.Refresh"
+                       Variant="Variant.Outlined"
+                       Size="Size.Small"
+                       Disabled="@IsBusy"
+                       OnClick="RefreshAsync"
+                       data-testid="open-data-refresh">
+                Refresh
+            </MudButton>
+            <MudButton StartIcon="@Icons.Material.Filled.Publish"
+                       Variant="Variant.Filled"
+                       Color="Color.Primary"
+                       Size="Size.Small"
+                       Disabled="@(IsBusy || State.SelectedDataset is null || State.HasBlockingValidation)"
+                       OnClick="PublishAsync"
+                       data-testid="open-data-publish">
+                Publish
+            </MudButton>
+        </MudStack>
+        @if (!string.IsNullOrWhiteSpace(State.LastError))
+        {
+            <MudAlert Severity="Severity.Error" Dense="true" Variant="Variant.Filled" Class="mt-2" data-testid="open-data-error">
+                @State.LastError
+            </MudAlert>
+        }
+    </div>
+
+    <section class="open-data-metrics" aria-label="Open data hub metrics">
+        @foreach (var metric in State.Metrics)
+        {
+            <article class="open-data-metric" data-testid="@($"open-data-metric-{metric.Label}")">
+                <span>@metric.Label</span>
+                <strong>@metric.Value</strong>
+                <small>@metric.Detail</small>
+            </article>
+        }
+    </section>
+
+    <div class="open-data-grid">
+        <section class="open-data-pane" aria-label="Open data catalog filters">
+            <MudText Typo="Typo.h6">Catalog intake</MudText>
+            <MudTextField T="string"
+                          Label="Search"
+                          Value="@State.SearchText"
+                          ValueChanged="State.SetSearchText"
+                          Variant="Variant.Outlined"
+                          Margin="Margin.Dense"
+                          Disabled="@IsBusy"
+                          aria-label="Open data search" />
+            <MudSelect T="string"
+                       Label="Category"
+                       Value="@State.CategoryFilter"
+                       ValueChanged="State.SetCategoryFilter"
+                       Variant="Variant.Outlined"
+                       Margin="Margin.Dense"
+                       Disabled="@IsBusy"
+                       aria-label="Open data category filter">
+                @foreach (var category in State.CategoryOptions)
+                {
+                    <MudSelectItem T="string" Value="@category">@category</MudSelectItem>
+                }
+            </MudSelect>
+            <MudSelect T="string"
+                       Label="Geography"
+                       Value="@State.GeographyFilter"
+                       ValueChanged="State.SetGeographyFilter"
+                       Variant="Variant.Outlined"
+                       Margin="Margin.Dense"
+                       Disabled="@IsBusy"
+                       aria-label="Open data geography filter">
+                @foreach (var geography in State.GeographyOptions)
+                {
+                    <MudSelectItem T="string" Value="@geography">@geography</MudSelectItem>
+                }
+            </MudSelect>
+            <MudButton StartIcon="@Icons.Material.Filled.FilterAltOff"
+                       Variant="Variant.Text"
+                       Size="Size.Small"
+                       Disabled="@IsBusy"
+                       OnClick="State.ClearFilters"
+                       data-testid="open-data-clear-filters">
+                Clear filters
+            </MudButton>
+
+            <div class="open-data-dataset-list" aria-label="Open data dataset catalog">
+                @if (State.FilteredDatasets.Count == 0)
+                {
+                    <div class="open-data-empty" data-testid="open-data-empty">
+                        No datasets match the current filters.
+                    </div>
+                }
+                else
+                {
+                    @foreach (var dataset in State.FilteredDatasets)
+                    {
+                        var item = dataset;
+                        <button type="button"
+                                class="@DatasetClass(item)"
+                                disabled="@IsBusy"
+                                @onclick="@(() => State.SelectDataset(item.DatasetId))"
+                                data-testid="@($"open-data-dataset-{item.DatasetId}")">
+                            <span>@item.Title</span>
+                            <small>@item.Category - @item.Geography</small>
+                            <em>@item.Status</em>
+                        </button>
+                    }
+                }
+            </div>
+        </section>
+
+        @if (State.SelectedDataset is { } selected)
+        {
+            <section class="open-data-pane open-data-detail" aria-label="Open data dataset details">
+                <MudStack Row AlignItems="AlignItems.Start" Class="open-data-detail-heading">
+                    <div>
+                        <MudText Typo="Typo.h6">@selected.Title</MudText>
+                        <MudText Typo="Typo.body2">@selected.Description</MudText>
+                    </div>
+                    <MudSpacer />
+                    <MudChip T="string" Size="Size.Small" Color="@DatasetStatusColor(selected.Status)" Variant="Variant.Outlined">
+                        @selected.Status
+                    </MudChip>
+                </MudStack>
+
+                <div class="open-data-metadata-grid" aria-label="Open data catalog metadata">
+                    <div>
+                        <span>License</span>
+                        <strong>@selected.License</strong>
+                    </div>
+                    <div>
+                        <span>Update frequency</span>
+                        <strong>@selected.UpdateFrequency</strong>
+                    </div>
+                    <div>
+                        <span>Contact</span>
+                        <strong>@selected.Contact</strong>
+                    </div>
+                    <div>
+                        <span>STAC collection</span>
+                        <strong>@selected.StacCollectionId</strong>
+                    </div>
+                    <div>
+                        <span>Last updated</span>
+                        <strong>@selected.LastUpdated.ToLocalTime().ToString("MMM d, yyyy h:mm tt", CultureInfo.CurrentCulture)</strong>
+                    </div>
+                    <div>
+                        <span>Scheduled publish</span>
+                        <strong>@(selected.ScheduledPublishAt?.ToLocalTime().ToString("MMM d, yyyy h:mm tt", CultureInfo.CurrentCulture) ?? "Manual")</strong>
+                    </div>
+                </div>
+
+                <div class="open-data-keywords" aria-label="Open data keywords">
+                    @foreach (var keyword in selected.Keywords)
+                    {
+                        <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined">@keyword</MudChip>
+                    }
+                </div>
+
+                <MudText Typo="Typo.h6" Class="mt-4">Preview response</MudText>
+                <pre class="open-data-code" aria-label="Open data sample API response"><code>@selected.SampleResponse</code></pre>
+            </section>
+
+            <section class="open-data-pane" aria-label="Open data delivery readiness">
+                <MudText Typo="Typo.h6">Distribution</MudText>
+
+                <div class="open-data-delivery-group" aria-label="Open data downloads">
+                    <MudText Typo="Typo.subtitle2">Downloads</MudText>
+                    @foreach (var download in selected.Downloads)
+                    {
+                        <div class="open-data-delivery-row" data-testid="@($"open-data-download-{download.Format}")">
+                            <MudIcon Icon="@Icons.Material.Filled.Download" Size="Size.Small" />
+                            <div>
+                                <strong>@FormatDownload(download.Format)</strong>
+                                <span>@download.Url</span>
+                            </div>
+                            <small>@FormatBytes(download.SizeBytes)</small>
+                        </div>
+                    }
+                </div>
+
+                <div class="open-data-delivery-group" aria-label="Open data API endpoints">
+                    <MudText Typo="Typo.subtitle2">Civic tech API</MudText>
+                    @foreach (var endpoint in selected.ApiEndpoints)
+                    {
+                        <article class="open-data-api-row" data-testid="@($"open-data-api-{endpoint.Name}")">
+                            <div>
+                                <strong>@endpoint.Name</strong>
+                                <span>@endpoint.Method @endpoint.Path</span>
+                            </div>
+                            <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined">
+                                @(endpoint.RequiresApiKey ? "API key" : "No auth")
+                            </MudChip>
+                            <pre class="open-data-code"><code>@endpoint.Example</code></pre>
+                        </article>
+                    }
+                </div>
+
+                <div class="open-data-delivery-group" aria-label="Open data embed configuration">
+                    <MudText Typo="Typo.subtitle2">Embeddable map</MudText>
+                    <div class="open-data-embed-preview">
+                        <div>
+                            <MudIcon Icon="@Icons.Material.Filled.Map" />
+                            <strong>@selected.EmbedConfig.Basemap</strong>
+                            <span>@selected.EmbedConfig.InitialExtent</span>
+                        </div>
+                        <small>@selected.EmbedConfig.BrandingMode</small>
+                    </div>
+                    <div class="open-data-embed-flags">
+                        <MudChip T="string" Size="Size.Small" Color="@(selected.EmbedConfig.Responsive ? Color.Success : Color.Warning)" Variant="Variant.Outlined">
+                            Responsive
+                        </MudChip>
+                        <MudChip T="string" Size="Size.Small" Color="@(selected.EmbedConfig.WcagReady ? Color.Success : Color.Warning)" Variant="Variant.Outlined">
+                            WCAG
+                        </MudChip>
+                    </div>
+                </div>
+
+                <div class="open-data-validation" aria-label="Open data validation checks">
+                    <MudText Typo="Typo.subtitle2">Readiness checks</MudText>
+                    @foreach (var check in State.ValidationChecks)
+                    {
+                        <div class="open-data-validation-row" data-testid="@($"open-data-check-{check.Key}")">
+                            <MudIcon Icon="@(check.Passed ? Icons.Material.Filled.CheckCircle : Icons.Material.Filled.Error)"
+                                     Color="@(check.Passed ? Color.Success : Color.Warning)"
+                                     Size="Size.Small" />
+                            <div>
+                                <strong>@check.Label</strong>
+                                <span>@check.Message</span>
+                            </div>
+                        </div>
+                    }
+                </div>
+
+                @if (State.LastPublish is not null)
+                {
+                    <MudAlert Severity="Severity.Success" Dense="true" Variant="Variant.Outlined" Class="mt-3" data-testid="open-data-publish-result">
+                        @State.LastPublish.Message
+                        <br />
+                        <MudLink Href="@State.LastPublish.CatalogUrl">@State.LastPublish.CatalogUrl</MudLink>
+                        <br />
+                        <MudLink Href="@State.LastPublish.ApiDocsUrl">@State.LastPublish.ApiDocsUrl</MudLink>
+                    </MudAlert>
+                }
+            </section>
+        }
+    </div>
+</div>
+
+@code {
+    protected override async Task OnInitializedAsync()
+    {
+        State.OnChanged += StateChanged;
+        Telemetry.PageNavigated("/operator/open-data", principalId: null);
+        await State.LoadAsync(CancellationToken.None);
+    }
+
+    public void Dispose()
+    {
+        State.OnChanged -= StateChanged;
+    }
+
+    private bool IsBusy => State.Status is OpenDataHubStatus.Loading or OpenDataHubStatus.Publishing;
+
+    private Task RefreshAsync() => State.LoadAsync(CancellationToken.None);
+
+    private Task PublishAsync() => State.PublishSelectedAsync(CancellationToken.None);
+
+    private void StateChanged() => InvokeAsync(StateHasChanged);
+
+    private string DatasetClass(OpenDataDataset dataset)
+        => string.Equals(dataset.DatasetId, State.SelectedDataset?.DatasetId, StringComparison.OrdinalIgnoreCase)
+            ? "open-data-dataset selected"
+            : "open-data-dataset";
+
+    private static string FormatDownload(OpenDataDownloadFormat format) => format switch
+    {
+        OpenDataDownloadFormat.GeoJson => "GeoJSON",
+        OpenDataDownloadFormat.GeoParquet => "GeoParquet",
+        OpenDataDownloadFormat.Shapefile => "Shapefile",
+        OpenDataDownloadFormat.Csv => "CSV",
+        OpenDataDownloadFormat.Kml => "KML",
+        _ => format.ToString()
+    };
+
+    private static string FormatBytes(long bytes)
+    {
+        if (bytes >= 1_000_000)
+        {
+            return $"{bytes / 1_000_000d:0.0} MB";
+        }
+
+        return $"{bytes / 1_000d:0.0} KB";
+    }
+
+    private static Color StatusColor(OpenDataHubStatus status) => status switch
+    {
+        OpenDataHubStatus.Error => Color.Error,
+        OpenDataHubStatus.Loading => Color.Info,
+        OpenDataHubStatus.Publishing => Color.Warning,
+        OpenDataHubStatus.Published => Color.Success,
+        _ => Color.Default
+    };
+
+    private static Color DatasetStatusColor(OpenDataDatasetStatus status) => status switch
+    {
+        OpenDataDatasetStatus.Published => Color.Success,
+        OpenDataDatasetStatus.Scheduled => Color.Info,
+        OpenDataDatasetStatus.InReview => Color.Warning,
+        OpenDataDatasetStatus.Blocked => Color.Error,
+        _ => Color.Default
+    };
+}

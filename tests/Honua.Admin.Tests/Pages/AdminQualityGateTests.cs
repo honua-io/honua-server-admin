@@ -13,6 +13,7 @@ using Honua.Admin.Services.Admin;
 using Honua.Admin.Services.Annotations;
 using Honua.Admin.Services.AppBuilder;
 using Honua.Admin.Services.Operations;
+using Honua.Admin.Services.OpenDataHub;
 using Honua.Admin.Services.PrintService;
 using Honua.Admin.Services.Publishing;
 using Honua.Admin.Services.SpecWorkspace;
@@ -48,6 +49,8 @@ public sealed class AdminQualityGateTests : TestContext
         Services.AddScoped<PrintServiceState>();
         Services.AddScoped<IAppBuilderClient, StubAppBuilderClient>();
         Services.AddScoped<AppBuilderState>();
+        Services.AddScoped<IOpenDataHubClient, StubOpenDataHubClient>();
+        Services.AddScoped<OpenDataHubState>();
         Services.AddScoped<CatalogCache>();
         Services.AddScoped<IBrowserStorageService, BrowserStorageService>();
         Services.AddScoped<ISpecWorkspaceTelemetry, NullSpecWorkspaceTelemetry>();
@@ -162,6 +165,13 @@ public sealed class AdminQualityGateTests : TestContext
             typeof(Honua.Admin.Pages.Operator.AppBuilder),
             "Harbor operations dashboard",
             new[] { "[aria-label='App builder toolbar']", "[aria-label='Widget library']", "[aria-label='App layout canvas']", "[aria-label='App builder validation checks']" },
+        ];
+        yield return
+        [
+            "Open data hub",
+            typeof(Honua.Admin.Pages.Operator.OpenDataHub),
+            "Harbor assets",
+            new[] { "[aria-label='Open data hub toolbar']", "[aria-label='Open data catalog filters']", "[aria-label='Open data dataset catalog']", "[aria-label='Open data delivery readiness']", "[aria-label='Open data validation checks']" },
         ];
     }
 
