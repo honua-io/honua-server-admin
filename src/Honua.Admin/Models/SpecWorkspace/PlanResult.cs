@@ -50,6 +50,15 @@ public sealed record PlanNode
 
     [JsonPropertyName("warnings")]
     public IReadOnlyList<string> Warnings { get; init; } = System.Array.Empty<string>();
+
+    [JsonPropertyName("contentHash")]
+    public string? ContentHash { get; init; }
+
+    [JsonPropertyName("cachePolicy")]
+    public PlanCachePolicy CachePolicy { get; init; } = PlanCachePolicy.None;
+
+    [JsonPropertyName("materialization")]
+    public PlanMaterializationKind Materialization { get; init; } = PlanMaterializationKind.Ephemeral;
 }
 
 public sealed record PlanWarning(
@@ -61,4 +70,20 @@ public enum PlanWarningSeverity
 {
     Yellow,
     Red
+}
+
+public enum PlanCachePolicy
+{
+    None,
+    MetadataOnly,
+    ContentHash
+}
+
+public enum PlanMaterializationKind
+{
+    Ephemeral,
+    PreviewOnly,
+    DurableDataset,
+    DurableService,
+    DurableApp
 }

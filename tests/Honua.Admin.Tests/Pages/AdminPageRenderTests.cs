@@ -288,6 +288,22 @@ public sealed class AdminPageRenderTests : TestContext
             var sourceChange = cut.Find("[data-testid='spec-change-Sources']");
             Assert.Equal("Added", sourceChange.GetAttribute("data-status"));
         });
+
+        await cut.InvokeAsync(() => state.UpdateSectionTextAsync(
+            SpecSectionId.Compute,
+            "aggregate inputs=@parcels by=@parcels.county metric=count"));
+        await cut.InvokeAsync(() => state.UpdateSectionTextAsync(
+            SpecSectionId.Output,
+            "kind: AppScaffold\ntarget: preview"));
+        await cut.InvokeAsync(() => state.RunPlanAsync());
+
+        cut.WaitForAssertion(() =>
+        {
+            cut.Markup.MarkupMatchesContaining("content-hash");
+            cut.Markup.MarkupMatchesContaining("durable app");
+            cut.Find("[data-testid='dag-node-cache-aggregate-1']");
+            cut.Find("[data-testid='dag-node-materialization-output-appscaffold']");
+        });
     }
 
     [Fact]

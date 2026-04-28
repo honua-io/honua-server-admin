@@ -41,6 +41,12 @@ public sealed record ApplyEvent
 
     [JsonPropertyName("payload")]
     public ApplyPayload? Payload { get; init; }
+
+    [JsonPropertyName("cacheKey")]
+    public string? CacheKey { get; init; }
+
+    [JsonPropertyName("materializedResource")]
+    public MaterializedResource? MaterializedResource { get; init; }
 }
 
 public enum ApplyEventKind
@@ -87,3 +93,8 @@ public sealed record AppScaffoldParameter(
     [property: JsonPropertyName("name")] string Name,
     [property: JsonPropertyName("kind")] string Kind,
     [property: JsonPropertyName("default")] string? Default);
+
+public sealed record MaterializedResource(
+    [property: JsonPropertyName("id")] string Id,
+    [property: JsonPropertyName("kind")] PlanMaterializationKind Kind,
+    [property: JsonPropertyName("version")] string Version);

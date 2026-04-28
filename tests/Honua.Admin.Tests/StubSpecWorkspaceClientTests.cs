@@ -50,6 +50,46 @@ public sealed class StubSpecWorkspaceClientTests
         Assert.All(payload.MapFeatures, feature => Assert.Equal("study", feature.Source));
     }
 
+    [Fact]
+    public async Task PlanAsync_marks_compute_cache_keys_and_durable_app_outputs()
+    {
+        var document = BuildAppScaffoldDocument();
+
+        var plan = await _client.PlanAsync(document, CancellationToken.None);
+
+        var aggregate = Assert.Single(plan.Nodes, node => node.Op == "aggregate");
+        Assert.Equal(PlanCachePolicy.ContentHash, aggregate.CachePolicy);
+        Assert.StartsWith("sha256:", aggregate.ContentHash, StringComparison.Ordinal);
+        Assert.Equal(PlanMaterializationKind.Ephemeral, aggregate.Materialization);
+
+        var output = Assert.Single(plan.Nodes, node => node.Id == "output-appscaffold");
+        Assert.Equal(PlanCachePolicy.None, output.CachePolicy);
+        Assert.Equal(PlanMaterializationKind.DurableApp, output.Materialization);
+        Assert.StartsWith("sha256:", output.ContentHash, StringComparison.Ordinal);
+        Assert.Equal(new[] { "aggregate-1" }, output.Inputs);
+    }
+
+    [Fact]
+    public async Task ApplyAsync_emits_cache_keys_and_materialized_durable_outputs()
+    {
+        var document = BuildAppScaffoldDocument();
+        var events = new List<ApplyEvent>();
+
+        await foreach (var evt in _client.ApplyAsync(document, Guid.NewGuid().ToString("n"), CancellationToken.None))
+        {
+            events.Add(evt);
+        }
+
+        Assert.Contains(events, evt =>
+            evt.NodeOp == "aggregate"
+            && evt.Status is ApplyNodeStatus.Completed or ApplyNodeStatus.CacheHit
+            && evt.CacheKey?.StartsWith("sha256:", StringComparison.Ordinal) == true);
+
+        var output = Assert.Single(events, evt => evt.NodeId == "output-appscaffold" && evt.MaterializedResource is not null);
+        Assert.Equal(PlanMaterializationKind.DurableApp, output.MaterializedResource!.Kind);
+        Assert.StartsWith("sha256:", output.MaterializedResource.Version, StringComparison.Ordinal);
+    }
+
     [Theory]
     [InlineData("buffer @parcels by 100mi", "100mi")]
     [InlineData("buffer @parcels by 100km", "100km")]
@@ -99,4 +139,21 @@ public sealed class StubSpecWorkspaceClientTests
 
         return null;
     }
+
+    private static SpecDocument BuildAppScaffoldDocument() => new()
+    {
+        Sources = new[] { new SpecSourceEntry("parcels", "parcels", "v1") },
+        Compute = new[]
+        {
+            new SpecComputeStep(
+                "aggregate",
+                new[] { "parcels" },
+                new Dictionary<string, string>(StringComparer.Ordinal)
+                {
+                    ["by"] = "@parcels.county",
+                    ["metric"] = "count"
+                })
+        },
+        Output = new SpecOutput { Kind = SpecOutputKind.AppScaffold, Target = "preview" }
+    };
 }

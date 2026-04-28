@@ -46,6 +46,12 @@
                                         <MudText Typo="Typo.caption" Color="Color.Secondary">
                                             rows≈@node.EstimatedRows  |  bytes≈@node.EstimatedBytes  |  dur≈@node.EstimatedMillis ms
                                         </MudText>
+                                        <MudText Typo="Typo.caption" Color="Color.Secondary" data-testid="@($"dag-node-cache-{node.Id}")">
+                                            cache: @CacheLabel(node.CachePolicy)@(node.ContentHash is null ? string.Empty : $" ({node.ContentHash})")
+                                        </MudText>
+                                        <MudText Typo="Typo.caption" Color="Color.Secondary" data-testid="@($"dag-node-materialization-{node.Id}")">
+                                            state: @MaterializationLabel(node.Materialization)
+                                        </MudText>
                                         @if (node.Inputs.Count > 0)
                                         {
                                             <MudText Typo="Typo.caption" Color="Color.Tertiary">inputs: @string.Join(", ", node.Inputs)</MudText>
@@ -76,6 +82,23 @@
         "buffer" => Icons.Material.Filled.BlurCircular,
         "join" => Icons.Material.Filled.Merge,
         "map" => Icons.Material.Filled.Map,
+        "output" => Icons.Material.Filled.Publish,
         _ => Icons.Material.Filled.Code
+    };
+
+    private static string CacheLabel(PlanCachePolicy policy) => policy switch
+    {
+        PlanCachePolicy.MetadataOnly => "metadata only",
+        PlanCachePolicy.ContentHash => "content-hash",
+        _ => "none"
+    };
+
+    private static string MaterializationLabel(PlanMaterializationKind kind) => kind switch
+    {
+        PlanMaterializationKind.PreviewOnly => "preview only",
+        PlanMaterializationKind.DurableDataset => "durable dataset",
+        PlanMaterializationKind.DurableService => "durable service",
+        PlanMaterializationKind.DurableApp => "durable app",
+        _ => "ephemeral"
     };
 }
