@@ -82,7 +82,7 @@ public sealed class OpenDataHubState
                 HasText(dataset.Contact) &&
                 HasText(dataset.UpdateFrequency);
             var hasDownloads = RequiredDownloadFormats
-                .All(format => dataset.Downloads.FirstOrDefault(download => download.Format == format) is { } download && IsDownloadReady(download));
+                .All(format => dataset.Downloads.Any(download => download.Format == format && IsDownloadReady(download)));
             var hasApis = dataset.ApiEnabled &&
                 dataset.ApiEndpoints.Any(endpoint => !endpoint.RequiresApiKey) &&
                 HasText(dataset.StacCollectionId) &&

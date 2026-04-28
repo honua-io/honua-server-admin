@@ -152,6 +152,28 @@ public sealed class OpenDataHubStateTests
     }
 
     [Fact]
+    public async Task ValidationChecks_accept_ready_download_manifest_when_stale_duplicate_is_first()
+    {
+        var snapshot = Snapshot("duplicate-download-dataset", "Duplicate download dataset");
+        var csvDownload = Assert.Single(snapshot.Datasets[0].Downloads, download => download.Format == OpenDataDownloadFormat.Csv);
+        var dataset = snapshot.Datasets[0] with
+        {
+            Downloads =
+            [
+                csvDownload with { Checksum = string.Empty, Readiness = OpenDataDownloadReadiness.Stale },
+                .. snapshot.Datasets[0].Downloads,
+            ],
+        };
+        var state = new OpenDataHubState(new FixedOpenDataHubClient(snapshot with { Datasets = [dataset] }));
+
+        await state.LoadAsync();
+
+        var downloads = Assert.Single(state.ValidationChecks, check => check.Key == "downloads");
+        Assert.True(downloads.Passed);
+        Assert.False(state.HasBlockingValidation);
+    }
+
+    [Fact]
     public async Task Mutators_ignore_changes_while_publish_is_in_flight()
     {
         var client = new BlockingPublishOpenDataHubClient();
