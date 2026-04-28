@@ -119,6 +119,27 @@ public sealed class AppBuilderStateTests
     }
 
     [Fact]
+    public async Task SetWidgetDataBinding_updates_widget_and_recomputes_validation()
+    {
+        var state = new AppBuilderState(new StubAppBuilderClient());
+        await state.LoadAsync();
+
+        state.SetWidgetDataBinding("widget-chart", " ");
+
+        var emptyBinding = Assert.Single(state.Draft.Widgets, widget => widget.WidgetId == "widget-chart");
+        Assert.Equal(string.Empty, emptyBinding.DataBinding);
+        Assert.Contains(state.ValidationChecks, check => check.Key == "bindings" && !check.Passed);
+        Assert.True(state.HasBlockingValidation);
+
+        state.SetWidgetDataBinding("widget-chart", "Incident features by type");
+
+        var updated = Assert.Single(state.Draft.Widgets, widget => widget.WidgetId == "widget-chart");
+        Assert.Equal("Incident features by type", updated.DataBinding);
+        Assert.Contains(state.ValidationChecks, check => check.Key == "bindings" && check.Passed);
+        Assert.False(state.HasBlockingValidation);
+    }
+
+    [Fact]
     public async Task Validation_flags_interactions_that_reference_missing_widgets()
     {
         var snapshot = Snapshot("Interaction dashboard");
@@ -181,6 +202,7 @@ public sealed class AppBuilderStateTests
         state.SelectTemplate("public-viewer");
         state.AddWidget(AppWidgetKind.Search);
         state.RemoveWidget(originalDraft.Widgets[0].WidgetId);
+        state.SetWidgetDataBinding(originalDraft.Widgets[0].WidgetId, "Edited binding");
 
         Assert.Equal(AppBuilderStatus.Publishing, state.Status);
         Assert.Equal(originalDraft.Name, state.Draft.Name);
@@ -188,6 +210,7 @@ public sealed class AppBuilderStateTests
         Assert.Equal(originalDraft.AutoRefreshSeconds, state.Draft.AutoRefreshSeconds);
         Assert.Equal(originalDraft.TemplateId, state.Draft.TemplateId);
         Assert.Equal(originalDraft.Widgets.Count, state.Draft.Widgets.Count);
+        Assert.Equal(originalDraft.Widgets[0].DataBinding, state.Draft.Widgets[0].DataBinding);
 
         client.Complete();
         await publishTask;

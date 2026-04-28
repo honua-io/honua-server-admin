@@ -33,6 +33,13 @@ public sealed class AppBuilderState
     public AppTemplate? SelectedTemplate =>
         Templates.FirstOrDefault(template => string.Equals(template.TemplateId, Draft.TemplateId, StringComparison.OrdinalIgnoreCase));
 
+    public IReadOnlyList<AppWidgetInstance> DataBoundWidgets =>
+        Draft.Widgets
+            .Where(widget => WidgetRequiresBinding(widget.Kind))
+            .OrderBy(widget => widget.Row)
+            .ThenBy(widget => widget.Column)
+            .ToArray();
+
     public IReadOnlyList<AppValidationCheck> ValidationChecks
     {
         get
@@ -299,6 +306,37 @@ public sealed class AppBuilderState
                 .Where(interaction => widgetIds.Contains(interaction.SourceWidgetId) && widgetIds.Contains(interaction.TargetWidgetId))
                 .ToArray()
         };
+        ResetTransientPublishState();
+        Notify();
+    }
+
+    public void SetWidgetDataBinding(string widgetId, string? dataBinding)
+    {
+        if (IsDraftLocked)
+        {
+            return;
+        }
+
+        var updated = false;
+        var widgets = Draft.Widgets
+            .Select(widget =>
+            {
+                if (!string.Equals(widget.WidgetId, widgetId, StringComparison.Ordinal))
+                {
+                    return widget;
+                }
+
+                updated = true;
+                return widget with { DataBinding = dataBinding?.Trim() ?? string.Empty };
+            })
+            .ToArray();
+
+        if (!updated)
+        {
+            return;
+        }
+
+        Draft = Draft with { Widgets = widgets };
         ResetTransientPublishState();
         Notify();
     }
