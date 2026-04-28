@@ -12,6 +12,13 @@ public enum AppBuilderStatus
     Error
 }
 
+public enum AppPublishChannelKind
+{
+    StandaloneUrl,
+    IframeEmbed,
+    CustomDomain
+}
+
 public enum AppWidgetKind
 {
     Map,
@@ -29,6 +36,8 @@ public sealed record AppBuilderSnapshot
 {
     public IReadOnlyList<AppTemplate> Templates { get; init; } = Array.Empty<AppTemplate>();
     public IReadOnlyList<AppWidgetDefinition> WidgetLibrary { get; init; } = Array.Empty<AppWidgetDefinition>();
+    public IReadOnlyList<AppPublishChannel> PublishChannels { get; init; } = Array.Empty<AppPublishChannel>();
+    public AppQuotaState Quota { get; init; } = new();
     public AppDraft Draft { get; init; } = new();
 }
 
@@ -49,6 +58,25 @@ public sealed record AppWidgetDefinition
     public string Description { get; init; } = string.Empty;
     public bool SupportsDataBinding { get; init; }
     public string DefaultBinding { get; init; } = string.Empty;
+}
+
+public sealed record AppPublishChannel
+{
+    public string ChannelId { get; init; } = string.Empty;
+    public AppPublishChannelKind Kind { get; init; }
+    public string Label { get; init; } = string.Empty;
+    public string Target { get; init; } = string.Empty;
+    public bool Enabled { get; init; }
+    public string RequiredEdition { get; init; } = string.Empty;
+    public string Message { get; init; } = string.Empty;
+}
+
+public sealed record AppQuotaState
+{
+    public string Edition { get; init; } = "Pro";
+    public int PublishedApps { get; init; }
+    public int? AppLimit { get; init; } = 5;
+    public bool CanPublishMore => AppLimit is null || PublishedApps < AppLimit.Value;
 }
 
 public sealed record AppDraft

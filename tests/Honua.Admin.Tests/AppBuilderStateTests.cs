@@ -22,6 +22,9 @@ public sealed class AppBuilderStateTests
         Assert.Equal(AppBuilderStatus.Idle, state.Status);
         Assert.Contains(state.Templates, template => template.TemplateId == "operations-dashboard");
         Assert.Contains(state.WidgetLibrary, widget => widget.Kind == AppWidgetKind.Map);
+        Assert.Contains(state.PublishChannels, channel => channel.Kind == AppPublishChannelKind.StandaloneUrl);
+        Assert.Equal("Pro", state.Quota.Edition);
+        Assert.True(state.Quota.CanPublishMore);
         Assert.Equal("Harbor operations dashboard", state.Draft.Name);
         Assert.NotEmpty(state.Draft.Widgets);
         Assert.False(state.HasBlockingValidation);
@@ -183,6 +186,28 @@ public sealed class AppBuilderStateTests
 
         Assert.Equal(AppBuilderStatus.Idle, state.Status);
         Assert.Null(state.LastError);
+    }
+
+    [Fact]
+    public async Task PublishAsync_blocks_when_app_quota_is_full()
+    {
+        var state = new AppBuilderState(new FixedAppBuilderClient(Snapshot("Quota dashboard") with
+        {
+            Quota = new AppQuotaState
+            {
+                Edition = "Pro",
+                PublishedApps = 5,
+                AppLimit = 5,
+            },
+        }));
+        await state.LoadAsync();
+
+        await state.PublishAsync();
+
+        Assert.Equal(AppBuilderStatus.Error, state.Status);
+        Assert.Equal("Resolve validation checks before publishing.", state.LastError);
+        Assert.Null(state.LastPublish);
+        Assert.Contains(state.PublishReadinessChecks, check => check.Key == "quota" && !check.Passed);
     }
 
     [Fact]

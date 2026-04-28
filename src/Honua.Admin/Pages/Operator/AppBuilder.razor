@@ -148,6 +148,45 @@
                              Margin="Margin.Dense"
                              aria-label="Auto refresh seconds" />
 
+            <MudText Typo="Typo.h6" Class="mt-4">Publishing readiness</MudText>
+            <div class="app-builder-publishing-readiness" aria-label="App builder publishing readiness">
+                <div class="app-builder-quota-row" data-testid="app-builder-quota">
+                    <MudIcon Icon="@Icons.Material.Filled.VerifiedUser" Size="Size.Small" />
+                    <div>
+                        <strong>@($"{State.Quota.Edition} app quota")</strong>
+                        <span>@QuotaMessage</span>
+                    </div>
+                </div>
+                @foreach (var channel in State.PublishChannels)
+                {
+                    <div class="app-builder-publish-channel" data-testid="@($"app-builder-channel-{channel.ChannelId}")">
+                        <MudIcon Icon="@ChannelIcon(channel.Kind)"
+                                 Color="@ChannelColor(channel)"
+                                 Size="Size.Small" />
+                        <div>
+                            <strong>@channel.Label</strong>
+                            <span>@channel.Target</span>
+                            <small>@channel.Message</small>
+                        </div>
+                        <MudChip T="string" Size="Size.Small" Color="@ChannelColor(channel)" Variant="Variant.Outlined">
+                            @(channel.Enabled ? "Enabled" : channel.RequiredEdition)
+                        </MudChip>
+                    </div>
+                }
+                @foreach (var check in State.PublishReadinessChecks)
+                {
+                    <div class="app-builder-validation-row" data-testid="@($"app-builder-publish-check-{check.Key}")">
+                        <MudIcon Icon="@(check.Passed ? Icons.Material.Filled.CheckCircle : Icons.Material.Filled.Error)"
+                                 Color="@(check.Passed ? Color.Success : Color.Warning)"
+                                 Size="Size.Small" />
+                        <div>
+                            <strong>@check.Label</strong>
+                            <span>@check.Message</span>
+                        </div>
+                    </div>
+                }
+            </div>
+
             <MudText Typo="Typo.h6" Class="mt-4">Validation</MudText>
             <div class="app-builder-validation" aria-label="App builder validation checks">
                 @foreach (var check in State.ValidationChecks)
@@ -199,6 +238,10 @@
 
     private void StateChanged() => InvokeAsync(StateHasChanged);
 
+    private string QuotaMessage => State.Quota.AppLimit is null
+        ? $"{State.Quota.PublishedApps} published apps, unlimited {State.Quota.Edition} allowance."
+        : $"{State.Quota.PublishedApps} of {State.Quota.AppLimit.Value} published apps used.";
+
     private string TemplateClass(AppTemplate template)
         => string.Equals(template.TemplateId, State.Draft.TemplateId, StringComparison.OrdinalIgnoreCase)
             ? "app-builder-template selected"
@@ -230,6 +273,17 @@
         AppWidgetKind.RichText => Icons.Material.Filled.Article,
         _ => Icons.Material.Filled.Widgets
     };
+
+    private static string ChannelIcon(AppPublishChannelKind kind) => kind switch
+    {
+        AppPublishChannelKind.StandaloneUrl => Icons.Material.Filled.Link,
+        AppPublishChannelKind.IframeEmbed => Icons.Material.Filled.Code,
+        AppPublishChannelKind.CustomDomain => Icons.Material.Filled.Language,
+        _ => Icons.Material.Filled.Publish
+    };
+
+    private static Color ChannelColor(AppPublishChannel channel)
+        => channel.Enabled ? Color.Success : Color.Warning;
 
     private static Color StatusColor(AppBuilderStatus status) => status switch
     {

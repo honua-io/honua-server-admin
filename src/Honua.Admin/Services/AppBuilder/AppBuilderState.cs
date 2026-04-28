@@ -22,6 +22,10 @@ public sealed class AppBuilderState
 
     public IReadOnlyList<AppWidgetDefinition> WidgetLibrary { get; private set; } = Array.Empty<AppWidgetDefinition>();
 
+    public IReadOnlyList<AppPublishChannel> PublishChannels { get; private set; } = Array.Empty<AppPublishChannel>();
+
+    public AppQuotaState Quota { get; private set; } = new();
+
     public AppDraft Draft { get; private set; } = new();
 
     public AppPublishResult? LastPublish { get; private set; }
@@ -72,7 +76,50 @@ public sealed class AppBuilderState
         }
     }
 
-    public bool HasBlockingValidation => ValidationChecks.Any(check => !check.Passed);
+    public IReadOnlyList<AppValidationCheck> PublishReadinessChecks
+    {
+        get
+        {
+            var standalone = PublishChannels.FirstOrDefault(channel => channel.Kind == AppPublishChannelKind.StandaloneUrl);
+            var embed = PublishChannels.FirstOrDefault(channel => channel.Kind == AppPublishChannelKind.IframeEmbed);
+            var customDomain = PublishChannels.FirstOrDefault(channel => channel.Kind == AppPublishChannelKind.CustomDomain);
+            var quotaLimit = Quota.AppLimit?.ToString() ?? "unlimited";
+
+            return
+            [
+                new AppValidationCheck
+                {
+                    Key = "quota",
+                    Label = "Published app quota",
+                    Passed = Quota.CanPublishMore,
+                    Message = Quota.CanPublishMore ? $"{Quota.PublishedApps} of {quotaLimit} {Quota.Edition} app slots used." : $"{Quota.Edition} app limit reached."
+                },
+                new AppValidationCheck
+                {
+                    Key = "standalone",
+                    Label = "Standalone URL",
+                    Passed = standalone?.Enabled == true,
+                    Message = standalone?.Message ?? "Standalone URL publishing channel is not configured."
+                },
+                new AppValidationCheck
+                {
+                    Key = "embed",
+                    Label = "Iframe embed",
+                    Passed = embed?.Enabled == true,
+                    Message = embed?.Message ?? "Embed publishing channel is not configured."
+                },
+                new AppValidationCheck
+                {
+                    Key = "custom-domain",
+                    Label = "Custom domain",
+                    Passed = customDomain is null || customDomain.Enabled || !string.Equals(Quota.Edition, "Enterprise", StringComparison.OrdinalIgnoreCase),
+                    Message = customDomain?.Message ?? "Custom domains can be configured from Enterprise branding."
+                }
+            ];
+        }
+    }
+
+    public bool HasBlockingValidation => ValidationChecks.Any(check => !check.Passed) || !Quota.CanPublishMore;
 
     public event Action? OnChanged;
 
@@ -93,6 +140,8 @@ public sealed class AppBuilderState
 
             Templates = snapshot.Templates;
             WidgetLibrary = snapshot.WidgetLibrary;
+            PublishChannels = snapshot.PublishChannels;
+            Quota = snapshot.Quota;
             Draft = snapshot.Draft;
             LastPublish = null;
             Status = AppBuilderStatus.Idle;
