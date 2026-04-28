@@ -1,0 +1,351 @@
+@page "/operator/publishing"
+@using Microsoft.AspNetCore.Authorization
+@using Honua.Admin.Services.Publishing
+@attribute [Authorize]
+@inject PublishingWorkspaceState State
+@inject ISnackbar Snackbar
+@inject IAdminTelemetry Telemetry
+@implements IDisposable
+
+<PageTitle>Publishing workspace</PageTitle>
+
+<div class="publishing-root" data-testid="publishing-workspace-root">
+    <div class="publishing-toolbar" aria-label="Publishing workspace toolbar">
+        <MudStack Row AlignItems="AlignItems.Center" Spacing="1">
+            <MudText Typo="Typo.h5">Publishing workspace</MudText>
+            <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="@StatusColor(State.Status)" data-testid="publishing-status">
+                @State.Status
+            </MudChip>
+            <MudSpacer />
+            <MudButton StartIcon="@Icons.Material.Filled.Refresh"
+                       Variant="Variant.Outlined"
+                       Size="Size.Small"
+                       Disabled="@IsBusy"
+                       OnClick="RefreshAsync"
+                       data-testid="publishing-refresh">
+                Refresh
+            </MudButton>
+            <MudButton StartIcon="@Icons.Material.Filled.Search"
+                       Variant="Variant.Outlined"
+                       Size="Size.Small"
+                       Disabled="@IsBusy"
+                       OnClick="DiscoverAsync"
+                       data-testid="publishing-discover">
+                Discover
+            </MudButton>
+            <MudButton StartIcon="@Icons.Material.Filled.HealthAndSafety"
+                       Variant="Variant.Outlined"
+                       Size="Size.Small"
+                       Disabled="@IsBusy"
+                       OnClick="RunPreflightAsync"
+                       data-testid="publishing-preflight">
+                Preflight
+            </MudButton>
+            <MudButton StartIcon="@Icons.Material.Filled.Save"
+                       Variant="Variant.Outlined"
+                       Size="Size.Small"
+                       Disabled="@IsBusy"
+                       OnClick="SaveProtocolsAsync"
+                       data-testid="publishing-save-protocols">
+                Save protocols
+            </MudButton>
+            <MudButton StartIcon="@Icons.Material.Filled.Publish"
+                       Color="Color.Primary"
+                       Variant="Variant.Filled"
+                       Size="Size.Small"
+                       Disabled="@(IsBusy || State.HasBlockingValidation)"
+                       OnClick="PublishAsync"
+                       data-testid="publishing-publish">
+                Publish
+            </MudButton>
+        </MudStack>
+        @if (!string.IsNullOrWhiteSpace(State.LastError))
+        {
+            <MudAlert Severity="Severity.Error" Variant="Variant.Filled" Dense="true" Class="mt-2" data-testid="publishing-error">
+                @State.LastError
+            </MudAlert>
+        }
+    </div>
+
+    <div class="publishing-grid">
+        <div class="publishing-pane publishing-connections" aria-label="Connection and table discovery">
+            <MudText Typo="Typo.h6">Connection</MudText>
+            <div class="publishing-list" aria-label="Publishing data connections">
+                @foreach (var connection in State.Connections)
+                {
+                    var item = connection;
+                    <button type="button"
+                            class="@ConnectionClass(item)"
+                            @onclick="@(() => SelectConnectionAsync(item.Id))"
+                            data-testid="@($"publishing-connection-{item.Name}")">
+                        <span>@item.Name</span>
+                        <small>@item.HealthStatus - @item.DatabaseName</small>
+                    </button>
+                }
+            </div>
+
+            <MudStack Row AlignItems="AlignItems.Center" Class="publishing-section-heading">
+                <MudText Typo="Typo.h6">Discovery</MudText>
+                <MudSpacer />
+                <MudButton Href="/operator/data-connections"
+                           Variant="Variant.Text"
+                           Size="Size.Small"
+                           StartIcon="@Icons.Material.Filled.Cable">
+                    Connections
+                </MudButton>
+            </MudStack>
+            @if (State.Tables.Count == 0)
+            {
+                <MudAlert Severity="Severity.Info" Variant="Variant.Text" Dense="true" data-testid="publishing-no-tables">
+                    No tables discovered.
+                </MudAlert>
+            }
+            else
+            {
+                <MudTable Items="State.Tables" Dense="true" Hover="true" aria-label="Discovered publishable tables">
+                    <HeaderContent>
+                        <MudTh>Source</MudTh>
+                        <MudTh>Geometry</MudTh>
+                        <MudTh></MudTh>
+                    </HeaderContent>
+                    <RowTemplate>
+                        <MudTd>@($"{context.Schema}.{context.Table}")</MudTd>
+                        <MudTd>@(context.GeometryColumn ?? "none")</MudTd>
+                        <MudTd>
+                            <MudButton Size="Size.Small" Variant="Variant.Text" OnClick="@(() => State.UseTable(context))">
+                                Use
+                            </MudButton>
+                        </MudTd>
+                    </RowTemplate>
+                </MudTable>
+            }
+        </div>
+
+        <div class="publishing-pane publishing-draft" aria-label="Publishing intent">
+            <MudText Typo="Typo.h6">Intent</MudText>
+            <MudGrid Class="publishing-form-grid">
+                <MudItem xs="12" sm="6">
+                    <MudTextField T="string"
+                                  Label="Service"
+                                  Value="@State.ServiceName"
+                                  ValueChanged="OnServiceNameChanged"
+                                  Variant="Variant.Outlined"
+                                  Margin="Margin.Dense"
+                                  aria-label="Publishing service name" />
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <MudTextField T="string"
+                                  Label="Layer name"
+                                  Value="@State.DraftLayerName"
+                                  ValueChanged="State.SetDraftLayerName"
+                                  Variant="Variant.Outlined"
+                                  Margin="Margin.Dense"
+                                  aria-label="Publishing layer name" />
+                </MudItem>
+                <MudItem xs="12">
+                    <MudTextField T="string"
+                                  Label="Description"
+                                  Value="@State.DraftDescription"
+                                  ValueChanged="State.SetDraftDescription"
+                                  Variant="Variant.Outlined"
+                                  Margin="Margin.Dense"
+                                  Lines="2"
+                                  aria-label="Publishing description" />
+                </MudItem>
+                <MudItem xs="12" sm="4">
+                    <MudTextField T="string" Label="Schema" Value="@State.DraftSchema" ReadOnly="true" Variant="Variant.Outlined" Margin="Margin.Dense" aria-label="Publishing schema" />
+                </MudItem>
+                <MudItem xs="12" sm="4">
+                    <MudTextField T="string" Label="Table" Value="@State.DraftTable" ReadOnly="true" Variant="Variant.Outlined" Margin="Margin.Dense" aria-label="Publishing table" />
+                </MudItem>
+                <MudItem xs="12" sm="4">
+                    <MudTextField T="string" Label="Geometry" Value="@State.DraftGeometryColumn" ReadOnly="true" Variant="Variant.Outlined" Margin="Margin.Dense" aria-label="Publishing geometry column" />
+                </MudItem>
+                <MudItem xs="12">
+                    <MudCheckBox T="bool"
+                                 Label="Enable after publish"
+                                 Value="@State.DraftEnabled"
+                                 ValueChanged="State.SetDraftEnabled"
+                                 Color="Color.Primary"
+                                 aria-label="Enable after publish" />
+                </MudItem>
+            </MudGrid>
+
+            <div class="publishing-section-heading">
+                <MudText Typo="Typo.h6">Protocols</MudText>
+            </div>
+            <div class="publishing-protocols" aria-label="Publishing protocol toggles">
+                @foreach (var protocol in State.AvailableProtocols)
+                {
+                    var option = protocol;
+                    <MudCheckBox T="bool"
+                                 Label="@option"
+                                 Value="@State.DesiredProtocols.Contains(option, StringComparer.OrdinalIgnoreCase)"
+                                 ValueChanged="@((bool enabled) => State.ToggleProtocol(option, enabled))"
+                                 Color="Color.Primary"
+                                 aria-label="@($"Enable {option}")" />
+                }
+            </div>
+
+            <div class="publishing-section-heading">
+                <MudText Typo="Typo.h6">Validation</MudText>
+            </div>
+            <div class="publishing-validation" aria-label="Publishing validation checks">
+                @foreach (var check in State.ValidationChecks)
+                {
+                    <div class="publishing-validation-row" data-testid="@($"publishing-check-{check.Key}")">
+                        <MudIcon Icon="@(check.Passed ? Icons.Material.Filled.CheckCircle : Icons.Material.Filled.Error)"
+                                 Color="@(check.Passed ? Color.Success : Color.Warning)"
+                                 Size="Size.Small" />
+                        <div>
+                            <strong>@check.Label</strong>
+                            <span>@check.Message</span>
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+
+        <div class="publishing-pane publishing-state" aria-label="Environment and service state">
+            <MudText Typo="Typo.h6">Environments</MudText>
+            <MudTable Items="State.EnvironmentStates" Dense="true" Hover="true" aria-label="Publishing environment comparison">
+                <HeaderContent>
+                    <MudTh>Env</MudTh>
+                    <MudTh>Desired</MudTh>
+                    <MudTh>Actual</MudTh>
+                    <MudTh>State</MudTh>
+                </HeaderContent>
+                <RowTemplate>
+                    <MudTd>@context.Name</MudTd>
+                    <MudTd>@context.DesiredProtocols</MudTd>
+                    <MudTd>@context.ActualProtocols</MudTd>
+                    <MudTd>@context.DriftStatus</MudTd>
+                </RowTemplate>
+            </MudTable>
+
+            <MudStack Row AlignItems="AlignItems.Center" Class="publishing-section-heading">
+                <MudText Typo="Typo.h6">Layers</MudText>
+                <MudSpacer />
+                <MudButton Href="@($"/services/{State.ServiceName}/settings")"
+                           Variant="Variant.Text"
+                           Size="Size.Small"
+                           StartIcon="@Icons.Material.Filled.Settings">
+                    Settings
+                </MudButton>
+            </MudStack>
+            @if (State.Layers.Count == 0)
+            {
+                <MudAlert Severity="Severity.Info" Dense="true" Variant="Variant.Text" data-testid="publishing-no-layers">
+                    No layers loaded.
+                </MudAlert>
+            }
+            else
+            {
+                <div class="publishing-layer-list" aria-label="Published service layers">
+                    @foreach (var layer in State.Layers)
+                    {
+                        <div class="publishing-layer-row" data-testid="@($"publishing-layer-{layer.LayerName}")">
+                            <div>
+                                <strong>@layer.LayerName</strong>
+                                <span>@($"{layer.Schema}.{layer.Table}")</span>
+                            </div>
+                            <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="@(layer.Enabled ? Color.Success : Color.Warning)">
+                                @(layer.Enabled ? "Enabled" : "Disabled")
+                            </MudChip>
+                            <MudButton Size="Size.Small" Variant="Variant.Text" OnClick="@(() => ToggleLayerAsync(layer))">
+                                @(layer.Enabled ? "Disable" : "Enable")
+                            </MudButton>
+                            <MudButton Size="Size.Small" Variant="Variant.Text" Href="@($"/layers/{layer.LayerId}/style")">
+                                Style
+                            </MudButton>
+                        </div>
+                    }
+                </div>
+            }
+
+            @if (State.LastPublishedLayer is not null)
+            {
+                <MudAlert Severity="Severity.Success" Variant="Variant.Outlined" Dense="true" Class="mt-3" data-testid="publishing-last-published">
+                    Published @State.LastPublishedLayer.LayerName.
+                </MudAlert>
+            }
+        </div>
+    </div>
+</div>
+
+@code {
+    protected override async Task OnInitializedAsync()
+    {
+        State.OnChanged += StateChanged;
+        Telemetry.PageNavigated("/operator/publishing", principalId: null);
+        await State.InitializeAsync();
+    }
+
+    public void Dispose()
+    {
+        State.OnChanged -= StateChanged;
+    }
+
+    private bool IsBusy => State.Status is PublishingWorkspaceStatus.Loading
+        or PublishingWorkspaceStatus.Publishing
+        or PublishingWorkspaceStatus.Saving
+        or PublishingWorkspaceStatus.Validating;
+
+    private Task RefreshAsync() => State.InitializeAsync();
+
+    private Task SelectConnectionAsync(string connectionId) => State.SelectConnectionAsync(connectionId);
+
+    private Task DiscoverAsync() => State.DiscoverTablesAsync();
+
+    private Task RunPreflightAsync() => State.RunPreflightAsync();
+
+    private async Task SaveProtocolsAsync()
+    {
+        await State.SaveProtocolsAsync();
+        if (State.LastError is null)
+        {
+            Snackbar.Add("Protocols saved.", Severity.Success);
+        }
+    }
+
+    private async Task PublishAsync()
+    {
+        var layer = await State.PublishAsync();
+        if (layer is not null)
+        {
+            Snackbar.Add($"Layer '{layer.LayerName}' published.", Severity.Success);
+        }
+    }
+
+    private async Task ToggleLayerAsync(LayerSummary layer)
+    {
+        Telemetry.DestructiveAction(layer.Enabled ? "publishing-disable-layer" : "publishing-enable-layer", layer.LayerId.ToString(), principalId: null);
+        await State.ToggleLayerAsync(layer);
+    }
+
+    private async Task OnServiceNameChanged(string value)
+    {
+        State.SetServiceName(value);
+        await State.LoadServiceAsync();
+        await State.LoadLayersAsync();
+    }
+
+    private void StateChanged() => InvokeAsync(StateHasChanged);
+
+    private string ConnectionClass(ConnectionSummary connection)
+    {
+        var active = string.Equals(connection.Id, State.SelectedConnectionId, StringComparison.OrdinalIgnoreCase)
+            ? " publishing-list-item-active"
+            : string.Empty;
+        return $"publishing-list-item{active}";
+    }
+
+    private static Color StatusColor(PublishingWorkspaceStatus status) => status switch
+    {
+        PublishingWorkspaceStatus.Error => Color.Error,
+        PublishingWorkspaceStatus.Loading => Color.Info,
+        PublishingWorkspaceStatus.Publishing => Color.Info,
+        PublishingWorkspaceStatus.Saving => Color.Info,
+        _ => Color.Default
+    };
+}

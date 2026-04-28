@@ -10,6 +10,7 @@ using Honua.Admin.Models.Admin;
 using Honua.Admin.Pages.Admin;
 using Honua.Admin.Services.Admin;
 using Honua.Admin.Services.Annotations;
+using Honua.Admin.Services.Publishing;
 using Microsoft.Extensions.DependencyInjection;
 using MudBlazor;
 using MudBlazor.Services;
@@ -119,6 +120,23 @@ public sealed class AdminPageRenderTests : TestContext
             cut.Markup.MarkupMatchesContaining("Field review annotations");
             cut.Markup.MarkupMatchesContaining("Export");
             cut.Markup.MarkupMatchesContaining("Guest comments");
+        });
+    }
+
+    [Fact]
+    public void PublishingWorkspace_RendersConnectionsIntentAndEnvironmentState()
+    {
+        Services.AddScoped<IHonuaAdminClient>(_ => new StubHonuaAdminClient());
+        Services.AddScoped<PublishingWorkspaceState>();
+
+        var cut = RenderWithMudHost<Honua.Admin.Pages.Operator.PublishingWorkspace>();
+
+        cut.WaitForAssertion(() =>
+        {
+            cut.Markup.MarkupMatchesContaining("Publishing workspace");
+            cut.Markup.MarkupMatchesContaining("primary-postgis");
+            cut.Markup.MarkupMatchesContaining("Environment");
+            cut.Markup.MarkupMatchesContaining("Parcels");
         });
     }
 

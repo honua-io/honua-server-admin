@@ -32,6 +32,16 @@ public sealed class NavMenuTests
     }
 
     [Fact]
+    public void NavMenu_registers_publishing_workspace_under_operator_route()
+    {
+        var path = Path.Combine(System.AppContext.BaseDirectory, NavMenuPath);
+        var contents = File.ReadAllText(path);
+
+        Assert.Contains("/operator/publishing", contents, System.StringComparison.Ordinal);
+        Assert.Contains("Publishing", contents, System.StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void NavMenu_uses_a_single_MudNavMenu_so_sql_page_lives_in_the_shared_shell()
     {
         var path = Path.Combine(System.AppContext.BaseDirectory, NavMenuPath);
@@ -46,12 +56,15 @@ public sealed class NavMenuTests
         var operatorSpec = contents.IndexOf("/operator/spec", System.StringComparison.Ordinal);
         var operatorSql = contents.IndexOf("/operator/sql", System.StringComparison.Ordinal);
         var operatorAnnotations = contents.IndexOf("/operator/annotations", System.StringComparison.Ordinal);
+        var operatorPublishing = contents.IndexOf("/operator/publishing", System.StringComparison.Ordinal);
         var menuClose = contents.IndexOf("</MudNavMenu>", System.StringComparison.Ordinal);
 
         Assert.True(operatorSpec > 0);
         Assert.True(operatorSql > 0);
         Assert.True(operatorAnnotations > 0);
+        Assert.True(operatorPublishing > 0);
         Assert.True(operatorSql < menuClose);
         Assert.True(operatorAnnotations < menuClose);
+        Assert.True(operatorPublishing < menuClose);
     }
 }

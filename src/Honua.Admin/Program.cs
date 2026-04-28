@@ -7,6 +7,7 @@ using Honua.Admin.Services.DataConnections;
 using Honua.Admin.Services.DataConnections.Providers;
 using Honua.Admin.Services.Identity;
 using Honua.Admin.Services.LicenseWorkspace;
+using Honua.Admin.Services.Publishing;
 using Honua.Admin.Services.SpatialSql;
 using Honua.Admin.Services.SpecWorkspace;
 using Microsoft.AspNetCore.Components.Authorization;
@@ -40,6 +41,11 @@ builder.Services.AddScoped<SpatialSqlPlaygroundState>();
 // Map annotation workspace (issue #8) ships as an in-memory admin UI slice until
 // saved-map and collaboration APIs are available from the server.
 builder.Services.AddScoped<AnnotationWorkspaceState>();
+
+// Service publishing workspace (issue #14) orchestrates existing admin control
+// plane APIs across connection discovery, publish intent, protocol state, and
+// deployment preflight.
+builder.Services.AddScoped<PublishingWorkspaceState>();
 
 // Admin client + auth wiring (ticket #28 — restored from PR #17 onto the post-#27 shell).
 builder.Services.AddSingleton<AdminAuthStateProvider>();
