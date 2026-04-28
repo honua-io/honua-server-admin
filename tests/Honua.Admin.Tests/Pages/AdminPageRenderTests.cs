@@ -353,6 +353,9 @@ public sealed class AdminPageRenderTests : TestContext
             cut.Markup.MarkupMatchesContaining("Standalone URL");
             cut.Markup.MarkupMatchesContaining("Custom domain");
             cut.Markup.MarkupMatchesContaining("App builder validation checks");
+            cut.Markup.MarkupMatchesContaining("Cross-widget interactions");
+            cut.Markup.MarkupMatchesContaining("Map feature click");
+            cut.Find("[data-testid='app-builder-interaction-interaction-map-list']");
         });
     }
 

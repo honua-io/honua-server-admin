@@ -29,7 +29,8 @@
 .app-builder-template-list,
 .app-builder-widget-library,
 .app-builder-validation,
-.app-builder-publishing-readiness {
+.app-builder-publishing-readiness,
+.app-builder-interactions {
     display: flex;
     flex-direction: column;
     gap: 8px;
@@ -72,7 +73,8 @@
 .app-builder-widget-definition,
 .app-builder-quota-row,
 .app-builder-publish-channel,
-.app-builder-validation-row {
+.app-builder-validation-row,
+.app-builder-interaction {
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -95,11 +97,23 @@
     align-items: flex-start;
 }
 
+.app-builder-interaction {
+    border-left: 4px solid var(--mud-palette-primary, #594ae2);
+}
+
+.app-builder-interaction:not(.enabled) {
+    border-left-color: var(--mud-palette-lines-default, #d7dbe0);
+    opacity: 0.75;
+}
+
 .app-builder-publish-channel strong,
 .app-builder-publish-channel span,
 .app-builder-publish-channel small,
 .app-builder-quota-row strong,
-.app-builder-quota-row span {
+.app-builder-quota-row span,
+.app-builder-interaction strong,
+.app-builder-interaction span,
+.app-builder-interaction small {
     min-width: 0;
     overflow-wrap: anywhere;
 }
