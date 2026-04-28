@@ -1,193 +1,446 @@
 @page "/deploy"
+@using Microsoft.Extensions.DependencyInjection
 @using MudBlazor
 @inherits Honua.Admin.Shared.AdminPageBase
+@implements IDisposable
 
 <PageTitle>Deploy control - Honua Server Admin</PageTitle>
 
-<MudContainer MaxWidth="MaxWidth.Large" Class="mt-4">
-    <MudText Typo="Typo.h4" Class="mb-4">
-        <MudIcon Icon="@Icons.Material.Filled.RocketLaunch" Class="mr-2" />
-        Deploy control
-    </MudText>
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
+    <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Class="mb-4">
+        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+            <MudText Typo="Typo.h4">
+                <MudIcon Icon="@Icons.Material.Filled.RocketLaunch" Class="mr-2" />
+                Deploy control
+            </MudText>
+            <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="@StatusColor(State.Status)">
+                @State.Status
+            </MudChip>
+        </MudStack>
+        <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Refresh" OnClick="RefreshAsync" Disabled="@IsBusy">
+            Refresh
+        </MudButton>
+    </MudStack>
 
     <ErrorBanner Message="@ErrorMessage" />
+    @if (!string.IsNullOrWhiteSpace(State.LastError))
+    {
+        <MudAlert Severity="Severity.Error" Variant="Variant.Filled" Dense="true" Class="mb-4">
+            @State.LastError
+        </MudAlert>
+    }
 
-    <MudTabs Elevation="1" Rounded="true" PanelClass="pa-4">
-        <MudTabPanel Text="Preflight" Icon="@Icons.Material.Filled.Checklist">
-            <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.FlightTakeoff" OnClick="RunPreflightAsync" Disabled="IsLoading">
-                Run preflight
-            </MudButton>
-            @if (_preflight is not null)
-            {
-                <MudAlert Severity="@(_preflight.ReadyForCoordinatedDeploy ? Severity.Success : Severity.Warning)" Class="mt-4">
-                    @_preflight.Message
-                </MudAlert>
-                <MudSimpleTable Dense="true" Hover="true" Class="mt-3" aria-label="Deploy preflight details">
-                    <tbody>
-                        <tr><td>Status</td><td>@_preflight.Status</td></tr>
-                        <tr><td>Environment</td><td>@_preflight.Environment</td></tr>
-                        <tr><td>Deployment mode</td><td>@_preflight.DeploymentMode</td></tr>
-                        <tr><td>Instance</td><td>@_preflight.InstanceName</td></tr>
-                    </tbody>
-                </MudSimpleTable>
-            }
-        </MudTabPanel>
+    <MudGrid Class="mb-4">
+        <MudItem xs="12" md="4">
+            <MudCard Elevation="1">
+                <MudCardContent>
+                    <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
+                        <MudText Typo="Typo.h6">Preflight</MudText>
+                        <MudButton Size="Size.Small" Variant="Variant.Text" StartIcon="@Icons.Material.Filled.HealthAndSafety" OnClick="RunPreflightAsync" Disabled="@IsBusy">
+                            Run preflight
+                        </MudButton>
+                    </MudStack>
+                    @if (State.Preflight is null)
+                    {
+                        <MudAlert Severity="Severity.Info" Dense="true" Class="mt-3">
+                            No deploy preflight loaded.
+                        </MudAlert>
+                    }
+                    else
+                    {
+                        <MudAlert Severity="@(State.Preflight.ReadyForCoordinatedDeploy ? Severity.Success : Severity.Warning)" Dense="true" Class="mt-3">
+                            @State.Preflight.Message
+                        </MudAlert>
+                        <MudSimpleTable Dense="true" Hover="true" Class="mt-3" aria-label="Deploy preflight details">
+                            <tbody>
+                                <tr><td>Status</td><td>@State.Preflight.Status</td></tr>
+                                <tr><td>Environment</td><td>@(State.Preflight.Environment ?? "unknown")</td></tr>
+                                <tr><td>Deployment mode</td><td>@(State.Preflight.DeploymentMode ?? "unknown")</td></tr>
+                                <tr><td>Instance</td><td>@(State.Preflight.InstanceName ?? "unknown")</td></tr>
+                            </tbody>
+                        </MudSimpleTable>
+                    }
+                </MudCardContent>
+            </MudCard>
+        </MudItem>
 
-        <MudTabPanel Text="Plan" Icon="@Icons.Material.Filled.ListAlt">
+        <MudItem xs="12" md="8">
+            <MudCard Elevation="1">
+                <MudCardContent>
+                    <MudText Typo="Typo.h6">Target inventory</MudText>
+                    <MudGrid Class="mt-1">
+                        <MudItem xs="12" sm="4">
+                            <MudTextField T="string" @bind-Value="_draftTargetId" Label="Target ID" Variant="Variant.Outlined" Margin="Margin.Dense" aria-label="Deploy target ID" />
+                        </MudItem>
+                        <MudItem xs="12" sm="4">
+                            <MudTextField T="string" @bind-Value="_draftDesiredRevision" Label="Desired revision" Variant="Variant.Outlined" Margin="Margin.Dense" aria-label="Deploy desired revision" />
+                        </MudItem>
+                        <MudItem xs="12" sm="4">
+                            <MudTextField T="string" @bind-Value="_draftCurrentRevision" Label="Current revision" Variant="Variant.Outlined" Margin="Margin.Dense" aria-label="Deploy current revision" />
+                        </MudItem>
+                    </MudGrid>
+                    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1" Class="mt-3">
+                        <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" OnClick="AddTarget" Disabled="@IsBusy">
+                            Add target
+                        </MudButton>
+                        <MudButton Variant="Variant.Text" OnClick="@(() => State.SetAllSelected(true))" Disabled="@IsBusy">
+                            Select all
+                        </MudButton>
+                        <MudButton Variant="Variant.Text" OnClick="@(() => State.SetAllSelected(false))" Disabled="@IsBusy">
+                            Clear
+                        </MudButton>
+                    </MudStack>
+                </MudCardContent>
+            </MudCard>
+        </MudItem>
+    </MudGrid>
+
+    <MudCard Elevation="1" Class="mb-4">
+        <MudCardContent>
             <MudGrid>
-                <MudItem xs="12" sm="4">
-                    <MudTextField @bind-Value="_targetId" Label="Target ID" Variant="Variant.Outlined" />
+                <MudItem xs="12" md="7">
+                    <MudTextField T="string" @bind-Value="_operationReason" Label="Reason" Variant="Variant.Outlined" Margin="Margin.Dense" aria-label="Deploy operation reason" />
                 </MudItem>
-                <MudItem xs="12" sm="4">
-                    <MudTextField @bind-Value="_currentRevision" Label="Current revision" Variant="Variant.Outlined" />
-                </MudItem>
-                <MudItem xs="12" sm="4">
-                    <MudTextField @bind-Value="_desiredRevision" Label="Desired revision" Variant="Variant.Outlined" />
+                <MudItem xs="12" md="5">
+                    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+                        <MudCheckBox T="bool" @bind-Value="_submitImmediately" Label="Submit immediately" Color="Color.Primary" aria-label="Submit deploy operations immediately" />
+                        <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.PlaylistAdd" OnClick="PlanSelectedAsync" Disabled="@(IsBusy || !State.HasSelectedTargets)">
+                            Plan selected
+                        </MudButton>
+                    </MudStack>
                 </MudItem>
             </MudGrid>
             <MudStack Row="true" Spacing="1" Class="mt-3">
-                <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.PlaylistAdd" OnClick="PlanAsync" Disabled="IsLoading">
-                    Create plan
+                <MudButton Variant="Variant.Filled" Color="Color.Warning" StartIcon="@Icons.Material.Filled.RocketLaunch" OnClick="CreateSelectedOperationsAsync" Disabled="@(IsBusy || !State.HasSelectedTargets)">
+                    Create operations
                 </MudButton>
-                <MudButton Variant="Variant.Filled" Color="Color.Warning" StartIcon="@Icons.Material.Filled.RocketLaunch" OnClick="CreateOperationAsync" Disabled="IsLoading">
-                    Create operation
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Send" OnClick="SubmitSelectedAsync" Disabled="@(IsBusy || !State.HasSubmittableOperations)">
+                    Submit selected
+                </MudButton>
+                <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Refresh" OnClick="RefreshSelectedOperationsAsync" Disabled="@(IsBusy || !State.HasRefreshableOperations)">
+                    Refresh status
+                </MudButton>
+                <MudButton Variant="Variant.Outlined" Color="Color.Error" StartIcon="@Icons.Material.Filled.Undo" OnClick="RollbackSelectedAsync" Disabled="@(IsBusy || !State.HasRollbackOperations)">
+                    Rollback selected
                 </MudButton>
             </MudStack>
-            @if (_plan is not null)
-            {
-                <MudAlert Severity="@(_plan.ReadyToSubmit ? Severity.Success : Severity.Warning)" Class="mt-4">
-                    Plan for @_plan.Target.TargetName (@_plan.Target.TargetId) generated.
-                </MudAlert>
-                @foreach (var warning in _plan.Warnings)
-                {
-                    <MudAlert Severity="Severity.Warning" Dense="true" Class="mt-1">@warning</MudAlert>
-                }
-                @foreach (var blocker in _plan.BlockingReasons)
-                {
-                    <MudAlert Severity="Severity.Error" Dense="true" Class="mt-1">@blocker</MudAlert>
-                }
-            }
-        </MudTabPanel>
+        </MudCardContent>
+    </MudCard>
 
-        <MudTabPanel Text="Operations" Icon="@Icons.Material.Filled.History">
-            <MudGrid>
-                <MudItem xs="12" sm="8">
-                    <MudTextField @bind-Value="_operationId" Label="Operation ID" Variant="Variant.Outlined" />
-                </MudItem>
-                <MudItem xs="12" sm="4">
-                    <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Refresh" OnClick="RefreshOperationAsync" Disabled="IsLoading">
-                        Refresh
-                    </MudButton>
-                </MudItem>
-            </MudGrid>
-            <MudStack Row="true" Spacing="1" Class="mt-3">
-                <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Send" OnClick="SubmitAsync" Disabled="IsLoading || string.IsNullOrWhiteSpace(_operationId)">
-                    Submit
-                </MudButton>
-                <MudButton Variant="Variant.Outlined" Color="Color.Error" StartIcon="@Icons.Material.Filled.Undo" OnClick="RollbackAsync" Disabled="IsLoading || string.IsNullOrWhiteSpace(_operationId)">
-                    Rollback
-                </MudButton>
-            </MudStack>
-            @if (_operation is not null)
-            {
-                <MudSimpleTable Dense="true" Hover="true" Class="mt-4" aria-label="Deploy operation details">
-                    <tbody>
-                        <tr><td>Operation</td><td>@_operation.OperationId</td></tr>
-                        <tr><td>Status</td><td>@_operation.Status</td></tr>
-                        <tr><td>Priority</td><td>@_operation.Priority</td></tr>
-                        <tr><td>Target</td><td>@_operation.Target?.TargetName</td></tr>
-                        <tr><td>Phase</td><td>@_operation.CurrentPhase</td></tr>
-                    </tbody>
-                </MudSimpleTable>
-                @if (!string.IsNullOrWhiteSpace(_operation.ErrorMessage))
-                {
-                    <MudAlert Severity="Severity.Error" Class="mt-3">@_operation.ErrorMessage</MudAlert>
-                }
-            }
-        </MudTabPanel>
-    </MudTabs>
+    @if (State.Targets.Count == 0)
+    {
+        <EmptyState Icon="@Icons.Material.Filled.RocketLaunch" Title="No deploy targets" Description="Add a target ID to begin planning." />
+    }
+    else
+    {
+        <MudTable Items="State.Targets" Dense="true" Hover="true" aria-label="Deploy fleet targets">
+            <HeaderContent>
+                <MudTh></MudTh>
+                <MudTh>Target</MudTh>
+                <MudTh>Revision</MudTh>
+                <MudTh>Plan</MudTh>
+                <MudTh>Operation</MudTh>
+                <MudTh>Rollout</MudTh>
+                <MudTh></MudTh>
+            </HeaderContent>
+            <RowTemplate>
+                <MudTd>
+                    <MudCheckBox T="bool"
+                                 Value="@context.Selected"
+                                 ValueChanged="@((bool selected) => SetSelected(context, selected))"
+                                 Color="Color.Primary"
+                                 aria-label="@($"Select deploy target {context.TargetId}")" />
+                </MudTd>
+                <MudTd>
+                    <MudText Typo="Typo.subtitle2">@context.DisplayName</MudText>
+                    <MudText Typo="Typo.caption">@context.TargetId</MudText>
+                    <MudStack Row="true" Spacing="1" Class="mt-1">
+                        <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined">@context.TargetKind</MudChip>
+                        <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined">@context.Environment</MudChip>
+                        <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined">@context.Backend</MudChip>
+                    </MudStack>
+                </MudTd>
+                <MudTd>
+                    <MudText Typo="Typo.body2">@RevisionText(context)</MudText>
+                    @if (!string.IsNullOrWhiteSpace(context.ResolvedTarget?.ArtifactReference))
+                    {
+                        <MudText Typo="Typo.caption">@context.ResolvedTarget.ArtifactReference</MudText>
+                    }
+                </MudTd>
+                <MudTd>
+                    <MudChip T="string" Size="Size.Small" Variant="Variant.Filled" Color="@PlanColor(context)">
+                        @context.PlanState
+                    </MudChip>
+                    @foreach (var warning in context.Plan?.Warnings ?? Array.Empty<string>())
+                    {
+                        <MudText Typo="Typo.caption" Color="Color.Warning">@warning</MudText>
+                    }
+                    @foreach (var blocker in context.Plan?.BlockingReasons ?? Array.Empty<string>())
+                    {
+                        <MudText Typo="Typo.caption" Color="Color.Error">@blocker</MudText>
+                    }
+                    @if (!string.IsNullOrWhiteSpace(context.LastError))
+                    {
+                        <MudText Typo="Typo.caption" Color="Color.Error">@context.LastError</MudText>
+                    }
+                </MudTd>
+                <MudTd>
+                    <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="@OperationColor(context.Operation?.Status)">
+                        @context.OperationState
+                    </MudChip>
+                    @if (!string.IsNullOrWhiteSpace(context.Operation?.OperationId))
+                    {
+                        <MudText Typo="Typo.caption">@context.Operation.OperationId</MudText>
+                    }
+                    @if (!string.IsNullOrWhiteSpace(context.Operation?.CurrentPhase))
+                    {
+                        <MudText Typo="Typo.caption">@context.Operation.CurrentPhase</MudText>
+                    }
+                </MudTd>
+                <MudTd>
+                    <MudText Typo="Typo.body2">@(context.Operation?.ObservedState ?? "No observed state")</MudText>
+                    @if (!string.IsNullOrWhiteSpace(context.Operation?.ProviderOperationId))
+                    {
+                        <MudText Typo="Typo.caption">@context.Operation.ProviderOperationId</MudText>
+                    }
+                    <MudText Typo="Typo.caption">@context.LastAction</MudText>
+                    @if (context.LastUpdated is not null)
+                    {
+                        <MudText Typo="Typo.caption">@context.LastUpdated.Value.ToString("u")</MudText>
+                    }
+                </MudTd>
+                <MudTd>
+                    <MudStack Row="true" Spacing="1">
+                        <MudButton Size="Size.Small" Variant="Variant.Text" OnClick="@(() => PlanTargetAsync(context))" Disabled="@IsBusy">
+                            Plan
+                        </MudButton>
+                        <MudButton Size="Size.Small" Variant="Variant.Text" OnClick="@(() => CreateOperationAsync(context))" Disabled="@(IsBusy || !context.CanCreateOperation)">
+                            Create
+                        </MudButton>
+                        <MudButton Size="Size.Small" Variant="Variant.Text" OnClick="@(() => SubmitOperationAsync(context))" Disabled="@(IsBusy || !context.CanSubmit)">
+                            Submit
+                        </MudButton>
+                        <MudButton Size="Size.Small" Variant="Variant.Text" OnClick="@(() => RefreshOperationAsync(context))" Disabled="@(IsBusy || !context.CanRefresh)">
+                            Status
+                        </MudButton>
+                        <MudButton Size="Size.Small" Variant="Variant.Text" Color="Color.Error" OnClick="@(() => RollbackOperationAsync(context))" Disabled="@(IsBusy || !context.CanRollback)">
+                            Rollback
+                        </MudButton>
+                        <MudButton Size="Size.Small" Variant="Variant.Text" Color="Color.Default" OnClick="@(() => State.RemoveTarget(context))" Disabled="@IsBusy">
+                            Remove
+                        </MudButton>
+                    </MudStack>
+                </MudTd>
+            </RowTemplate>
+        </MudTable>
+    }
 </MudContainer>
 
 @code {
-    private DeployPreflightResult? _preflight;
-    private DeployPlan? _plan;
-    private DeployOperation? _operation;
-    private string _targetId = "honua-server";
-    private string? _currentRevision;
-    private string _desiredRevision = "latest";
-    private string? _operationId;
+    [Inject] private IServiceProvider Services { get; set; } = null!;
 
-    protected override void OnInitialized()
+    private DeployOrchestrationState State { get; set; } = null!;
+    private string _draftTargetId = "honua-server";
+    private string _draftDesiredRevision = "latest";
+    private string? _draftCurrentRevision;
+    private string? _operationReason = "Operator coordinated deploy";
+    private string? _operationId = string.Empty;
+    private bool _submitImmediately;
+
+    protected override async Task OnInitializedAsync()
     {
+        State = Services.GetService<DeployOrchestrationState>() ?? new DeployOrchestrationState(AdminClient);
+        State.OnChanged += StateChanged;
         Telemetry.PageNavigated("/deploy", principalId: null);
+        await ExecuteAsync(() => State.InitializeAsync(CancellationToken.None));
     }
 
-    private async Task RunPreflightAsync()
+    public void Dispose()
     {
-        await ExecuteAsync(async () =>
+        if (State is not null)
         {
-            _preflight = await AdminClient.GetDeployPreflightAsync(CancellationToken.None);
-        });
+            State.OnChanged -= StateChanged;
+        }
     }
 
-    private async Task PlanAsync()
+    private bool IsBusy => IsLoading || State.Status is DeployOrchestrationStatus.Loading
+        or DeployOrchestrationStatus.Planning
+        or DeployOrchestrationStatus.Creating
+        or DeployOrchestrationStatus.Submitting
+        or DeployOrchestrationStatus.Refreshing
+        or DeployOrchestrationStatus.RollingBack;
+
+    private Task RefreshAsync() => ExecuteAsync(() => State.InitializeAsync(CancellationToken.None));
+
+    private Task RunPreflightAsync() => RefreshAsync();
+
+    private void AddTarget()
     {
-        await ExecuteAsync(async () =>
+        if (State.AddOrUpdateTarget(_draftTargetId, _draftDesiredRevision, _draftCurrentRevision))
         {
-            _plan = await AdminClient.PlanDeployAsync(BuildPlanRequest(), CancellationToken.None);
-        });
+            _draftCurrentRevision = null;
+        }
     }
 
-    private async Task CreateOperationAsync()
+    private void SetSelected(DeployFleetTarget target, bool selected)
     {
-        await ExecuteAsync(async () =>
-        {
-            _operation = await AdminClient.CreateDeployOperationAsync(new CreateDeployOperationRequest
-            {
-                TargetId = _targetId,
-                CurrentRevision = _currentRevision,
-                DesiredRevision = _desiredRevision,
-                Reason = "Created from Honua admin UI",
-                SubmitImmediately = false,
-            }, CancellationToken.None);
-            _operationId = _operation.OperationId;
-            Snackbar.Add($"Deploy operation {_operation.OperationId} created.", Severity.Success);
-        });
+        target.Selected = selected;
     }
 
-    private async Task RefreshOperationAsync()
+    private async Task PlanSelectedAsync()
     {
-        if (string.IsNullOrWhiteSpace(_operationId)) return;
-        await ExecuteAsync(async () =>
+        await ExecuteAsync(() => State.PlanSelectedAsync(CancellationToken.None));
+        ShowBatchResult("Deploy plans generated.");
+    }
+
+    private async Task CreateSelectedOperationsAsync()
+    {
+        await ExecuteAsync(() => State.CreateOperationsForSelectedAsync(_operationReason, _submitImmediately, CancellationToken.None));
+        ShowBatchResult("Deploy operations created.");
+    }
+
+    private async Task SubmitSelectedAsync()
+    {
+        foreach (var target in State.SelectedTargets.Where(target => target.Operation is not null))
         {
-            _operation = await AdminClient.GetDeployOperationAsync(_operationId, CancellationToken.None);
-        });
+            Telemetry.DestructiveAction("submit-deploy", target.Operation!.OperationId, principalId: null);
+        }
+
+        await ExecuteAsync(() => State.SubmitSelectedAsync(_operationReason, CancellationToken.None));
+        ShowBatchResult("Deploy operations submitted.");
+    }
+
+    private async Task RefreshSelectedOperationsAsync()
+    {
+        await ExecuteAsync(() => State.RefreshSelectedAsync(CancellationToken.None));
+        ShowBatchResult("Deploy operation status refreshed.");
+    }
+
+    private async Task RollbackSelectedAsync()
+    {
+        foreach (var target in State.SelectedTargets.Where(target => target.Operation is not null))
+        {
+            Telemetry.DestructiveAction("rollback-deploy", target.Operation!.OperationId, principalId: null);
+        }
+
+        await ExecuteAsync(() => State.RollbackSelectedAsync(_operationReason, CancellationToken.None));
+        ShowBatchResult("Rollback requested.");
+    }
+
+    private async Task PlanTargetAsync(DeployFleetTarget target)
+    {
+        await ExecuteAsync(() => State.PlanTargetAsync(target, CancellationToken.None));
+        ShowBatchResult($"Plan generated for {target.TargetId}.");
+    }
+
+    private async Task CreateOperationAsync(DeployFleetTarget target)
+    {
+        await ExecuteAsync(() => State.CreateOperationAsync(target, _operationReason, _submitImmediately, CancellationToken.None));
+        ShowBatchResult($"Deploy operation created for {target.TargetId}.");
+    }
+
+    private async Task SubmitOperationAsync(DeployFleetTarget target)
+    {
+        if (target.Operation is not null)
+        {
+            Telemetry.DestructiveAction("submit-deploy", target.Operation.OperationId, principalId: null);
+        }
+
+        await ExecuteAsync(() => State.SubmitOperationAsync(target, _operationReason, CancellationToken.None));
+        ShowBatchResult($"Deploy operation submitted for {target.TargetId}.");
+    }
+
+    private async Task RefreshOperationAsync(DeployFleetTarget target)
+    {
+        await ExecuteAsync(() => State.RefreshOperationAsync(target, CancellationToken.None));
+        ShowBatchResult($"Deploy status refreshed for {target.TargetId}.");
+    }
+
+    private async Task RollbackOperationAsync(DeployFleetTarget target)
+    {
+        if (target.Operation is not null)
+        {
+            Telemetry.DestructiveAction("rollback-deploy", target.Operation.OperationId, principalId: null);
+        }
+
+        await ExecuteAsync(() => State.RollbackOperationAsync(target, _operationReason, CancellationToken.None));
+        ShowBatchResult($"Rollback requested for {target.TargetId}.");
     }
 
     private async Task SubmitAsync()
     {
         if (string.IsNullOrWhiteSpace(_operationId)) return;
+        Telemetry.DestructiveAction("submit-deploy", _operationId, principalId: null);
         await ExecuteAsync(async () =>
         {
-            Telemetry.DestructiveAction("submit-deploy", _operationId, principalId: null);
-            _operation = await AdminClient.SubmitDeployOperationAsync(_operationId, new SubmitDeployOperationRequest { Reason = "Submitted from Honua admin UI" }, CancellationToken.None);
+            await AdminClient.SubmitDeployOperationAsync(
+                _operationId,
+                new SubmitDeployOperationRequest { Reason = "Submitted from Honua admin UI" },
+                CancellationToken.None);
         });
     }
 
     private async Task RollbackAsync()
     {
         if (string.IsNullOrWhiteSpace(_operationId)) return;
+        Telemetry.DestructiveAction("rollback-deploy", _operationId, principalId: null);
         await ExecuteAsync(async () =>
         {
-            Telemetry.DestructiveAction("rollback-deploy", _operationId, principalId: null);
-            _operation = await AdminClient.RollbackDeployOperationAsync(_operationId, new RollbackDeployOperationRequest { Reason = "Rollback requested from Honua admin UI" }, CancellationToken.None);
+            await AdminClient.RollbackDeployOperationAsync(
+                _operationId,
+                new RollbackDeployOperationRequest { Reason = "Rollback requested from Honua admin UI" },
+                CancellationToken.None);
         });
     }
 
-    private DeployPlanRequest BuildPlanRequest() => new()
+    private void ShowBatchResult(string successMessage)
     {
-        TargetId = _targetId,
-        CurrentRevision = _currentRevision,
-        DesiredRevision = _desiredRevision,
+        if (State.LastError is null)
+        {
+            Snackbar.Add(successMessage, Severity.Success);
+        }
+        else
+        {
+            Snackbar.Add(State.LastError, Severity.Warning);
+        }
+    }
+
+    private void StateChanged() => InvokeAsync(StateHasChanged);
+
+    private static string RevisionText(DeployFleetTarget target)
+        => string.IsNullOrWhiteSpace(target.CurrentRevision)
+            ? target.DesiredRevision
+            : $"{target.CurrentRevision} -> {target.DesiredRevision}";
+
+    private static Color StatusColor(DeployOrchestrationStatus status) => status switch
+    {
+        DeployOrchestrationStatus.Error => Color.Error,
+        DeployOrchestrationStatus.Loading => Color.Info,
+        DeployOrchestrationStatus.Planning => Color.Info,
+        DeployOrchestrationStatus.Creating => Color.Info,
+        DeployOrchestrationStatus.Submitting => Color.Info,
+        DeployOrchestrationStatus.Refreshing => Color.Info,
+        DeployOrchestrationStatus.RollingBack => Color.Warning,
+        _ => Color.Default
+    };
+
+    private static Color PlanColor(DeployFleetTarget target)
+    {
+        if (target.LastError is not null) return Color.Error;
+        if (target.Plan is null) return Color.Default;
+        if (target.Plan.BlockingReasons.Count > 0) return Color.Error;
+        if (target.Plan.RequiresApproval) return Color.Warning;
+        return target.Plan.ReadyToSubmit ? Color.Success : Color.Warning;
+    }
+
+    private static Color OperationColor(string? status) => status?.ToLowerInvariant() switch
+    {
+        "succeeded" => Color.Success,
+        "submitted" => Color.Info,
+        "reconciling" => Color.Info,
+        "rollbackrequested" => Color.Warning,
+        "failed" => Color.Error,
+        "cancelled" => Color.Error,
+        _ => Color.Default
     };
 }
