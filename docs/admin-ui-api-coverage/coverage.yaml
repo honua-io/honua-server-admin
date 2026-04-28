@@ -90,11 +90,11 @@ rows:
     notes: ""
   - key: "Admin/AdminEndpoints:GET:/api/v{version:apiVersion}/admin/connections/{id}/tables"
     coverage: supported
-    admin_page: "/connections/{id} (ConnectionDetailPage) and /connections/{id}/publish (PublishLayerPage)"
+    admin_page: "/connections/{id} (ConnectionDetailPage), /connections/{id}/publish (PublishLayerPage), and /operator/publishing (PublishingWorkspace)"
     priority: P0
     out_of_scope_reason: ""
     follow_up_ticket: ""
-    notes: "Discovery tables feed the connection detail and publish-layer workflow."
+    notes: "Discovery tables feed the connection detail, publish-layer, and guided publishing workspace workflows."
   - key: "Admin/AdminEndpoints:GET:/api/v{version:apiVersion}/admin/openapi.json"
     coverage: supported
     admin_page: "/server-info (ServerInfoPage)"
@@ -538,32 +538,32 @@ rows:
     notes: ""
   - key: "Admin/LayerPublishingEndpoints:GET:/api/v{version:apiVersion}/admin/connections/{id}/layers/"
     coverage: supported
-    admin_page: "/layers and /connections/{id} (LayerListPage / ConnectionDetailPage)"
+    admin_page: "/layers, /connections/{id} (LayerListPage / ConnectionDetailPage), and /operator/publishing (PublishingWorkspace)"
     priority: P0
     out_of_scope_reason: ""
     follow_up_ticket: ""
-    notes: "Layer pages list published layers for a selected connection/service."
+    notes: "Layer pages and PublishingWorkspace list published layers for a selected connection/service."
   - key: "Admin/LayerPublishingEndpoints:POST:/api/v{version:apiVersion}/admin/connections/{id}/layers/"
     coverage: supported
-    admin_page: "/connections/{id}/publish (PublishLayerPage)"
+    admin_page: "/connections/{id}/publish (PublishLayerPage) and /operator/publishing (PublishingWorkspace)"
     priority: P0
     out_of_scope_reason: ""
     follow_up_ticket: ""
-    notes: "PublishLayerPage submits layer publish requests."
+    notes: "PublishLayerPage and PublishingWorkspace submit layer publish requests."
   - key: "Admin/LayerPublishingEndpoints:PUT:/api/v{version:apiVersion}/admin/connections/{id}/layers/enabled"
     coverage: supported
-    admin_page: "/layers (LayerListPage)"
+    admin_page: "/layers (LayerListPage) and /operator/publishing (PublishingWorkspace)"
     priority: P0
     out_of_scope_reason: ""
     follow_up_ticket: ""
-    notes: "LayerListPage bulk enables/disables service layers."
+    notes: "LayerListPage and PublishingWorkspace bulk enable or unpublish service layers."
   - key: "Admin/LayerPublishingEndpoints:PUT:/api/v{version:apiVersion}/admin/connections/{id}/layers/{layerId:int}/enabled"
     coverage: supported
-    admin_page: "/layers and /connections/{id} (LayerListPage / ConnectionDetailPage)"
+    admin_page: "/layers, /connections/{id} (LayerListPage / ConnectionDetailPage), and /operator/publishing (PublishingWorkspace)"
     priority: P0
     out_of_scope_reason: ""
     follow_up_ticket: ""
-    notes: "Layer tables expose per-layer enable/disable actions."
+    notes: "Layer tables and PublishingWorkspace expose per-layer publish/unpublish actions."
   - key: "Admin/LicenseAdminEndpoints:GET:/api/v{version:apiVersion}/admin/license/features"
     coverage: out-of-scope
     admin_page: ""
@@ -832,11 +832,11 @@ rows:
     notes: "Connection detail exposes delete action with destructive telemetry."
   - key: "Admin/SecureConnectionEndpoints:GET:/api/v{version:apiVersion}/admin/connections/"
     coverage: supported
-    admin_page: "/connections (ConnectionListPage)"
+    admin_page: "/connections (ConnectionListPage) and /operator/publishing (PublishingWorkspace)"
     priority: P0
     out_of_scope_reason: ""
     follow_up_ticket: ""
-    notes: "Powers the Connections list."
+    notes: "Powers the Connections list and PublishingWorkspace connection selector."
   - key: "Admin/SecureConnectionEndpoints:GET:/api/v{version:apiVersion}/admin/connections/{id:guid}"
     coverage: supported
     admin_page: "/connections/{id} (ConnectionDetailPage)"
@@ -874,11 +874,11 @@ rows:
     notes: "CreateConnectionPage can test draft connection credentials."
   - key: "Admin/SecureConnectionEndpoints:POST:/api/v{version:apiVersion}/admin/connections/{id:guid}/test"
     coverage: supported
-    admin_page: "/connections/{id} (ConnectionDetailPage)"
+    admin_page: "/connections/{id} (ConnectionDetailPage) and /operator/publishing (PublishingWorkspace)"
     priority: P0
     out_of_scope_reason: ""
     follow_up_ticket: ""
-    notes: "Connection detail exposes health test action."
+    notes: "Connection detail and PublishingWorkspace expose health test actions."
   - key: "Admin/SecureConnectionEndpoints:PUT:/api/v{version:apiVersion}/admin/connections/{id:guid}"
     coverage: supported
     admin_page: "/connections/{id} (ConnectionDetailPage)"
@@ -888,18 +888,18 @@ rows:
     notes: "Connection detail saves editable host/database/user/ssl/active metadata."
   - key: "Admin/ServiceSettingsEndpoints:GET:/api/v{version:apiVersion}/admin/services/"
     coverage: supported
-    admin_page: "/services (ServiceListPage)"
+    admin_page: "/services (ServiceListPage) and /operator/publishing (PublishingWorkspace)"
     priority: P0
     out_of_scope_reason: ""
     follow_up_ticket: ""
-    notes: "ServiceListPage renders service, layer, and enabled-protocol summary."
+    notes: "ServiceListPage renders service summaries; PublishingWorkspace selects a service target."
   - key: "Admin/ServiceSettingsEndpoints:GET:/api/v{version:apiVersion}/admin/services/{serviceName}/settings"
     coverage: supported
-    admin_page: "/services/{serviceName}/settings (ServiceSettingsPage)"
+    admin_page: "/services/{serviceName}/settings (ServiceSettingsPage) and /operator/publishing (PublishingWorkspace)"
     priority: P0
     out_of_scope_reason: ""
     follow_up_ticket: ""
-    notes: "ServiceSettingsPage loads protocol, access, time, and MapServer settings."
+    notes: "ServiceSettingsPage and PublishingWorkspace load protocol, access, time, and MapServer settings."
   - key: "Admin/ServiceSettingsEndpoints:PUT:/api/v{version:apiVersion}/admin/services/{serviceName}/access-policy"
     coverage: supported
     admin_page: "/services/{serviceName}/settings (ServiceSettingsPage)"
@@ -923,11 +923,11 @@ rows:
     notes: "MapServer tab updates rendering defaults and limits."
   - key: "Admin/ServiceSettingsEndpoints:PUT:/api/v{version:apiVersion}/admin/services/{serviceName}/protocols"
     coverage: supported
-    admin_page: "/services/{serviceName}/settings (ServiceSettingsPage)"
+    admin_page: "/services/{serviceName}/settings (ServiceSettingsPage) and /operator/publishing (PublishingWorkspace)"
     priority: P0
     out_of_scope_reason: ""
     follow_up_ticket: ""
-    notes: "Protocols tab updates enabled protocol list."
+    notes: "Protocols tab and PublishingWorkspace update the enabled protocol list."
   - key: "Admin/ServiceSettingsEndpoints:PUT:/api/v{version:apiVersion}/admin/services/{serviceName}/timeinfo"
     coverage: supported
     admin_page: "/services/{serviceName}/settings (ServiceSettingsPage)"

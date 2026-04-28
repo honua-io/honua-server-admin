@@ -29,6 +29,7 @@ public sealed class PublishingWorkspaceStateTests
         Assert.NotEmpty(state.PendingManifestChanges);
         Assert.NotNull(state.GitOpsWatch);
         Assert.NotEmpty(state.GitOpsChanges);
+        Assert.Contains(state.EnvironmentStates, row => row.Name == "connection");
         Assert.Contains(state.EnvironmentStates, row => row.Name == "gitops");
         Assert.Contains(state.EnvironmentStates, row => row.Name == "approval");
         Assert.All(state.ValidationChecks, check => Assert.True(check.Passed, check.Message));
@@ -74,6 +75,55 @@ public sealed class PublishingWorkspaceStateTests
         Assert.Equal("Trails", client.LastPublishRequest.LayerName);
         Assert.Equal("shape", client.LastPublishRequest.GeometryColumn);
         Assert.Equal("default", client.LastPublishRequest.ServiceName);
+    }
+
+    [Fact]
+    public async Task TestSelectedConnectionAsync_records_latest_health_result()
+    {
+        var client = new RecordingPublishingClient();
+        var state = new PublishingWorkspaceState(client);
+        await state.InitializeAsync();
+
+        await state.TestSelectedConnectionAsync();
+
+        Assert.Equal(PublishingWorkspaceStatus.Idle, state.Status);
+        Assert.Null(state.LastError);
+        Assert.Equal(StubHonuaAdminClient.PrimaryConnectionId.ToString("D"), client.LastTestedConnectionId);
+        Assert.NotNull(state.SelectedConnectionTest);
+        Assert.True(state.SelectedConnectionTest.IsHealthy);
+        Assert.Contains(state.EnvironmentStates, row => row.Name == "connection" && row.DriftStatus == "Ready");
+    }
+
+    [Fact]
+    public async Task TestSelectedConnectionAsync_failed_result_blocks_publish_validation()
+    {
+        var state = new PublishingWorkspaceState(new UnhealthyConnectionTestClient());
+        await state.InitializeAsync();
+
+        await state.TestSelectedConnectionAsync();
+
+        Assert.Equal(PublishingWorkspaceStatus.Idle, state.Status);
+        Assert.Contains("timeout", state.LastError, StringComparison.OrdinalIgnoreCase);
+        Assert.True(state.HasBlockingValidation);
+        Assert.Contains(state.ValidationChecks, check => check.Key == "health" && !check.Passed);
+        Assert.Contains(state.EnvironmentStates, row => row.Name == "connection" && row.DriftStatus == "Needs attention");
+    }
+
+    [Fact]
+    public async Task SetAllLayersPublishedAsync_maps_to_bulk_layer_endpoint()
+    {
+        var client = new RecordingPublishingClient();
+        var state = new PublishingWorkspaceState(client);
+        await state.InitializeAsync();
+
+        await state.SetAllLayersPublishedAsync(published: false);
+
+        Assert.Equal(PublishingWorkspaceStatus.Idle, state.Status);
+        Assert.Null(state.LastError);
+        Assert.Equal(StubHonuaAdminClient.PrimaryConnectionId.ToString("D"), client.LastBulkLayerConnectionId);
+        Assert.Equal("default", client.LastBulkLayerServiceName);
+        Assert.False(client.LastBulkLayerEnabled);
+        Assert.All(state.Layers, layer => Assert.False(layer.Enabled));
     }
 
     [Fact]
@@ -228,6 +278,10 @@ public sealed class PublishingWorkspaceStateTests
         public PublishLayerRequest? LastPublishRequest { get; private set; }
         public IReadOnlyList<string> LastProtocols { get; private set; } = Array.Empty<string>();
         public GitOpsWatchConfigRequest? LastGitOpsRequest { get; private set; }
+        public string? LastTestedConnectionId { get; private set; }
+        public string? LastBulkLayerConnectionId { get; private set; }
+        public string? LastBulkLayerServiceName { get; private set; }
+        public bool? LastBulkLayerEnabled { get; private set; }
         public Guid? LastApprovedPendingId { get; private set; }
         public ManifestApproveRequest? LastApproveRequest { get; private set; }
         public Guid? LastRejectedPendingId { get; private set; }
@@ -254,6 +308,20 @@ public sealed class PublishingWorkspaceStateTests
         {
             LastProtocols = request.EnabledProtocols;
             return Task.FromResult(ServiceSettings with { EnabledProtocols = request.EnabledProtocols });
+        }
+
+        public override Task<TestConnectionResult> TestConnectionAsync(string connectionId, CancellationToken cancellationToken)
+        {
+            LastTestedConnectionId = connectionId;
+            return base.TestConnectionAsync(connectionId, cancellationToken);
+        }
+
+        public override Task<IReadOnlyList<LayerSummary>> SetServiceLayersEnabledAsync(string connectionId, bool enabled, string? serviceName, CancellationToken cancellationToken)
+        {
+            LastBulkLayerConnectionId = connectionId;
+            LastBulkLayerEnabled = enabled;
+            LastBulkLayerServiceName = serviceName;
+            return base.SetServiceLayersEnabledAsync(connectionId, enabled, serviceName, cancellationToken);
         }
 
         public override Task<GitOpsWatchConfigResponse> ConfigureGitOpsWatchAsync(GitOpsWatchConfigRequest request, CancellationToken cancellationToken)
@@ -288,6 +356,19 @@ public sealed class PublishingWorkspaceStateTests
     {
         public override Task<IReadOnlyList<DiscoveredTable>> DiscoverConnectionTablesAsync(string connectionId, CancellationToken cancellationToken)
             => Task.FromResult<IReadOnlyList<DiscoveredTable>>(Array.Empty<DiscoveredTable>());
+    }
+
+    private sealed class UnhealthyConnectionTestClient : StubHonuaAdminClient
+    {
+        public override Task<TestConnectionResult> TestConnectionAsync(string connectionId, CancellationToken cancellationToken)
+            => Task.FromResult(new TestConnectionResult
+            {
+                ConnectionId = PrimaryConnectionId,
+                ConnectionName = "primary-postgis",
+                IsHealthy = false,
+                TestedAt = DateTimeOffset.Parse("2026-04-25T00:00:00Z"),
+                Message = "Connection timeout"
+            });
     }
 
     private sealed class OptionalReconciliationUnavailableClient : StubHonuaAdminClient
