@@ -65,6 +65,13 @@ public sealed class AdminQualityGateTests : TestContext
         ];
         yield return
         [
+            "Admin readiness",
+            typeof(Honua.Admin.Pages.Operator.AdminReadiness),
+            "Administration readiness",
+            new[] { "[aria-label='Administration readiness surfaces']", "[aria-label='Administration readiness checklist']", "[aria-label='Readiness connection inventory']", "[aria-label='Gated feature diagnostics']" },
+        ];
+        yield return
+        [
             "Connections",
             typeof(ConnectionListPage),
             "primary-postgis",

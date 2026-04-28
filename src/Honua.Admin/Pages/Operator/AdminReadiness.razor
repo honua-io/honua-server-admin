@@ -1,0 +1,316 @@
+@page "/operator/admin-readiness"
+@inherits Honua.Admin.Shared.AdminPageBase
+
+<PageTitle>Administration readiness - Honua Server Admin</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4" data-testid="admin-readiness-root">
+    <MudStack Row AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Class="mb-4">
+        <MudText Typo="Typo.h4">
+            <MudIcon Icon="@Icons.Material.Filled.Security" Class="mr-2" />
+            Administration readiness
+        </MudText>
+        <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Refresh" OnClick="RefreshAsync" Disabled="@IsLoading">
+            Refresh
+        </MudButton>
+    </MudStack>
+
+    <ErrorBanner Message="@ErrorMessage" />
+
+    @if (_sectionErrors.Count > 0)
+    {
+        <MudAlert Severity="Severity.Warning" Dense="true" Variant="Variant.Outlined" Class="mb-4" data-testid="admin-readiness-section-errors">
+            @string.Join("; ", _sectionErrors.Select(error => $"{error.Key}: {error.Value}"))
+        </MudAlert>
+    }
+
+    @if (IsLoading && _overview is null && _connections.Count == 0)
+    {
+        <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="280px" Animation="Animation.Wave" />
+    }
+    else
+    {
+        <MudGrid Class="mb-4" aria-label="Administration readiness surfaces">
+            <MudItem xs="12" md="4">
+                <MudCard Elevation="1">
+                    <MudCardContent>
+                        <MudText Typo="Typo.overline">Identity and access</MudText>
+                        <MudText Typo="Typo.h6">Operator workspaces ready</MudText>
+                        <MudText Typo="Typo.body2">Provider catalog, SSO status, API keys, and auth diagnostics are available.</MudText>
+                        <MudText Typo="Typo.caption">Identity configuration handoff</MudText>
+                    </MudCardContent>
+                    <MudCardActions>
+                        <MudButton Href="/admin/identity/providers" Variant="Variant.Text" Size="Size.Small" StartIcon="@Icons.Material.Filled.AccountCircle">
+                            Providers
+                        </MudButton>
+                        <MudButton Href="/admin/identity/diagnostics" Variant="Variant.Text" Size="Size.Small" StartIcon="@Icons.Material.Filled.HealthAndSafety">
+                            Diagnostics
+                        </MudButton>
+                    </MudCardActions>
+                </MudCard>
+            </MudItem>
+            <MudItem xs="12" md="4">
+                <MudCard Elevation="1">
+                    <MudCardContent>
+                        <MudText Typo="Typo.overline">License and entitlements</MudText>
+                        <MudText Typo="Typo.h6">@(_overview?.CurrentEdition ?? SectionError("Edition") ?? "Unknown edition")</MudText>
+                        <MudText Typo="Typo.body2">@LicenseSummary</MudText>
+                        <MudText Typo="Typo.caption">@($"{GatedFeatures.Count} gated feature(s)")</MudText>
+                    </MudCardContent>
+                    <MudCardActions>
+                        <MudButton Href="/operator/license" Variant="Variant.Text" Size="Size.Small" StartIcon="@Icons.Material.Filled.VerifiedUser">
+                            License
+                        </MudButton>
+                    </MudCardActions>
+                </MudCard>
+            </MudItem>
+            <MudItem xs="12" md="4">
+                <MudCard Elevation="1">
+                    <MudCardContent>
+                        <MudText Typo="Typo.overline">Data connections</MudText>
+                        <MudText Typo="Typo.h6">@ConnectionStatusLabel</MudText>
+                        <MudText Typo="Typo.body2">@EncryptionLabel</MudText>
+                        <MudText Typo="Typo.caption">@($"{ActiveConnectionCount} active of {_connections.Count} connection(s)")</MudText>
+                    </MudCardContent>
+                    <MudCardActions>
+                        <MudButton Href="/operator/data-connections" Variant="Variant.Text" Size="Size.Small" StartIcon="@Icons.Material.Filled.Storage">
+                            Connections
+                        </MudButton>
+                    </MudCardActions>
+                </MudCard>
+            </MudItem>
+        </MudGrid>
+
+        <MudGrid>
+            <MudItem xs="12" lg="5">
+                <MudPaper Elevation="1" Class="pa-4">
+                    <MudText Typo="Typo.h6" Class="mb-2">Readiness checklist</MudText>
+                    <MudSimpleTable Dense="true" Hover="true" aria-label="Administration readiness checklist">
+                        <tbody>
+                            <tr>
+                                <td>Identity routes</td>
+                                <td>
+                                    <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="Color.Success">Ready</MudChip>
+                                </td>
+                                <td><MudLink Href="/admin/identity/status">Status</MudLink></td>
+                            </tr>
+                            <tr>
+                                <td>License visibility</td>
+                                <td>
+                                    <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="@(_overview is null ? Color.Warning : Color.Success)">
+                                        @(_overview is null ? "Unavailable" : "Ready")
+                                    </MudChip>
+                                </td>
+                                <td><MudLink Href="/operator/license">Workspace</MudLink></td>
+                            </tr>
+                            <tr>
+                                <td>Credential vault</td>
+                                <td>
+                                    <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="@(_encryption?.IsValid == true ? Color.Success : Color.Warning)">
+                                        @(_encryption?.IsValid == true ? "Valid" : "Unknown")
+                                    </MudChip>
+                                </td>
+                                <td>@EncryptionLabel</td>
+                            </tr>
+                            <tr>
+                                <td>Data connections</td>
+                                <td data-testid="connection-readiness-state" data-readiness="@ConnectionReadinessState">
+                                    <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="@ConnectionReadinessColor" data-testid="connection-readiness-chip">
+                                        @ConnectionStatusLabel
+                                    </MudChip>
+                                </td>
+                                <td><MudLink Href="/operator/data-connections">Inventory</MudLink></td>
+                            </tr>
+                        </tbody>
+                    </MudSimpleTable>
+                </MudPaper>
+            </MudItem>
+
+            <MudItem xs="12" lg="7">
+                <MudPaper Elevation="1" Class="pa-4">
+                    <MudStack Row AlignItems="AlignItems.Center" Class="mb-2">
+                        <MudText Typo="Typo.h6">Connection inventory</MudText>
+                        <MudSpacer />
+                        <MudButton Href="/operator/data-connections/new" Variant="Variant.Text" Size="Size.Small" StartIcon="@Icons.Material.Filled.Add">
+                            New connection
+                        </MudButton>
+                    </MudStack>
+                    @if (_connections.Count == 0)
+                    {
+                        <MudAlert Severity="Severity.Info" Dense="true" Variant="Variant.Text">
+                            @(SectionError("Connections") ?? "No data connections loaded.")
+                        </MudAlert>
+                    }
+                    else
+                    {
+                        <MudTable Items="_connections" Dense="true" Hover="true" aria-label="Readiness connection inventory">
+                            <HeaderContent>
+                                <MudTh>Name</MudTh>
+                                <MudTh>Database</MudTh>
+                                <MudTh>Status</MudTh>
+                                <MudTh>Storage</MudTh>
+                            </HeaderContent>
+                            <RowTemplate>
+                                <MudTd>
+                                    <MudLink Href="@($"/operator/data-connections/{context.ConnectionId:D}")">@context.Name</MudLink>
+                                </MudTd>
+                                <MudTd>@context.DatabaseName</MudTd>
+                                <MudTd>
+                                    <MudChip T="string" Size="Size.Small" Color="@HealthColor(context.HealthStatus)">
+                                        @context.HealthStatus
+                                    </MudChip>
+                                </MudTd>
+                                <MudTd>@context.StorageType</MudTd>
+                            </RowTemplate>
+                        </MudTable>
+                    }
+                </MudPaper>
+            </MudItem>
+
+            <MudItem xs="12">
+                <MudPaper Elevation="1" Class="pa-4">
+                    <MudStack Row AlignItems="AlignItems.Center" Class="mb-2">
+                        <MudText Typo="Typo.h6">Gated feature diagnostics</MudText>
+                        <MudSpacer />
+                        <MudButton Href="/operator/license" Variant="Variant.Text" Size="Size.Small">License workspace</MudButton>
+                    </MudStack>
+                    @if (_overview is null)
+                    {
+                        <MudAlert Severity="Severity.Warning" Dense="true" Variant="Variant.Text">
+                            @(SectionError("Edition") ?? "Edition feature diagnostics unavailable.")
+                        </MudAlert>
+                    }
+                    else if (GatedFeatures.Count == 0)
+                    {
+                        <MudAlert Severity="Severity.Success" Dense="true" Variant="Variant.Text">
+                            No gated features reported for the current edition.
+                        </MudAlert>
+                    }
+                    else
+                    {
+                        <MudTable Items="GatedFeatures" Dense="true" Hover="true" aria-label="Gated feature diagnostics">
+                            <HeaderContent>
+                                <MudTh>Feature</MudTh>
+                                <MudTh>Category</MudTh>
+                                <MudTh>Minimum edition</MudTh>
+                                <MudTh>Diagnostic</MudTh>
+                            </HeaderContent>
+                            <RowTemplate>
+                                <MudTd>@context.DisplayName</MudTd>
+                                <MudTd>@context.Category</MudTd>
+                                <MudTd>@context.MinimumEdition</MudTd>
+                                <MudTd>@(context.UpgradeMessage ?? "Upgrade required")</MudTd>
+                            </RowTemplate>
+                        </MudTable>
+                    }
+                </MudPaper>
+            </MudItem>
+        </MudGrid>
+    }
+</MudContainer>
+
+@code {
+    private readonly Dictionary<string, string> _sectionErrors = new(StringComparer.OrdinalIgnoreCase);
+    private FeatureOverview? _overview;
+    private IReadOnlyList<ConnectionSummary> _connections = Array.Empty<ConnectionSummary>();
+    private EncryptionValidationResult? _encryption;
+
+    private IReadOnlyList<FeatureOverviewItem> GatedFeatures =>
+        _overview?.Features.Where(static feature => !feature.IsEnabled).ToArray()
+        ?? Array.Empty<FeatureOverviewItem>();
+
+    private int ActiveConnectionCount => _connections.Count(static connection => connection.IsActive);
+
+    private int HealthyConnectionCount => _connections.Count(static connection =>
+        string.Equals(connection.HealthStatus, "healthy", StringComparison.OrdinalIgnoreCase));
+
+    private string ConnectionReadinessState
+    {
+        get
+        {
+            if (_connections.Count == 0)
+            {
+                return "warning";
+            }
+
+            if (HealthyConnectionCount == _connections.Count)
+            {
+                return "success";
+            }
+
+            return HealthyConnectionCount == 0 ? "error" : "warning";
+        }
+    }
+
+    private Color ConnectionReadinessColor => ConnectionReadinessState switch
+    {
+        "success" => Color.Success,
+        "error" => Color.Error,
+        _ => Color.Warning
+    };
+
+    private string LicenseSummary => _overview is null
+        ? SectionError("Edition") ?? "Edition and entitlement overview unavailable"
+        : $"{_overview.EnabledCount} enabled feature(s), {_overview.DisabledCount} gated feature(s)";
+
+    private string ConnectionStatusLabel => _connections.Count == 0
+        ? SectionError("Connections") ?? "No connections loaded"
+        : $"{HealthyConnectionCount} healthy connection(s)";
+
+    private string EncryptionLabel => _encryption is null
+        ? SectionError("Credential vault") ?? "Credential vault not checked"
+        : $"{_encryption.Message} (key v{_encryption.CurrentKeyVersion})";
+
+    protected override Task OnInitializedAsync()
+    {
+        Telemetry.PageNavigated("/operator/admin-readiness", principalId: null);
+        return RefreshAsync();
+    }
+
+    private Task RefreshAsync() => ExecuteAsync(LoadAsync);
+
+    private async Task LoadAsync()
+    {
+        _sectionErrors.Clear();
+        _overview = null;
+        _connections = Array.Empty<ConnectionSummary>();
+        _encryption = null;
+
+        await CaptureAsync("Edition", async () =>
+        {
+            _overview = await AdminClient.GetFeatureOverviewAsync(CancellationToken.None).ConfigureAwait(false);
+        }).ConfigureAwait(false);
+
+        await CaptureAsync("Connections", async () =>
+        {
+            _connections = await AdminClient.ListConnectionsAsync(CancellationToken.None).ConfigureAwait(false);
+        }).ConfigureAwait(false);
+
+        await CaptureAsync("Credential vault", async () =>
+        {
+            _encryption = await AdminClient.ValidateEncryptionAsync(CancellationToken.None).ConfigureAwait(false);
+        }).ConfigureAwait(false);
+    }
+
+    private async Task CaptureAsync(string section, Func<Task> load)
+    {
+        try
+        {
+            await load().ConfigureAwait(false);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            _sectionErrors[section] = ex.Message;
+        }
+    }
+
+    private string? SectionError(string section)
+        => _sectionErrors.TryGetValue(section, out var message) ? message : null;
+
+    private static Color HealthColor(string? status) => status?.Trim().ToLowerInvariant() switch
+    {
+        "healthy" => Color.Success,
+        "warning" => Color.Warning,
+        "unhealthy" => Color.Error,
+        _ => Color.Default
+    };
+}
