@@ -118,6 +118,7 @@ public sealed class OpenDataHubStateTests
         var api = Assert.Single(state.ValidationChecks, check => check.Key == "api");
         Assert.False(api.Passed);
         Assert.Contains("public key access", api.Message);
+        Assert.Contains("bulk downloads", api.Message);
         Assert.True(state.HasBlockingValidation);
     }
 

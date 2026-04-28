@@ -117,7 +117,7 @@ public sealed class OpenDataHubState
                     Key = "api",
                     Label = "Civic tech API",
                     Passed = hasApis,
-                    Message = hasApis ? $"{dataset.ApiEndpoints.Count} endpoint(s), public key access, and code examples are ready." : "Enable public API endpoints, STAC metadata, public key access, code examples, and a sample response."
+                    Message = hasApis ? $"{dataset.ApiEndpoints.Count} endpoint(s), public key access, bulk downloads, and code examples are ready." : "Enable public API endpoints, STAC metadata, public key access, bulk downloads, code examples, and a sample response."
                 },
                 new OpenDataValidationCheck
                 {
