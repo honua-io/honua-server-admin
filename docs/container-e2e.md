@@ -16,8 +16,8 @@ starting containers. Set the repository variable `HONUA_ADMIN_CONTAINER_E2E` to
 `true` when a pullable Honua Server image is available for CI. When enabled, the
 lane starts PostGIS and Honua Server once, seeds a real spatial table, then
 exercises the admin readiness, connection, layer publishing, style, service
-settings, observability, and deploy preflight paths through the real
-`HonuaAdminClient`.
+settings, metadata resource CRUD with ETag concurrency, manifest dry-run,
+observability, and deploy preflight paths through the real `HonuaAdminClient`.
 
 ## Configuration
 

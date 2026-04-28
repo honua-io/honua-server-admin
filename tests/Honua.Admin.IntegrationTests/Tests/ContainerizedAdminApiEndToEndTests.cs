@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Net;
 using System.Net.Http;
 using System.Text.Json;
 using System.Threading;
@@ -166,11 +167,80 @@ public sealed class ContainerizedAdminApiEndToEndTests
                 },
                 cancellationToken);
             Assert.Equal(layer.LayerId, metadata.LayerId);
+
+            await ExerciseMetadataResourceLifecycleAsync(fixture, suffix, cancellationToken);
         }
         finally
         {
             await TryDeleteConnectionAsync(fixture, connectionId);
         }
+    }
+
+    private static async Task ExerciseMetadataResourceLifecycleAsync(
+        ContainerizedHonuaServerFixture fixture,
+        string suffix,
+        CancellationToken cancellationToken)
+    {
+        var dryRunResource = BuildMetadataLayerResource(fixture, $"admin-e2e-dryrun-{suffix}", "Dry-run manifest coverage.");
+        var dryRun = await fixture.AdminClient.ApplyManifestAsync(
+            new ManifestApplyRequest
+            {
+                Resources = [dryRunResource],
+                DryRun = true,
+                Prune = false,
+            },
+            cancellationToken);
+
+        Assert.True(dryRun.DryRun);
+        Assert.Equal(1, dryRun.Summary.Created);
+        Assert.Contains(dryRun.Entries, entry => entry.Action == "create" && entry.Resource.Name == dryRunResource.Metadata?.Name);
+
+        var resourceName = $"admin-e2e-metadata-{suffix}";
+        var resource = BuildMetadataLayerResource(fixture, resourceName, "Created by the container E2E lane.");
+        var created = await fixture.AdminClient.CreateMetadataResourceAsync(resource, cancellationToken);
+
+        Assert.Equal(resourceName, created.Resource.Metadata?.Name);
+        Assert.False(string.IsNullOrWhiteSpace(created.Resource.Metadata?.ResourceVersion));
+        var createdEtag = RequireEtag(created);
+
+        var resources = await fixture.AdminClient.ListMetadataResourcesAsync("Layer", "default", cancellationToken);
+        Assert.Contains(resources, candidate => candidate.Metadata?.Name == resourceName);
+
+        var loaded = await fixture.AdminClient.GetMetadataResourceAsync("Layer", "default", resourceName, cancellationToken);
+        var loadedEtag = RequireEtag(loaded);
+        Assert.Equal(created.Resource.Metadata?.ResourceVersion, loaded.Resource.Metadata?.ResourceVersion);
+
+        var updatedResource = BuildMetadataLayerResource(fixture, resourceName, "Updated by the container E2E lane.");
+        var updated = await fixture.AdminClient.UpdateMetadataResourceAsync(
+            "Layer",
+            "default",
+            resourceName,
+            updatedResource,
+            loadedEtag,
+            cancellationToken);
+        var updatedEtag = RequireEtag(updated);
+
+        Assert.NotEqual(createdEtag, updatedEtag);
+        Assert.NotEqual(loaded.Resource.Metadata?.ResourceVersion, updated.Resource.Metadata?.ResourceVersion);
+
+        var staleUpdate = await Assert.ThrowsAsync<HttpRequestException>(() =>
+            fixture.AdminClient.UpdateMetadataResourceAsync(
+                "Layer",
+                "default",
+                resourceName,
+                BuildMetadataLayerResource(fixture, resourceName, "Stale update must be rejected."),
+                loadedEtag,
+                cancellationToken));
+        Assert.True(
+            staleUpdate.StatusCode is HttpStatusCode.PreconditionFailed or HttpStatusCode.Conflict,
+            $"Expected stale metadata update to be rejected by ETag concurrency, got {staleUpdate.StatusCode}.");
+
+        await fixture.AdminClient.DeleteMetadataResourceAsync(
+            "Layer",
+            "default",
+            resourceName,
+            updatedEtag,
+            cancellationToken);
     }
 
     private static async Task<ConnectionSummary> CreateTestConnectionAsync(
@@ -265,6 +335,39 @@ public sealed class ContainerizedAdminApiEndToEndTests
               ]
             }
             """);
+
+    private static MetadataResource BuildMetadataLayerResource(
+        ContainerizedHonuaServerFixture fixture,
+        string name,
+        string description)
+        => new()
+        {
+            ApiVersion = "honua.io/v1alpha1",
+            Kind = "Layer",
+            Metadata = new ResourceMetadata
+            {
+                Name = name,
+                Namespace = "default",
+                Labels = new Dictionary<string, string>
+                {
+                    ["source"] = "admin-container-e2e",
+                },
+            },
+            Spec = JsonSerializer.SerializeToElement(new
+            {
+                tableName = fixture.SeedTable,
+                schemaName = fixture.SeedSchema,
+                geometryType = "Polygon",
+                srid = 4326,
+                description,
+            }),
+        };
+
+    private static string RequireEtag(MetadataResourceResponse response)
+    {
+        Assert.False(string.IsNullOrWhiteSpace(response.ETag));
+        return response.ETag!;
+    }
 
     private static JsonElement Json(string payload)
     {

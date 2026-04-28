@@ -310,6 +310,22 @@ public class StubHonuaAdminClient : IHonuaAdminClient
         After = Json("""{"resources":[{"kind":"service"}]}"""),
     };
 
+    public IReadOnlyList<MetadataResource> MetadataResources { get; init; } =
+    [
+        new MetadataResource
+        {
+            ApiVersion = "honua.io/v1alpha1",
+            Kind = "Layer",
+            Metadata = new ResourceMetadata
+            {
+                Name = "parcels",
+                Namespace = "default",
+                ResourceVersion = "1",
+            },
+            Spec = Json("""{"schemaName":"public","tableName":"parcels","geometryType":"Polygon","srid":4326}"""),
+        },
+    ];
+
     public RecentErrorsResponse RecentErrors { get; init; } = new()
     {
         Capacity = 50,
@@ -432,6 +448,47 @@ public class StubHonuaAdminClient : IHonuaAdminClient
     public virtual Task<LayerMetadataResponse> UpdateServiceLayerMetadataAsync(string serviceName, int layerId, UpdateLayerMetadataRequest request, CancellationToken cancellationToken)
         => Task.FromResult(new LayerMetadataResponse { LayerId = layerId, LayerName = "Parcels", AccessPolicy = request.AccessPolicy, TimeInfo = request.TimeInfo });
 
+    public virtual Task<IReadOnlyList<MetadataResource>> ListMetadataResourcesAsync(string? kind, string? resourceNamespace, CancellationToken cancellationToken)
+        => Task.FromResult<IReadOnlyList<MetadataResource>>(
+            [.. MetadataResources.Where(resource =>
+                (string.IsNullOrWhiteSpace(kind) || string.Equals(resource.Kind, kind, StringComparison.OrdinalIgnoreCase)) &&
+                (string.IsNullOrWhiteSpace(resourceNamespace) || string.Equals(resource.Metadata?.Namespace, resourceNamespace, StringComparison.OrdinalIgnoreCase)))]);
+
+    public virtual Task<MetadataResourceResponse> GetMetadataResourceAsync(string kind, string resourceNamespace, string name, CancellationToken cancellationToken)
+    {
+        var resource = MetadataResources.FirstOrDefault(candidate =>
+            string.Equals(candidate.Kind, kind, StringComparison.OrdinalIgnoreCase) &&
+            string.Equals(candidate.Metadata?.Namespace, resourceNamespace, StringComparison.OrdinalIgnoreCase) &&
+            string.Equals(candidate.Metadata?.Name, name, StringComparison.OrdinalIgnoreCase)) ?? MetadataResources[0];
+        return Task.FromResult(new MetadataResourceResponse { Resource = resource, ETag = "\"stub-metadata-etag\"" });
+    }
+
+    public virtual Task<MetadataResourceResponse> CreateMetadataResourceAsync(MetadataResource resource, CancellationToken cancellationToken)
+        => Task.FromResult(new MetadataResourceResponse
+        {
+            Resource = resource with { Metadata = (resource.Metadata ?? new ResourceMetadata()) with { ResourceVersion = "1" } },
+            ETag = "\"stub-metadata-etag-1\"",
+        });
+
+    public virtual Task<MetadataResourceResponse> UpdateMetadataResourceAsync(string kind, string resourceNamespace, string name, MetadataResource resource, string ifMatch, CancellationToken cancellationToken)
+        => Task.FromResult(new MetadataResourceResponse
+        {
+            Resource = resource with
+            {
+                Kind = kind,
+                Metadata = (resource.Metadata ?? new ResourceMetadata()) with
+                {
+                    Name = name,
+                    Namespace = resourceNamespace,
+                    ResourceVersion = "2",
+                },
+            },
+            ETag = "\"stub-metadata-etag-2\"",
+        });
+
+    public virtual Task DeleteMetadataResourceAsync(string kind, string resourceNamespace, string name, string ifMatch, CancellationToken cancellationToken)
+        => Task.CompletedTask;
+
     public virtual Task<DeployPreflightResult> GetDeployPreflightAsync(CancellationToken cancellationToken)
         => Task.FromResult(DeployPreflight);
 
@@ -449,6 +506,32 @@ public class StubHonuaAdminClient : IHonuaAdminClient
 
     public virtual Task<DeployOperation> RollbackDeployOperationAsync(string operationId, RollbackDeployOperationRequest request, CancellationToken cancellationToken)
         => Task.FromResult(DeployOperation with { OperationId = operationId, Status = "RollbackRequested", Reason = request.Reason });
+
+    public virtual Task<ManifestApplyResult> ApplyManifestAsync(ManifestApplyRequest request, CancellationToken cancellationToken)
+        => Task.FromResult(new ManifestApplyResult
+        {
+            DryRun = request.DryRun,
+            Summary = new ManifestApplySummary
+            {
+                Created = request.Resources.Count,
+                Updated = 0,
+                Deleted = 0,
+                Skipped = 0,
+            },
+            Entries =
+            [
+                .. request.Resources.Select(resource => new ManifestApplyEntry
+                {
+                    Action = "create",
+                    Resource = new MetadataResourceIdentifier
+                    {
+                        Kind = resource.Kind ?? string.Empty,
+                        Namespace = resource.Metadata?.Namespace ?? "default",
+                        Name = resource.Metadata?.Name ?? string.Empty,
+                    },
+                }),
+            ],
+        });
 
     public virtual Task<ManifestDriftReport> GetManifestDriftAsync(bool verbose, CancellationToken cancellationToken)
         => Task.FromResult(ManifestDrift);
