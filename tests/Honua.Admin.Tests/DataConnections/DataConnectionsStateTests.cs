@@ -54,6 +54,44 @@ public sealed class DataConnectionsStateTests
     }
 
     [Fact]
+    public async Task ApplyConnectionHealth_ignores_stale_health_update()
+    {
+        var seed = Sample("primary", isActive: true);
+        var stub = new StubDataConnectionClient(new[] { seed });
+        var (state, _) = BuildState(stub);
+        var newerCheck = DateTimeOffset.Parse("2026-04-28T08:45:00Z");
+        var olderCheck = DateTimeOffset.Parse("2026-04-28T08:40:00Z");
+
+        await state.RefreshListAsync();
+        await state.LoadDetailAsync(seed.ConnectionId);
+
+        Assert.True(state.ApplyConnectionHealth(new Honua.Admin.Models.Admin.DataConnectionHealthChangedEvent
+        {
+            ConnectionId = seed.ConnectionId,
+            Name = "primary",
+            HealthStatus = "Healthy",
+            LastHealthCheck = newerCheck,
+            Message = "connection ok"
+        }));
+
+        var applied = state.ApplyConnectionHealth(new Honua.Admin.Models.Admin.DataConnectionHealthChangedEvent
+        {
+            ConnectionId = seed.ConnectionId,
+            Name = "primary",
+            HealthStatus = "Unhealthy",
+            LastHealthCheck = olderCheck,
+            Message = "old failure"
+        });
+
+        Assert.False(applied);
+        var summary = Assert.Single(state.Connections);
+        Assert.Equal("Healthy", summary.HealthStatus);
+        Assert.Equal(newerCheck, summary.LastHealthCheck);
+        Assert.Equal("Healthy", state.SelectedDetail?.HealthStatus);
+        Assert.True(state.LatestDiagnostic?.RawOutcome.IsHealthy);
+    }
+
+    [Fact]
     public async Task SubmitDraftAsync_creates_connection_and_emits_create_succeeded()
     {
         var stub = new StubDataConnectionClient();

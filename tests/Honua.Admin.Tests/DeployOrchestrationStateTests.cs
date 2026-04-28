@@ -132,6 +132,34 @@ public sealed class DeployOrchestrationStateTests
     }
 
     [Fact]
+    public async Task ApplyRealtimeOperation_ignores_stale_operation_update()
+    {
+        var state = new DeployOrchestrationState(new RecordingDeployClient());
+        await state.InitializeAsync();
+
+        Assert.True(state.ApplyRealtimeOperation(new DeployOperation
+        {
+            OperationId = "op-external",
+            Status = "Succeeded",
+            Target = Target("honua-server", "sha256:new", "sha256:old"),
+            UpdatedAt = DateTimeOffset.Parse("2026-04-27T10:10:00Z")
+        }));
+
+        var applied = state.ApplyRealtimeOperation(new DeployOperation
+        {
+            OperationId = "op-external",
+            Status = "Reconciling",
+            Target = Target("honua-server", "sha256:new", "sha256:old"),
+            UpdatedAt = DateTimeOffset.Parse("2026-04-27T10:05:00Z")
+        });
+
+        Assert.False(applied);
+        var target = Assert.Single(state.Targets);
+        Assert.Equal("Succeeded", target.Operation?.Status);
+        Assert.Equal(DateTimeOffset.Parse("2026-04-27T10:10:00Z"), target.Operation?.UpdatedAt);
+    }
+
+    [Fact]
     public async Task SubmitSelectedAsync_skips_selected_targets_without_operations()
     {
         var client = new RecordingDeployClient();

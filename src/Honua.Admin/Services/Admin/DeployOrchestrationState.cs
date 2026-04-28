@@ -265,6 +265,11 @@ public sealed class DeployOrchestrationState
             return false;
         }
 
+        if (IsStaleOperationUpdate(target.Operation, operation))
+        {
+            return false;
+        }
+
         if (operationTarget is not null)
         {
             target.SyncRealtimeTarget(operationTarget);
@@ -284,6 +289,16 @@ public sealed class DeployOrchestrationState
 
         Notify();
         return true;
+    }
+
+    private static bool IsStaleOperationUpdate(DeployOperation? current, DeployOperation incoming)
+    {
+        if (current is null || current.UpdatedAt == default || incoming.UpdatedAt == default)
+        {
+            return false;
+        }
+
+        return incoming.UpdatedAt < current.UpdatedAt;
     }
 
     public Task PlanTargetAsync(DeployFleetTarget target, CancellationToken cancellationToken = default)

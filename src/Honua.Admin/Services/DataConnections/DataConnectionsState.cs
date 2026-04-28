@@ -130,6 +130,11 @@ public sealed class DataConnectionsState
         var updated = false;
 
         var index = _connections.FindIndex(connection => connection.ConnectionId == health.ConnectionId);
+        if (IsStaleConnectionHealthUpdate(health, index))
+        {
+            return false;
+        }
+
         DataConnectionSummary? summary = null;
         if (index >= 0)
         {
@@ -175,6 +180,50 @@ public sealed class DataConnectionsState
 
         Notify();
         return true;
+    }
+
+    private bool IsStaleConnectionHealthUpdate(
+        Honua.Admin.Models.Admin.DataConnectionHealthChangedEvent health,
+        int connectionIndex)
+    {
+        if (health.LastHealthCheck is null)
+        {
+            return false;
+        }
+
+        DateTimeOffset? currentTimestamp = null;
+        if (connectionIndex >= 0)
+        {
+            currentTimestamp = _connections[connectionIndex].LastHealthCheck;
+        }
+
+        if (SelectedDetail?.ConnectionId == health.ConnectionId)
+        {
+            currentTimestamp = Max(currentTimestamp, SelectedDetail.LastHealthCheck);
+        }
+
+        if (LatestDiagnostic?.RawOutcome.ConnectionId == health.ConnectionId &&
+            LatestDiagnostic.RawOutcome.TestedAt != default)
+        {
+            currentTimestamp = Max(currentTimestamp, LatestDiagnostic.RawOutcome.TestedAt);
+        }
+
+        return currentTimestamp is not null && health.LastHealthCheck.Value < currentTimestamp.Value;
+    }
+
+    private static DateTimeOffset? Max(DateTimeOffset? left, DateTimeOffset? right)
+    {
+        if (left is null)
+        {
+            return right;
+        }
+
+        if (right is null)
+        {
+            return left;
+        }
+
+        return left > right ? left : right;
     }
 
     public ConnectionDraft BeginCreateDraft(string providerId)
