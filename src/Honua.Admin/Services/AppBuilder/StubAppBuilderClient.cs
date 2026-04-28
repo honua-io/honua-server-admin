@@ -108,7 +108,7 @@ public sealed class StubAppBuilderClient : IAppBuilderClient
 
     public Task<AppPublishResult> PublishAsync(AppDraft draft, CancellationToken cancellationToken)
     {
-        var consumedQuotaSlot = _publishedDraftIds.Add(draft.DraftId);
+        var consumedQuotaSlot = !draft.IsPublished && _publishedDraftIds.Add(draft.DraftId);
         return Task.FromResult(new AppPublishResult
         {
             PublishedUrl = $"https://apps.honua.local/{Slug(draft.Name)}",

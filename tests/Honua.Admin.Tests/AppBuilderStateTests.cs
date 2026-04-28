@@ -191,7 +191,8 @@ public sealed class AppBuilderStateTests
     [Fact]
     public async Task PublishAsync_blocks_when_app_quota_is_full()
     {
-        var state = new AppBuilderState(new FixedAppBuilderClient(Snapshot("Quota dashboard") with
+        var snapshot = Snapshot("Quota dashboard");
+        var state = new AppBuilderState(new FixedAppBuilderClient(snapshot with
         {
             Quota = new AppQuotaState
             {
@@ -199,6 +200,7 @@ public sealed class AppBuilderStateTests
                 PublishedApps = 5,
                 AppLimit = 5,
             },
+            Draft = snapshot.Draft with { IsPublished = false },
         }));
         await state.LoadAsync();
 
@@ -208,6 +210,31 @@ public sealed class AppBuilderStateTests
         Assert.Equal("Resolve validation checks before publishing.", state.LastError);
         Assert.Null(state.LastPublish);
         Assert.Contains(state.PublishReadinessChecks, check => check.Key == "quota" && !check.Passed);
+    }
+
+    [Fact]
+    public async Task PublishAsync_allows_republish_when_app_quota_is_full()
+    {
+        var snapshot = Snapshot("Existing quota dashboard");
+        var state = new AppBuilderState(new FixedAppBuilderClient(snapshot with
+        {
+            Quota = new AppQuotaState
+            {
+                Edition = "Pro",
+                PublishedApps = 5,
+                AppLimit = 5,
+            },
+            Draft = snapshot.Draft with { IsPublished = true },
+        }));
+        await state.LoadAsync();
+
+        await state.PublishAsync();
+
+        Assert.Equal(AppBuilderStatus.Published, state.Status);
+        Assert.Equal(5, state.Quota.PublishedApps);
+        Assert.True(state.Draft.IsPublished);
+        Assert.False(state.HasBlockingValidation);
+        Assert.Contains(state.PublishReadinessChecks, check => check.Key == "quota" && check.Passed);
     }
 
     [Fact]
@@ -230,14 +257,16 @@ public sealed class AppBuilderStateTests
 
         Assert.Equal(AppBuilderStatus.Published, state.Status);
         Assert.Equal(4, state.Quota.PublishedApps);
-        Assert.True(state.HasBlockingValidation);
-        Assert.Contains(state.PublishReadinessChecks, check => check.Key == "quota" && !check.Passed);
+        Assert.True(state.Draft.IsPublished);
+        Assert.False(state.HasBlockingValidation);
+        Assert.Contains(state.PublishReadinessChecks, check => check.Key == "quota" && check.Passed);
     }
 
     [Fact]
     public async Task PublishAsync_preserves_quota_when_republishing_existing_app()
     {
-        var state = new AppBuilderState(new FixedAppBuilderClient(Snapshot("Existing dashboard") with
+        var snapshot = Snapshot("Existing dashboard");
+        var state = new AppBuilderState(new FixedAppBuilderClient(snapshot with
         {
             Quota = new AppQuotaState
             {
@@ -245,6 +274,7 @@ public sealed class AppBuilderStateTests
                 PublishedApps = 3,
                 AppLimit = 4,
             },
+            Draft = snapshot.Draft with { IsPublished = true },
         }));
         await state.LoadAsync();
 
@@ -252,6 +282,7 @@ public sealed class AppBuilderStateTests
 
         Assert.Equal(AppBuilderStatus.Published, state.Status);
         Assert.Equal(3, state.Quota.PublishedApps);
+        Assert.True(state.Draft.IsPublished);
         Assert.False(state.HasBlockingValidation);
     }
 
@@ -344,10 +375,12 @@ public sealed class AppBuilderStateTests
         var first = await client.PublishAsync(draft, CancellationToken.None);
         var second = await client.PublishAsync(draft, CancellationToken.None);
         var third = await client.PublishAsync(draft with { DraftId = "draft-new" }, CancellationToken.None);
+        var existing = await client.PublishAsync(draft with { DraftId = "draft-published", IsPublished = true }, CancellationToken.None);
 
         Assert.True(first.ConsumedQuotaSlot);
         Assert.False(second.ConsumedQuotaSlot);
         Assert.True(third.ConsumedQuotaSlot);
+        Assert.False(existing.ConsumedQuotaSlot);
     }
 
     private sealed class FixedAppBuilderClient : IAppBuilderClient

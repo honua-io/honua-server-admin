@@ -86,6 +86,7 @@ public sealed record AppDraft
     public string TemplateId { get; init; } = "operations-dashboard";
     public string ThemeName { get; init; } = "Civic light";
     public int AutoRefreshSeconds { get; init; } = 60;
+    public bool IsPublished { get; init; }
     public IReadOnlyList<AppWidgetInstance> Widgets { get; init; } = Array.Empty<AppWidgetInstance>();
 }
 

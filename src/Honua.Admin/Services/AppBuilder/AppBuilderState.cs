@@ -85,6 +85,15 @@ public sealed class AppBuilderState
             var customDomain = PublishChannels.FirstOrDefault(channel => channel.Kind == AppPublishChannelKind.CustomDomain);
             var quotaLimit = Quota.AppLimit?.ToString() ?? "unlimited";
             var isEnterprise = string.Equals(Quota.Edition, "Enterprise", StringComparison.OrdinalIgnoreCase);
+            var quotaPassed = Draft.IsPublished || Quota.CanPublishMore;
+            var quotaMessage = quotaPassed
+                ? $"{Quota.PublishedApps} of {quotaLimit} {Quota.Edition} app slots used."
+                : $"{Quota.Edition} app limit reached.";
+
+            if (Draft.IsPublished && !Quota.CanPublishMore)
+            {
+                quotaMessage = $"{Quota.Edition} app limit reached; updates to this published app do not use a new slot.";
+            }
 
             return
             [
@@ -92,8 +101,8 @@ public sealed class AppBuilderState
                 {
                     Key = "quota",
                     Label = "Published app quota",
-                    Passed = Quota.CanPublishMore,
-                    Message = Quota.CanPublishMore ? $"{Quota.PublishedApps} of {quotaLimit} {Quota.Edition} app slots used." : $"{Quota.Edition} app limit reached."
+                    Passed = quotaPassed,
+                    Message = quotaMessage
                 },
                 new AppValidationCheck
                 {
@@ -120,7 +129,7 @@ public sealed class AppBuilderState
         }
     }
 
-    public bool HasBlockingValidation => ValidationChecks.Any(check => !check.Passed) || !Quota.CanPublishMore;
+    public bool HasBlockingValidation => ValidationChecks.Any(check => !check.Passed) || (!Draft.IsPublished && !Quota.CanPublishMore);
 
     public event Action? OnChanged;
 
@@ -302,6 +311,7 @@ public sealed class AppBuilderState
                 Quota = Quota with { PublishedApps = Quota.PublishedApps + 1 };
             }
 
+            Draft = Draft with { IsPublished = true };
             Status = AppBuilderStatus.Published;
         }
         catch (OperationCanceledException)
