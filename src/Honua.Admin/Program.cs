@@ -53,6 +53,7 @@ builder.Services.AddTransient<AdminAuthHandler>();
 builder.Services.AddTransient<GlobalErrorHandler>();
 builder.Services.AddScoped<IAdminTelemetry, LoggingAdminTelemetry>();
 builder.Services.AddScoped<IAdminRealtimeConnection, AdminRealtimeConnection>();
+builder.Services.AddScoped<DeployOrchestrationState>();
 
 // While the real honua-server is reachable the typed HttpClient routes through the
 // auth + global-error handlers. Until then (default `appsettings.json` ships no
