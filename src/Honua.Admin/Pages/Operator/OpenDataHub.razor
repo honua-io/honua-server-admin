@@ -202,6 +202,29 @@
 
                 <div class="open-data-delivery-group" aria-label="Open data API endpoints">
                     <MudText Typo="Typo.subtitle2">Civic tech API</MudText>
+                    <div class="open-data-api-access" aria-label="Open data API access" data-testid="open-data-api-access">
+                        <div>
+                            <strong>Public API key</strong>
+                            <span>@selected.ApiAccess.PublicKeyLabel</span>
+                            <small>@($"Last rotated {FormatApiDate(selected.ApiAccess.LastRotated)}")</small>
+                        </div>
+                        <MudChip T="string"
+                                 Size="Size.Small"
+                                 Color="@(selected.ApiAccess.PublicKeyEnabled ? Color.Success : Color.Warning)"
+                                 Variant="Variant.Outlined">
+                            @(selected.ApiAccess.PublicKeyEnabled ? "Enabled" : "Disabled")
+                        </MudChip>
+                        <div>
+                            <strong>@($"{selected.ApiAccess.AnonymousRateLimitPerMinute}/min anonymous")</strong>
+                            <span>@($"{selected.ApiAccess.RegisteredRateLimitPerMinute}/min registered civic apps")</span>
+                        </div>
+                        <MudChip T="string"
+                                 Size="Size.Small"
+                                 Color="@(selected.ApiAccess.BulkDownloadEnabled ? Color.Success : Color.Warning)"
+                                 Variant="Variant.Outlined">
+                            Bulk downloads
+                        </MudChip>
+                    </div>
                     @foreach (var endpoint in selected.ApiEndpoints)
                     {
                         <article class="open-data-api-row" data-testid="@($"open-data-api-{endpoint.Name}")">
@@ -214,6 +237,23 @@
                             </MudChip>
                             <pre class="open-data-code"><code>@endpoint.Example</code></pre>
                         </article>
+                    }
+                    @if (selected.ApiAccess.CodeExamples.Count > 0)
+                    {
+                        <div class="open-data-code-examples" aria-label="Open data code examples">
+                            <MudText Typo="Typo.subtitle2">Code examples</MudText>
+                            @foreach (var example in selected.ApiAccess.CodeExamples)
+                            {
+                                <article class="open-data-code-example" data-testid="@($"open-data-code-example-{example.Language}")">
+                                    <MudStack Row AlignItems="AlignItems.Center" Spacing="1">
+                                        <strong>@example.Label</strong>
+                                        <MudSpacer />
+                                        <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined">@example.Language</MudChip>
+                                    </MudStack>
+                                    <pre class="open-data-code"><code>@example.Snippet</code></pre>
+                                </article>
+                            }
+                        </div>
                     }
                 </div>
 
@@ -313,6 +353,9 @@
 
         return $"{bytes / 1_000d:0.0} KB";
     }
+
+    private static string FormatApiDate(DateTimeOffset? value)
+        => value?.ToLocalTime().ToString("MMM d, yyyy", CultureInfo.CurrentCulture) ?? "not recorded";
 
     private static Color StatusColor(OpenDataHubStatus status) => status switch
     {

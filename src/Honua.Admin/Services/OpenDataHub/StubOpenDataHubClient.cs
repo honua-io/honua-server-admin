@@ -144,6 +144,7 @@ public sealed class StubOpenDataHubClient : IOpenDataHubClient
         DateTimeOffset? scheduledPublishAt = null)
     {
         var basePath = $"/open-data/{Slug(datasetId)}";
+        var slug = Slug(datasetId);
         return new OpenDataDataset
         {
             DatasetId = datasetId,
@@ -162,6 +163,16 @@ public sealed class StubOpenDataHubClient : IOpenDataHubClient
             EmbedEnabled = embedEnabled,
             StacCollectionId = stacCollectionId,
             SampleResponse = sampleResponse,
+            ApiAccess = new OpenDataApiAccess
+            {
+                PublicKeyEnabled = apiEnabled,
+                PublicKeyLabel = $"{slug}-public",
+                LastRotated = DateTimeOffset.Parse("2026-04-21T12:00:00Z"),
+                AnonymousRateLimitPerMinute = 120,
+                RegisteredRateLimitPerMinute = 600,
+                BulkDownloadEnabled = apiEnabled,
+                CodeExamples = apiEnabled ? CodeExamples(slug, stacCollectionId) : []
+            },
             Keywords = keywords,
             Downloads =
             [
@@ -176,8 +187,8 @@ public sealed class StubOpenDataHubClient : IOpenDataHubClient
                 new OpenDataApiEndpoint
                 {
                     Name = "Features",
-                    Path = $"/api/open-data/{Slug(datasetId)}/features",
-                    Example = $"curl https://data.honua.local/api/open-data/{Slug(datasetId)}/features?limit=100",
+                    Path = $"/api/open-data/{slug}/features",
+                    Example = $"curl https://data.honua.local/api/open-data/{slug}/features?limit=100",
                     RequiresApiKey = false,
                     RateLimitPerMinute = 120
                 },
@@ -192,15 +203,15 @@ public sealed class StubOpenDataHubClient : IOpenDataHubClient
                 new OpenDataApiEndpoint
                 {
                     Name = "Bulk export",
-                    Path = $"/api/open-data/{Slug(datasetId)}/exports/latest",
-                    Example = $"python -m honua_download https://data.honua.local/api/open-data/{Slug(datasetId)}/exports/latest",
+                    Path = $"/api/open-data/{slug}/exports/latest",
+                    Example = $"python -m honua_download https://data.honua.local/api/open-data/{slug}/exports/latest",
                     RequiresApiKey = true,
                     RateLimitPerMinute = 30
                 }
             ],
             EmbedConfig = new OpenDataEmbedConfig
             {
-                EmbedUrl = $"https://data.honua.local/embed/{Slug(datasetId)}",
+                EmbedUrl = $"https://data.honua.local/embed/{slug}",
                 Basemap = basemap,
                 InitialExtent = extent,
                 BrandingMode = "White label",
@@ -209,6 +220,28 @@ public sealed class StubOpenDataHubClient : IOpenDataHubClient
             }
         };
     }
+
+    private static IReadOnlyList<OpenDataCodeExample> CodeExamples(string slug, string stacCollectionId) =>
+    [
+        new OpenDataCodeExample
+        {
+            Language = OpenDataCodeLanguage.Curl,
+            Label = "cURL",
+            Snippet = $"curl 'https://data.honua.local/api/open-data/{slug}/features?limit=100'"
+        },
+        new OpenDataCodeExample
+        {
+            Language = OpenDataCodeLanguage.JavaScript,
+            Label = "JavaScript",
+            Snippet = $"const response = await fetch('https://data.honua.local/api/stac/{stacCollectionId}');\nconst collection = await response.json();"
+        },
+        new OpenDataCodeExample
+        {
+            Language = OpenDataCodeLanguage.Python,
+            Label = "Python",
+            Snippet = $"import requests\nurl = 'https://data.honua.local/api/open-data/{slug}/exports/latest'\nfeatures = requests.get(url, timeout=30).json()"
+        }
+    ];
 
     private static OpenDataDownloadOption Download(OpenDataDownloadFormat format, string url, long sizeBytes)
         => new()

@@ -30,6 +30,13 @@ public enum OpenDataDownloadFormat
     Kml
 }
 
+public enum OpenDataCodeLanguage
+{
+    Curl,
+    JavaScript,
+    Python
+}
+
 public sealed record OpenDataHubSnapshot
 {
     public IReadOnlyList<OpenDataDataset> Datasets { get; init; } = Array.Empty<OpenDataDataset>();
@@ -54,10 +61,29 @@ public sealed record OpenDataDataset
     public bool EmbedEnabled { get; init; }
     public string StacCollectionId { get; init; } = string.Empty;
     public string SampleResponse { get; init; } = string.Empty;
+    public OpenDataApiAccess ApiAccess { get; init; } = new();
     public IReadOnlyList<string> Keywords { get; init; } = Array.Empty<string>();
     public IReadOnlyList<OpenDataDownloadOption> Downloads { get; init; } = Array.Empty<OpenDataDownloadOption>();
     public IReadOnlyList<OpenDataApiEndpoint> ApiEndpoints { get; init; } = Array.Empty<OpenDataApiEndpoint>();
     public OpenDataEmbedConfig EmbedConfig { get; init; } = new();
+}
+
+public sealed record OpenDataApiAccess
+{
+    public bool PublicKeyEnabled { get; init; }
+    public string PublicKeyLabel { get; init; } = string.Empty;
+    public DateTimeOffset? LastRotated { get; init; }
+    public int AnonymousRateLimitPerMinute { get; init; }
+    public int RegisteredRateLimitPerMinute { get; init; }
+    public bool BulkDownloadEnabled { get; init; }
+    public IReadOnlyList<OpenDataCodeExample> CodeExamples { get; init; } = Array.Empty<OpenDataCodeExample>();
+}
+
+public sealed record OpenDataCodeExample
+{
+    public OpenDataCodeLanguage Language { get; init; }
+    public string Label { get; init; } = string.Empty;
+    public string Snippet { get; init; } = string.Empty;
 }
 
 public sealed record OpenDataDownloadOption
