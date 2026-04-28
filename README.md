@@ -27,6 +27,7 @@ This is the official admin UI for managing Honua Server instances:
 - **License Workspace**: BYOL license status, entitlement inspection, expiry banding, replace flow, and operator-actionable diagnostics — see [License workspace](#license-workspace) below
 - **Spatial SQL Playground**: Browser-based PostGIS-aware SQL editor with schema autocomplete, MapLibre preview, EXPLAIN tree, and named-view save flow — see [Spatial SQL playground](#spatial-sql-playground) below
 - **Map Annotations Workspace**: Drawing tools, annotation-layer controls, saved sets, comment review, and GeoJSON / SVG / PDF export stubs at `/operator/annotations` - see [Map annotations workspace](#map-annotations-workspace) below
+- **Publishing Workspace**: Guided connection-to-service publishing workflow with table discovery, protocol intent, environment comparison, and deploy preflight at `/operator/publishing` - see [Publishing workspace](#publishing-workspace) below
 - **Data Connections Workspace**: List / create / edit / soft-disable / delete / preflight data connections, with a structured diagnostic grid and a managed-Postgres capability matrix — see [Data connections workspace](#data-connections-workspace) below
 
 Coverage of the wider honua-server admin API is tracked in
@@ -430,6 +431,35 @@ of pointer-driven drawing. The state and export surfaces are covered by
 unit tests so the upcoming map-canvas, saved-map storage, and live
 collaboration integrations can replace the stubbed placement flow without
 changing the route contract.
+
+### Publishing workspace
+
+The publishing workspace (ticket `#14`) lives at `/operator/publishing`
+and orchestrates existing admin control-plane APIs across connections,
+table discovery, layer publishing, service protocols, and deploy
+preflight.
+
+The route includes:
+
+- Connection selection against `IHonuaAdminClient.ListConnectionsAsync`
+  with active/health validation.
+- Table discovery through `DiscoverConnectionTablesAsync`, with one-click
+  draft hydration for schema, table, geometry column, geometry type, SRID,
+  and layer name.
+- Publish intent controls that map to `PublishLayerAsync` and refresh the
+  service layer list afterward.
+- Protocol toggles backed by `GetServiceSettingsAsync` and
+  `UpdateServiceProtocolsAsync`.
+- Environment comparison rows that expose desired protocol intent versus
+  actual service state for dev, staging, and production.
+- Deploy preflight validation through `GetDeployPreflightAsync`.
+- Launch points back to data connections, service settings, and layer
+  style pages for deeper configuration.
+
+The current scope does not implement GitOps commit creation, environment
+promotion, or server-side desired-state reconciliation. Those remain
+follow-up work once the server exposes durable environment intent and drift
+contracts.
 
 ### Data connections workspace
 

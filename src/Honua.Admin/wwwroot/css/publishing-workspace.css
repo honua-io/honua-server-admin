@@ -1,0 +1,149 @@
+.publishing-root {
+    display: flex;
+    flex-direction: column;
+    height: calc(100vh - 128px);
+    min-height: 560px;
+    gap: 8px;
+}
+
+.publishing-toolbar {
+    flex: 0 0 auto;
+}
+
+.publishing-grid {
+    flex: 1 1 auto;
+    display: grid;
+    grid-template-columns: minmax(260px, 0.85fr) minmax(360px, 1.15fr) minmax(360px, 1.1fr);
+    gap: 8px;
+    min-height: 0;
+}
+
+.publishing-pane {
+    min-width: 0;
+    min-height: 0;
+    overflow: auto;
+    border: 1px solid var(--mud-palette-divider, #d9dee3);
+    border-radius: 6px;
+    background: var(--mud-palette-surface, #ffffff);
+    padding: 12px;
+}
+
+.publishing-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 8px;
+}
+
+.publishing-list-item {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+    border: 1px solid var(--mud-palette-divider, #d9dee3);
+    border-radius: 6px;
+    background: #ffffff;
+    color: #111827;
+    padding: 8px;
+    cursor: pointer;
+    text-align: left;
+}
+
+.publishing-list-item small {
+    color: #64748b;
+}
+
+.publishing-list-item-active {
+    border-color: #0f766e;
+    background: #eefaf7;
+}
+
+.publishing-section-heading {
+    margin-top: 16px;
+    margin-bottom: 8px;
+}
+
+.publishing-form-grid {
+    margin-top: 4px;
+}
+
+.publishing-protocols {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 4px 10px;
+}
+
+.publishing-validation {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.publishing-validation-row {
+    display: grid;
+    grid-template-columns: 24px minmax(0, 1fr);
+    gap: 8px;
+    align-items: start;
+    border: 1px solid var(--mud-palette-divider, #d9dee3);
+    border-radius: 6px;
+    padding: 8px;
+}
+
+.publishing-validation-row div {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.publishing-validation-row span {
+    color: #64748b;
+    overflow-wrap: anywhere;
+}
+
+.publishing-layer-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.publishing-layer-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto auto auto;
+    gap: 8px;
+    align-items: center;
+    border: 1px solid var(--mud-palette-divider, #d9dee3);
+    border-radius: 6px;
+    padding: 8px;
+}
+
+.publishing-layer-row div {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.publishing-layer-row span {
+    color: #64748b;
+    overflow-wrap: anywhere;
+}
+
+@media (max-width: 1180px) {
+    .publishing-root {
+        height: auto;
+    }
+
+    .publishing-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 720px) {
+    .publishing-toolbar .mud-stack-row,
+    .publishing-layer-row {
+        grid-template-columns: 1fr;
+    }
+
+    .publishing-protocols {
+        grid-template-columns: 1fr;
+    }
+}

@@ -11,6 +11,7 @@ using Honua.Admin.Models.Admin;
 using Honua.Admin.Pages.Admin;
 using Honua.Admin.Services.Admin;
 using Honua.Admin.Services.Annotations;
+using Honua.Admin.Services.Publishing;
 using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.DependencyInjection;
 using MudBlazor;
@@ -34,6 +35,7 @@ public sealed class AdminQualityGateTests : TestContext
         Services.AddScoped<IAdminTelemetry, NullAdminTelemetry>();
         Services.AddScoped<IHonuaAdminClient>(_ => new StubHonuaAdminClient());
         Services.AddScoped<AnnotationWorkspaceState>();
+        Services.AddScoped<PublishingWorkspaceState>();
     }
 
     public static IEnumerable<object[]> TopWorkflows()
@@ -93,6 +95,13 @@ public sealed class AdminQualityGateTests : TestContext
             typeof(Honua.Admin.Pages.Operator.Annotations),
             "Waikiki field review",
             new[] { "[aria-label='Annotation workspace toolbar']", "[aria-label='Annotation layers']" },
+        ];
+        yield return
+        [
+            "Publishing",
+            typeof(Honua.Admin.Pages.Operator.PublishingWorkspace),
+            "primary-postgis",
+            new[] { "[aria-label='Publishing workspace toolbar']", "[aria-label='Publishing validation checks']" },
         ];
     }
 
