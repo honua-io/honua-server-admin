@@ -54,6 +54,12 @@ public interface IHonuaAdminClient
     Task<ServiceSettings> UpdateServiceTimeInfoAsync(string serviceName, TimeInfoSettings request, CancellationToken cancellationToken);
     Task<LayerMetadataResponse> UpdateServiceLayerMetadataAsync(string serviceName, int layerId, UpdateLayerMetadataRequest request, CancellationToken cancellationToken);
 
+    Task<IReadOnlyList<MetadataResource>> ListMetadataResourcesAsync(string? kind, string? resourceNamespace, CancellationToken cancellationToken);
+    Task<MetadataResourceResponse> GetMetadataResourceAsync(string kind, string resourceNamespace, string name, CancellationToken cancellationToken);
+    Task<MetadataResourceResponse> CreateMetadataResourceAsync(MetadataResource resource, CancellationToken cancellationToken);
+    Task<MetadataResourceResponse> UpdateMetadataResourceAsync(string kind, string resourceNamespace, string name, MetadataResource resource, string ifMatch, CancellationToken cancellationToken);
+    Task DeleteMetadataResourceAsync(string kind, string resourceNamespace, string name, string ifMatch, CancellationToken cancellationToken);
+
     Task<DeployPreflightResult> GetDeployPreflightAsync(CancellationToken cancellationToken);
     Task<DeployPlan> PlanDeployAsync(DeployPlanRequest request, CancellationToken cancellationToken);
     Task<DeployOperation> CreateDeployOperationAsync(CreateDeployOperationRequest request, CancellationToken cancellationToken);
@@ -61,6 +67,7 @@ public interface IHonuaAdminClient
     Task<DeployOperation> SubmitDeployOperationAsync(string operationId, SubmitDeployOperationRequest request, CancellationToken cancellationToken);
     Task<DeployOperation> RollbackDeployOperationAsync(string operationId, RollbackDeployOperationRequest request, CancellationToken cancellationToken);
 
+    Task<ManifestApplyResult> ApplyManifestAsync(ManifestApplyRequest request, CancellationToken cancellationToken);
     Task<ManifestDriftReport> GetManifestDriftAsync(bool verbose, CancellationToken cancellationToken);
     Task<ManifestVersionListResponse> ListManifestVersionsAsync(int limit, int offset, CancellationToken cancellationToken);
     Task<ManifestVersionDetailResponse> GetManifestVersionAsync(string versionId, CancellationToken cancellationToken);

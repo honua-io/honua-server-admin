@@ -21,13 +21,41 @@ public sealed record MetadataResourceIdentifier
         new[] { Kind, Namespace, Name }.Where(part => !string.IsNullOrWhiteSpace(part)));
 }
 
+public sealed record ResourceMetadata
+{
+    [JsonPropertyName("id")] public string? Id { get; init; }
+    [JsonPropertyName("name")] public string? Name { get; init; }
+    [JsonPropertyName("namespace")] public string? Namespace { get; init; }
+    [JsonPropertyName("labels")] public Dictionary<string, string>? Labels { get; init; }
+    [JsonPropertyName("annotations")] public Dictionary<string, string>? Annotations { get; init; }
+    [JsonPropertyName("resourceVersion")] public string? ResourceVersion { get; init; }
+    [JsonPropertyName("generation")] public long? Generation { get; init; }
+    [JsonPropertyName("createdAt")] public DateTimeOffset? CreatedAt { get; init; }
+    [JsonPropertyName("updatedAt")] public DateTimeOffset? UpdatedAt { get; init; }
+}
+
+public sealed record MetadataResource
+{
+    [JsonPropertyName("apiVersion")] public string? ApiVersion { get; init; }
+    [JsonPropertyName("kind")] public string? Kind { get; init; }
+    [JsonPropertyName("metadata")] public ResourceMetadata? Metadata { get; init; }
+    [JsonPropertyName("spec")] public JsonElement Spec { get; init; }
+    [JsonPropertyName("status")] public JsonElement? Status { get; init; }
+}
+
+public sealed record MetadataResourceResponse
+{
+    public MetadataResource Resource { get; init; } = new();
+    public string? ETag { get; init; }
+}
+
 /// <summary>
 /// Apply request for the manifest endpoint
 /// <c>Admin/AdminMetadataEndpoints :: POST /manifest/apply</c>.
 /// </summary>
 public sealed record ManifestApplyRequest
 {
-    [JsonPropertyName("resources")] public IReadOnlyList<JsonElement> Resources { get; init; } = Array.Empty<JsonElement>();
+    [JsonPropertyName("resources")] public IReadOnlyList<MetadataResource> Resources { get; init; } = Array.Empty<MetadataResource>();
     [JsonPropertyName("dryRun")] public bool DryRun { get; init; }
     [JsonPropertyName("prune")] public bool Prune { get; init; }
     [JsonPropertyName("approvalRequired")] public bool ApprovalRequired { get; init; }

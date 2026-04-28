@@ -219,6 +219,71 @@ public sealed class HonuaAdminClient : IHonuaAdminClient
     public Task<LayerMetadataResponse> UpdateServiceLayerMetadataAsync(string serviceName, int layerId, UpdateLayerMetadataRequest request, CancellationToken cancellationToken)
         => SendApiAsync(nameof(UpdateServiceLayerMetadataAsync), HttpMethod.Put, $"{ApiVersionPrefix}/services/{Uri.EscapeDataString(serviceName)}/layers/{layerId}/metadata", request, TypeInfo<UpdateLayerMetadataRequest>(), TypeInfo<AdminApiResponse<LayerMetadataResponse>>(), cancellationToken);
 
+    public async Task<IReadOnlyList<MetadataResource>> ListMetadataResourcesAsync(string? kind, string? resourceNamespace, CancellationToken cancellationToken)
+        => await GetApiAsync(
+                nameof(ListMetadataResourcesAsync),
+                WithMetadataResourceQuery($"{ApiVersionPrefix}/metadata/resources/", kind, resourceNamespace),
+                TypeInfo<AdminApiResponse<MetadataResource[]>>(),
+                cancellationToken)
+            .ConfigureAwait(false);
+
+    public Task<MetadataResourceResponse> GetMetadataResourceAsync(string kind, string resourceNamespace, string name, CancellationToken cancellationToken)
+        => GetMetadataResourceCoreAsync(
+            nameof(GetMetadataResourceAsync),
+            MetadataResourcePath(kind, resourceNamespace, name),
+            cancellationToken);
+
+    public Task<MetadataResourceResponse> CreateMetadataResourceAsync(MetadataResource resource, CancellationToken cancellationToken)
+        => SendMetadataResourceAsync(
+            nameof(CreateMetadataResourceAsync),
+            HttpMethod.Post,
+            $"{ApiVersionPrefix}/metadata/resources/",
+            resource,
+            ifMatch: null,
+            cancellationToken);
+
+    public Task<MetadataResourceResponse> UpdateMetadataResourceAsync(
+        string kind,
+        string resourceNamespace,
+        string name,
+        MetadataResource resource,
+        string ifMatch,
+        CancellationToken cancellationToken)
+    {
+        EnsureIfMatch(ifMatch, nameof(UpdateMetadataResourceAsync));
+
+        return SendMetadataResourceAsync(
+            nameof(UpdateMetadataResourceAsync),
+            HttpMethod.Put,
+            MetadataResourcePath(kind, resourceNamespace, name),
+            resource,
+            ifMatch,
+            cancellationToken);
+    }
+
+    public async Task DeleteMetadataResourceAsync(
+        string kind,
+        string resourceNamespace,
+        string name,
+        string ifMatch,
+        CancellationToken cancellationToken)
+    {
+        EnsureIfMatch(ifMatch, nameof(DeleteMetadataResourceAsync));
+
+        try
+        {
+            using var message = new HttpRequestMessage(HttpMethod.Delete, MetadataResourcePath(kind, resourceNamespace, name));
+            message.Headers.TryAddWithoutValidation("If-Match", ifMatch);
+            using var response = await _http.SendAsync(message, cancellationToken).ConfigureAwait(false);
+            response.EnsureSuccessStatusCode();
+        }
+        catch (HttpRequestException ex)
+        {
+            _telemetry.ClientRequestFailed(nameof(DeleteMetadataResourceAsync), ex.Message);
+            throw;
+        }
+    }
+
     public Task<DeployPreflightResult> GetDeployPreflightAsync(CancellationToken cancellationToken)
         => GetAsync(nameof(GetDeployPreflightAsync), $"{ApiVersionPrefix}/deploy/preflight?includeDiagnostics=true", TypeInfo<DeployPreflightResult>(), cancellationToken);
 
@@ -236,6 +301,16 @@ public sealed class HonuaAdminClient : IHonuaAdminClient
 
     public Task<DeployOperation> RollbackDeployOperationAsync(string operationId, RollbackDeployOperationRequest request, CancellationToken cancellationToken)
         => SendAsync(nameof(RollbackDeployOperationAsync), HttpMethod.Post, $"{ApiVersionPrefix}/deploy/operations/{Uri.EscapeDataString(operationId)}/rollback", request, TypeInfo<RollbackDeployOperationRequest>(), TypeInfo<DeployOperation>(), cancellationToken);
+
+    public Task<ManifestApplyResult> ApplyManifestAsync(ManifestApplyRequest request, CancellationToken cancellationToken)
+        => SendApiAsync(
+            nameof(ApplyManifestAsync),
+            HttpMethod.Post,
+            $"{ApiVersionPrefix}/manifest/apply",
+            request,
+            TypeInfo<ManifestApplyRequest>(),
+            TypeInfo<AdminApiResponse<ManifestApplyResult>>(),
+            cancellationToken);
 
     public Task<ManifestDriftReport> GetManifestDriftAsync(bool verbose, CancellationToken cancellationToken)
         => GetApiAsync(
@@ -422,6 +497,73 @@ public sealed class HonuaAdminClient : IHonuaAdminClient
         }
     }
 
+    private async Task<MetadataResourceResponse> GetMetadataResourceCoreAsync(
+        string operation,
+        string path,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            using var response = await _http.GetAsync(path, cancellationToken).ConfigureAwait(false);
+            response.EnsureSuccessStatusCode();
+            return await ReadMetadataResourceResponseAsync(operation, response, cancellationToken).ConfigureAwait(false);
+        }
+        catch (HttpRequestException ex)
+        {
+            _telemetry.ClientRequestFailed(operation, ex.Message);
+            throw;
+        }
+    }
+
+    private async Task<MetadataResourceResponse> SendMetadataResourceAsync(
+        string operation,
+        HttpMethod method,
+        string path,
+        MetadataResource resource,
+        string? ifMatch,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            using var message = new HttpRequestMessage(method, path)
+            {
+                Content = new StringContent(
+                    JsonSerializer.Serialize(resource, TypeInfo<MetadataResource>()),
+                    Encoding.UTF8,
+                    "application/json"),
+            };
+
+            if (!string.IsNullOrWhiteSpace(ifMatch))
+            {
+                message.Headers.TryAddWithoutValidation("If-Match", ifMatch);
+            }
+
+            using var response = await _http.SendAsync(message, cancellationToken).ConfigureAwait(false);
+            response.EnsureSuccessStatusCode();
+            return await ReadMetadataResourceResponseAsync(operation, response, cancellationToken).ConfigureAwait(false);
+        }
+        catch (HttpRequestException ex)
+        {
+            _telemetry.ClientRequestFailed(operation, ex.Message);
+            throw;
+        }
+    }
+
+    private static async Task<MetadataResourceResponse> ReadMetadataResourceResponseAsync(
+        string operation,
+        HttpResponseMessage response,
+        CancellationToken cancellationToken)
+    {
+        var envelope = await response.Content
+            .ReadFromJsonAsync(TypeInfo<AdminApiResponse<MetadataResource>>(), cancellationToken)
+            .ConfigureAwait(false);
+        return new MetadataResourceResponse
+        {
+            Resource = Unwrap(operation, envelope ?? throw new InvalidOperationException($"{operation} returned an empty response.")),
+            ETag = response.Headers.ETag?.ToString(),
+        };
+    }
+
     private async Task<TResponse> SendApiAsync<TRequest, TResponse>(
         string operation,
         HttpMethod method,
@@ -470,4 +612,31 @@ public sealed class HonuaAdminClient : IHonuaAdminClient
         => string.IsNullOrWhiteSpace(serviceName)
             ? path
             : $"{path}?serviceName={Uri.EscapeDataString(serviceName)}";
+
+    private static string MetadataResourcePath(string kind, string resourceNamespace, string name)
+        => $"{ApiVersionPrefix}/metadata/resources/{Uri.EscapeDataString(kind)}/{Uri.EscapeDataString(resourceNamespace)}/{Uri.EscapeDataString(name)}";
+
+    private static string WithMetadataResourceQuery(string path, string? kind, string? resourceNamespace)
+    {
+        var query = new List<string>();
+        if (!string.IsNullOrWhiteSpace(kind))
+        {
+            query.Add($"kind={Uri.EscapeDataString(kind)}");
+        }
+
+        if (!string.IsNullOrWhiteSpace(resourceNamespace))
+        {
+            query.Add($"namespace={Uri.EscapeDataString(resourceNamespace)}");
+        }
+
+        return query.Count == 0 ? path : $"{path}?{string.Join("&", query)}";
+    }
+
+    private static void EnsureIfMatch(string ifMatch, string operation)
+    {
+        if (string.IsNullOrWhiteSpace(ifMatch))
+        {
+            throw new ArgumentException($"{operation} requires a non-empty If-Match ETag.", nameof(ifMatch));
+        }
+    }
 }
