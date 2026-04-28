@@ -244,7 +244,10 @@ public sealed class PublishingWorkspaceState
 
     public IReadOnlyList<ManifestDriftRecord> DriftResources => ManifestDrift?.Resources ?? Array.Empty<ManifestDriftRecord>();
 
-    public bool HasManifestDrift => ManifestDrift?.HasDrift == true || !string.Equals(ProtocolDriftLabel, "In sync", StringComparison.OrdinalIgnoreCase);
+    public bool HasManifestDrift =>
+        !string.IsNullOrWhiteSpace(ManifestError) ||
+        ManifestDrift?.HasDrift == true ||
+        !string.Equals(ProtocolDriftLabel, "In sync", StringComparison.OrdinalIgnoreCase);
 
     public string ManifestDriftLabel => ManifestDrift is null
         ? ManifestError ?? "Manifest drift not loaded"
@@ -500,7 +503,7 @@ public sealed class PublishingWorkspaceState
                 },
                 cancellationToken).ConfigureAwait(false);
             HydrateGitOpsDraft(GitOpsWatch);
-            await LoadGitOpsChangesAsync(cancellationToken).ConfigureAwait(false);
+            await TryLoadGitOpsChangesAsync(cancellationToken).ConfigureAwait(false);
             Status = PublishingWorkspaceStatus.Idle;
         }
         catch (OperationCanceledException)
@@ -792,9 +795,15 @@ public sealed class PublishingWorkspaceState
             return;
         }
 
+        await TryLoadGitOpsChangesAsync(cancellationToken).ConfigureAwait(false);
+    }
+
+    private async Task TryLoadGitOpsChangesAsync(CancellationToken cancellationToken)
+    {
         try
         {
             await LoadGitOpsChangesAsync(cancellationToken).ConfigureAwait(false);
+            GitOpsError = null;
         }
         catch (OperationCanceledException)
         {

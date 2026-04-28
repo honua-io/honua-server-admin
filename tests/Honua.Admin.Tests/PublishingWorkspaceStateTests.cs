@@ -106,6 +106,24 @@ public sealed class PublishingWorkspaceStateTests
     }
 
     [Fact]
+    public async Task ConfigureGitOpsWatchAsync_keeps_save_successful_when_change_history_fails()
+    {
+        var state = new PublishingWorkspaceState(new GitOpsChangesUnavailableClient());
+        await state.InitializeAsync();
+
+        state.SetGitOpsRepositoryUrl("https://github.com/honua-io/environments");
+
+        await state.ConfigureGitOpsWatchAsync(configuredBy: "operator");
+
+        Assert.Equal(PublishingWorkspaceStatus.Idle, state.Status);
+        Assert.Null(state.LastError);
+        Assert.NotNull(state.GitOpsWatch);
+        Assert.Equal("https://github.com/honua-io/environments", state.GitOpsWatch.RepositoryUrl);
+        Assert.Empty(state.GitOpsChanges);
+        Assert.Contains("GitOps changes", state.GitOpsError, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
     public async Task ApprovePendingManifestAsync_records_apply_result_and_refreshes_state()
     {
         var client = new RecordingPublishingClient();
@@ -162,6 +180,7 @@ public sealed class PublishingWorkspaceStateTests
         Assert.NotNull(state.ManifestError);
         Assert.NotNull(state.ManifestApprovalError);
         Assert.NotNull(state.GitOpsError);
+        Assert.True(state.HasManifestDrift);
         Assert.Contains(state.EnvironmentStates, row => row.Name == "gitops");
     }
 
