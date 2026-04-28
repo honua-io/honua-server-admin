@@ -24,6 +24,13 @@ public sealed class PublishingWorkspaceStateTests
         Assert.NotEmpty(state.Tables);
         Assert.NotEmpty(state.Layers);
         Assert.NotNull(state.DeployPreflight);
+        Assert.NotNull(state.ManifestDrift);
+        Assert.NotEmpty(state.ManifestVersions);
+        Assert.NotEmpty(state.PendingManifestChanges);
+        Assert.NotNull(state.GitOpsWatch);
+        Assert.NotEmpty(state.GitOpsChanges);
+        Assert.Contains(state.EnvironmentStates, row => row.Name == "gitops");
+        Assert.Contains(state.EnvironmentStates, row => row.Name == "approval");
         Assert.All(state.ValidationChecks, check => Assert.True(check.Passed, check.Message));
     }
 
@@ -70,6 +77,68 @@ public sealed class PublishingWorkspaceStateTests
     }
 
     [Fact]
+    public async Task ConfigureGitOpsWatchAsync_maps_draft_to_request()
+    {
+        var client = new RecordingPublishingClient();
+        var state = new PublishingWorkspaceState(client);
+        await state.InitializeAsync();
+
+        state.SetGitOpsRepositoryUrl("https://github.com/honua-io/environments");
+        state.SetGitOpsBranch("release");
+        state.SetGitOpsManifestPath("env/prod");
+        state.SetGitOpsPollIntervalSeconds(45);
+        state.SetGitOpsApprovalRequired(true);
+        state.SetGitOpsPruneEnabled(true);
+        state.SetGitOpsEnabled(false);
+
+        await state.ConfigureGitOpsWatchAsync(configuredBy: "operator");
+
+        Assert.Equal(PublishingWorkspaceStatus.Idle, state.Status);
+        Assert.NotNull(client.LastGitOpsRequest);
+        Assert.Equal("https://github.com/honua-io/environments", client.LastGitOpsRequest!.RepositoryUrl);
+        Assert.Equal("release", client.LastGitOpsRequest.Branch);
+        Assert.Equal("env/prod", client.LastGitOpsRequest.ManifestPath);
+        Assert.Equal(45, client.LastGitOpsRequest.PollIntervalSeconds);
+        Assert.True(client.LastGitOpsRequest.ApprovalRequired);
+        Assert.True(client.LastGitOpsRequest.PruneEnabled);
+        Assert.False(client.LastGitOpsRequest.Enabled);
+        Assert.Equal("operator", client.LastGitOpsRequest.ConfiguredBy);
+    }
+
+    [Fact]
+    public async Task ApprovePendingManifestAsync_records_apply_result_and_refreshes_state()
+    {
+        var client = new RecordingPublishingClient();
+        var state = new PublishingWorkspaceState(client);
+        await state.InitializeAsync();
+        var pendingId = state.PendingManifestChanges[0].PendingId;
+
+        await state.ApprovePendingManifestAsync(pendingId, "looks good", "operator");
+
+        Assert.Equal(PublishingWorkspaceStatus.Idle, state.Status);
+        Assert.Equal(pendingId, client.LastApprovedPendingId);
+        Assert.Equal("looks good", client.LastApproveRequest?.Reason);
+        Assert.NotNull(state.LastManifestApplyResult);
+        Assert.Empty(state.PendingManifestChanges);
+    }
+
+    [Fact]
+    public async Task RejectPendingManifestAsync_records_reject_request_and_refreshes_state()
+    {
+        var client = new RecordingPublishingClient();
+        var state = new PublishingWorkspaceState(client);
+        await state.InitializeAsync();
+        var pendingId = state.PendingManifestChanges[0].PendingId;
+
+        await state.RejectPendingManifestAsync(pendingId, "needs another pass", "operator");
+
+        Assert.Equal(PublishingWorkspaceStatus.Idle, state.Status);
+        Assert.Equal(pendingId, client.LastRejectedPendingId);
+        Assert.Equal("needs another pass", client.LastRejectRequest?.Reason);
+        Assert.Empty(state.PendingManifestChanges);
+    }
+
+    [Fact]
     public async Task PublishAsync_without_table_surfaces_validation_error()
     {
         var state = new PublishingWorkspaceState(new EmptyTableClient());
@@ -81,10 +150,31 @@ public sealed class PublishingWorkspaceStateTests
         Assert.Contains("Select a table", state.LastError, StringComparison.OrdinalIgnoreCase);
     }
 
+    [Fact]
+    public async Task InitializeAsync_keeps_workspace_usable_when_optional_reconciliation_endpoints_are_unavailable()
+    {
+        var state = new PublishingWorkspaceState(new OptionalReconciliationUnavailableClient());
+
+        await state.InitializeAsync();
+
+        Assert.Equal(PublishingWorkspaceStatus.Idle, state.Status);
+        Assert.Null(state.LastError);
+        Assert.NotNull(state.ManifestError);
+        Assert.NotNull(state.ManifestApprovalError);
+        Assert.NotNull(state.GitOpsError);
+        Assert.Contains(state.EnvironmentStates, row => row.Name == "gitops");
+    }
+
     private sealed class RecordingPublishingClient : StubHonuaAdminClient
     {
         public PublishLayerRequest? LastPublishRequest { get; private set; }
         public IReadOnlyList<string> LastProtocols { get; private set; } = Array.Empty<string>();
+        public GitOpsWatchConfigRequest? LastGitOpsRequest { get; private set; }
+        public Guid? LastApprovedPendingId { get; private set; }
+        public ManifestApproveRequest? LastApproveRequest { get; private set; }
+        public Guid? LastRejectedPendingId { get; private set; }
+        public ManifestRejectRequest? LastRejectRequest { get; private set; }
+        private bool _pendingResolved;
 
         public override Task<LayerSummary> PublishLayerAsync(string connectionId, PublishLayerRequest request, CancellationToken cancellationToken)
         {
@@ -107,11 +197,50 @@ public sealed class PublishingWorkspaceStateTests
             LastProtocols = request.EnabledProtocols;
             return Task.FromResult(ServiceSettings with { EnabledProtocols = request.EnabledProtocols });
         }
+
+        public override Task<GitOpsWatchConfigResponse> ConfigureGitOpsWatchAsync(GitOpsWatchConfigRequest request, CancellationToken cancellationToken)
+        {
+            LastGitOpsRequest = request;
+            return base.ConfigureGitOpsWatchAsync(request, cancellationToken);
+        }
+
+        public override Task<ManifestApplyResult> ApprovePendingManifestChangeAsync(Guid pendingId, ManifestApproveRequest request, CancellationToken cancellationToken)
+        {
+            LastApprovedPendingId = pendingId;
+            LastApproveRequest = request;
+            _pendingResolved = true;
+            return base.ApprovePendingManifestChangeAsync(pendingId, request, cancellationToken);
+        }
+
+        public override Task<ManifestPendingChangeResponse> RejectPendingManifestChangeAsync(Guid pendingId, ManifestRejectRequest request, CancellationToken cancellationToken)
+        {
+            LastRejectedPendingId = pendingId;
+            LastRejectRequest = request;
+            _pendingResolved = true;
+            return base.RejectPendingManifestChangeAsync(pendingId, request, cancellationToken);
+        }
+
+        public override Task<IReadOnlyList<ManifestPendingChangeResponse>> ListPendingManifestChangesAsync(string? status, CancellationToken cancellationToken)
+            => _pendingResolved
+                ? Task.FromResult<IReadOnlyList<ManifestPendingChangeResponse>>(Array.Empty<ManifestPendingChangeResponse>())
+                : base.ListPendingManifestChangesAsync(status, cancellationToken);
     }
 
     private sealed class EmptyTableClient : StubHonuaAdminClient
     {
         public override Task<IReadOnlyList<DiscoveredTable>> DiscoverConnectionTablesAsync(string connectionId, CancellationToken cancellationToken)
             => Task.FromResult<IReadOnlyList<DiscoveredTable>>(Array.Empty<DiscoveredTable>());
+    }
+
+    private sealed class OptionalReconciliationUnavailableClient : StubHonuaAdminClient
+    {
+        public override Task<ManifestDriftReport> GetManifestDriftAsync(bool verbose, CancellationToken cancellationToken)
+            => throw new InvalidOperationException("manifest drift unavailable");
+
+        public override Task<IReadOnlyList<ManifestPendingChangeResponse>> ListPendingManifestChangesAsync(string? status, CancellationToken cancellationToken)
+            => throw new InvalidOperationException("approval unavailable");
+
+        public override Task<GitOpsWatchConfigResponse> GetGitOpsWatchAsync(CancellationToken cancellationToken)
+            => throw new InvalidOperationException("gitops unavailable");
     }
 }

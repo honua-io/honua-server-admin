@@ -189,6 +189,127 @@ public class StubHonuaAdminClient : IHonuaAdminClient
         UpdatedAt = DateTimeOffset.Parse("2026-04-25T00:00:00Z"),
     };
 
+    public ManifestDriftReport ManifestDrift { get; init; } = new()
+    {
+        GeneratedAt = DateTimeOffset.Parse("2026-04-25T00:00:00Z"),
+        BaselineVersionId = "manifest-v2",
+        HasDrift = true,
+        Resources =
+        [
+            new ManifestDriftRecord
+            {
+                Identifier = new MetadataResourceIdentifier { Kind = "service", Namespace = "default", Name = "parcels" },
+                DriftType = "spec-drift",
+                DeclaredHash = "sha256:desired",
+                ActualHash = "sha256:actual",
+            },
+        ],
+    };
+
+    public ManifestVersionListResponse ManifestVersions { get; init; } = new()
+    {
+        Versions =
+        [
+            new ManifestVersionResponse
+            {
+                VersionId = "manifest-v2",
+                ManifestHash = "sha256:desired",
+                Summary = "Promote parcels publishing intent",
+                Actor = "admin",
+                AppliedAt = DateTimeOffset.Parse("2026-04-24T00:00:00Z"),
+                ResourceCount = 3,
+            },
+        ],
+    };
+
+    public ManifestVersionDetailResponse ManifestVersionDetail { get; init; } = new()
+    {
+        VersionId = "manifest-v2",
+        ManifestHash = "sha256:desired",
+        Summary = "Promote parcels publishing intent",
+        Actor = "admin",
+        AppliedAt = DateTimeOffset.Parse("2026-04-24T00:00:00Z"),
+        ResourceCount = 3,
+        Manifest = Json("""{"apiVersion":"admin.honua.io/v1","resources":[]}"""),
+    };
+
+    public IReadOnlyList<ManifestPendingChangeResponse> ManifestPendingChanges { get; init; } =
+    [
+        new ManifestPendingChangeResponse
+        {
+            PendingId = Guid.Parse("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"),
+            ManifestHash = "sha256:pending",
+            Status = "pending",
+            RequestedBy = "gitops",
+            RequestedReason = "Promote staging manifest",
+            ResourceCount = 2,
+            DryRun = false,
+            Prune = false,
+            CreatedAt = DateTimeOffset.Parse("2026-04-25T01:00:00Z"),
+            ExpiresAt = DateTimeOffset.Parse("2026-04-26T01:00:00Z"),
+        },
+    ];
+
+    public IReadOnlyList<ManifestPendingChangeResponse> ManifestApprovalHistory { get; init; } =
+    [
+        new ManifestPendingChangeResponse
+        {
+            PendingId = Guid.Parse("cccccccc-cccc-cccc-cccc-cccccccccccc"),
+            ManifestHash = "sha256:approved",
+            Status = "approved",
+            RequestedBy = "gitops",
+            RequestedReason = "Promote dev manifest",
+            DecisionBy = "admin",
+            DecisionReason = "validated",
+            ResourceCount = 4,
+            DryRun = false,
+            Prune = true,
+            CreatedAt = DateTimeOffset.Parse("2026-04-23T01:00:00Z"),
+            DecidedAt = DateTimeOffset.Parse("2026-04-23T02:00:00Z"),
+        },
+    ];
+
+    public GitOpsWatchConfigResponse GitOpsWatch { get; init; } = new()
+    {
+        ConfigId = Guid.Parse("dddddddd-dddd-dddd-dddd-dddddddddddd"),
+        RepositoryUrl = "https://github.com/honua-io/honua-env",
+        Branch = "main",
+        ManifestPath = "environments/dev",
+        PollIntervalSeconds = 60,
+        ApprovalRequired = true,
+        PruneEnabled = false,
+        Enabled = true,
+        LastKnownCommitSha = "0123456789abcdef0123456789abcdef01234567",
+        LastPolledAt = DateTimeOffset.Parse("2026-04-25T02:00:00Z"),
+        ConfiguredBy = "admin",
+        CreatedAt = DateTimeOffset.Parse("2026-04-20T00:00:00Z"),
+        UpdatedAt = DateTimeOffset.Parse("2026-04-25T00:00:00Z"),
+    };
+
+    public IReadOnlyList<GitOpsChangeRecordResponse> GitOpsChanges { get; init; } =
+    [
+        new GitOpsChangeRecordResponse
+        {
+            ChangeId = Guid.Parse("eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee"),
+            ConfigId = Guid.Parse("dddddddd-dddd-dddd-dddd-dddddddddddd"),
+            CommitSha = "0123456789abcdef0123456789abcdef01234567",
+            CommitMessage = "Promote parcels service",
+            CommitAuthor = "ops",
+            CommitTimestamp = DateTimeOffset.Parse("2026-04-25T01:30:00Z"),
+            Status = "pending_approval",
+            PendingApprovalId = Guid.Parse("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"),
+            DetectedAt = DateTimeOffset.Parse("2026-04-25T01:31:00Z"),
+        },
+    ];
+
+    public GitOpsChangeDiffResponse GitOpsChangeDiff { get; init; } = new()
+    {
+        ChangeId = Guid.Parse("eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee"),
+        CommitSha = "0123456789abcdef0123456789abcdef01234567",
+        Before = Json("""{"resources":[]}"""),
+        After = Json("""{"resources":[{"kind":"service"}]}"""),
+    };
+
     public RecentErrorsResponse RecentErrors { get; init; } = new()
     {
         Capacity = 50,
@@ -328,6 +449,85 @@ public class StubHonuaAdminClient : IHonuaAdminClient
 
     public virtual Task<DeployOperation> RollbackDeployOperationAsync(string operationId, RollbackDeployOperationRequest request, CancellationToken cancellationToken)
         => Task.FromResult(DeployOperation with { OperationId = operationId, Status = "RollbackRequested", Reason = request.Reason });
+
+    public virtual Task<ManifestDriftReport> GetManifestDriftAsync(bool verbose, CancellationToken cancellationToken)
+        => Task.FromResult(ManifestDrift);
+
+    public virtual Task<ManifestVersionListResponse> ListManifestVersionsAsync(int limit, int offset, CancellationToken cancellationToken)
+        => Task.FromResult(ManifestVersions);
+
+    public virtual Task<ManifestVersionDetailResponse> GetManifestVersionAsync(string versionId, CancellationToken cancellationToken)
+        => Task.FromResult(ManifestVersionDetail with { VersionId = versionId });
+
+    public virtual Task<IReadOnlyList<ManifestPendingChangeResponse>> ListPendingManifestChangesAsync(string? status, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(status))
+        {
+            return Task.FromResult(ManifestPendingChanges);
+        }
+
+        return Task.FromResult<IReadOnlyList<ManifestPendingChangeResponse>>(
+            [.. ManifestPendingChanges.Where(change => string.Equals(change.Status, status, StringComparison.OrdinalIgnoreCase))]);
+    }
+
+    public virtual Task<IReadOnlyList<ManifestPendingChangeResponse>> ListManifestApprovalHistoryAsync(CancellationToken cancellationToken)
+        => Task.FromResult(ManifestApprovalHistory);
+
+    public virtual Task<ManifestPendingChangeResponse> GetPendingManifestChangeAsync(Guid pendingId, CancellationToken cancellationToken)
+        => Task.FromResult(ManifestPendingChanges.FirstOrDefault(change => change.PendingId == pendingId) ?? (ManifestPendingChanges[0] with { PendingId = pendingId }));
+
+    public virtual Task<ManifestApplyResult> ApprovePendingManifestChangeAsync(Guid pendingId, ManifestApproveRequest request, CancellationToken cancellationToken)
+        => Task.FromResult(new ManifestApplyResult
+        {
+            DryRun = false,
+            Summary = new ManifestApplySummary { Created = 1, Updated = 1, Deleted = 0, Skipped = 0 },
+            Entries =
+            [
+                new ManifestApplyEntry
+                {
+                    Action = "update",
+                    Resource = new MetadataResourceIdentifier { Kind = "service", Namespace = "default", Name = "parcels" },
+                    Message = request.Reason,
+                },
+            ],
+        });
+
+    public virtual Task<ManifestPendingChangeResponse> RejectPendingManifestChangeAsync(Guid pendingId, ManifestRejectRequest request, CancellationToken cancellationToken)
+        => Task.FromResult((ManifestPendingChanges.FirstOrDefault(change => change.PendingId == pendingId) ?? ManifestPendingChanges[0]) with
+        {
+            Status = "rejected",
+            DecisionBy = request.RejectedBy,
+            DecisionReason = request.Reason,
+            DecidedAt = DateTimeOffset.Parse("2026-04-25T02:00:00Z"),
+        });
+
+    public virtual Task<GitOpsWatchConfigResponse> GetGitOpsWatchAsync(CancellationToken cancellationToken)
+        => Task.FromResult(GitOpsWatch);
+
+    public virtual Task<GitOpsWatchConfigResponse> ConfigureGitOpsWatchAsync(GitOpsWatchConfigRequest request, CancellationToken cancellationToken)
+        => Task.FromResult(GitOpsWatch with
+        {
+            RepositoryUrl = request.RepositoryUrl,
+            Branch = request.Branch,
+            ManifestPath = request.ManifestPath,
+            PollIntervalSeconds = request.PollIntervalSeconds,
+            ApprovalRequired = request.ApprovalRequired,
+            PruneEnabled = request.PruneEnabled,
+            Enabled = request.Enabled,
+            ConfiguredBy = request.ConfiguredBy,
+        });
+
+    public virtual Task DeleteGitOpsWatchAsync(CancellationToken cancellationToken)
+        => Task.CompletedTask;
+
+    public virtual Task<IReadOnlyList<GitOpsChangeRecordResponse>> ListGitOpsChangesAsync(int limit, int offset, CancellationToken cancellationToken)
+        => Task.FromResult(GitOpsChanges);
+
+    public virtual Task<GitOpsChangeRecordResponse> GetGitOpsChangeAsync(Guid changeId, CancellationToken cancellationToken)
+        => Task.FromResult(GitOpsChanges.FirstOrDefault(change => change.ChangeId == changeId) ?? (GitOpsChanges[0] with { ChangeId = changeId }));
+
+    public virtual Task<GitOpsChangeDiffResponse> GetGitOpsChangeDiffAsync(Guid changeId, CancellationToken cancellationToken)
+        => Task.FromResult(GitOpsChangeDiff with { ChangeId = changeId });
 
     public virtual Task<RecentErrorsResponse> GetRecentErrorsAsync(CancellationToken cancellationToken)
         => Task.FromResult(RecentErrors);

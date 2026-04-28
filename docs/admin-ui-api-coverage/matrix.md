@@ -10,9 +10,9 @@
 
 | coverage | count |
 | -------- | ----- |
-| supported | 41 |
+| supported | 51 |
 | partial | 0 |
-| missing | 69 |
+| missing | 59 |
 | out-of-scope | 337 |
 
 ## Admin
@@ -47,13 +47,13 @@
 | `Admin/DeployControlEndpoints:POST:/api/v{version:apiVersion}/admin/deploy/plan` | P0 | supported | /deploy (DeployControlPage) | Plan tab previews target/current/desired revision planning. |
 | `Admin/DeployControlEndpoints:GET:/api/v{version:apiVersion}/admin/deploy/preflight` | P0 | supported | /deploy (DeployControlPage) | Preflight tab runs diagnostics with includeDiagnostics=true. |
 | `Admin/FeatureOverviewEndpoints:GET:/api/v{version:apiVersion}/admin/features/` | P0 | supported | / (Index dashboard) | Index dashboard renders edition and feature-gating overview. |
-| `Admin/AdminManifestDriftEndpoints:GET:/api/v{version:apiVersion}/admin/manifest/drift` | P0 | missing |  | Manifest drift display; planned ManifestPage |
-| `Admin/AdminManifestApprovalEndpoints:GET:/api/v{version:apiVersion}/admin/manifest/pending/` | P0 | missing |  | Manifest apply with dry-run/prune; planned ManifestPage |
-| `Admin/AdminManifestApprovalEndpoints:GET:/api/v{version:apiVersion}/admin/manifest/pending/history` | P0 | missing |  | Manifest apply with dry-run/prune; planned ManifestPage |
+| `Admin/AdminManifestDriftEndpoints:GET:/api/v{version:apiVersion}/admin/manifest/drift` | P0 | supported | /operator/publishing (PublishingWorkspace) | Publishing workspace shows manifest baseline drift resources alongside service state. |
+| `Admin/AdminManifestApprovalEndpoints:GET:/api/v{version:apiVersion}/admin/manifest/pending/` | P0 | supported | /operator/publishing (PublishingWorkspace) | Publishing workspace renders pending manifest approvals in the environment-state panel. |
+| `Admin/AdminManifestApprovalEndpoints:GET:/api/v{version:apiVersion}/admin/manifest/pending/history` | P0 | supported | /operator/publishing (PublishingWorkspace) | Publishing workspace refreshes approval history for environment reconciliation context. |
 | `Admin/AdminManifestApprovalEndpoints:GET:/api/v{version:apiVersion}/admin/manifest/pending/{id}` | P0 | missing |  | Manifest apply with dry-run/prune; planned ManifestPage |
-| `Admin/AdminManifestApprovalEndpoints:POST:/api/v{version:apiVersion}/admin/manifest/pending/{id}/approve` | P0 | missing |  | Manifest apply with dry-run/prune; planned ManifestPage |
-| `Admin/AdminManifestApprovalEndpoints:POST:/api/v{version:apiVersion}/admin/manifest/pending/{id}/reject` | P0 | missing |  | Manifest apply with dry-run/prune; planned ManifestPage |
-| `Admin/AdminManifestDriftEndpoints:GET:/api/v{version:apiVersion}/admin/manifest/versions` | P0 | missing |  | Manifest drift display; planned ManifestPage |
+| `Admin/AdminManifestApprovalEndpoints:POST:/api/v{version:apiVersion}/admin/manifest/pending/{id}/approve` | P0 | supported | /operator/publishing (PublishingWorkspace) | Publishing workspace approves pending manifest changes and reloads drift/GitOps state. |
+| `Admin/AdminManifestApprovalEndpoints:POST:/api/v{version:apiVersion}/admin/manifest/pending/{id}/reject` | P0 | supported | /operator/publishing (PublishingWorkspace) | Publishing workspace rejects pending manifest changes with operator telemetry. |
+| `Admin/AdminManifestDriftEndpoints:GET:/api/v{version:apiVersion}/admin/manifest/versions` | P0 | supported | /operator/publishing (PublishingWorkspace) | Publishing workspace loads recent manifest versions for desired-vs-actual environment evidence. |
 | `Admin/AdminManifestDriftEndpoints:GET:/api/v{version:apiVersion}/admin/manifest/versions/{versionId}` | P0 | missing |  | Manifest drift display; planned ManifestPage |
 | `Admin/AdminLayerStyleEndpoints:GET:/api/v{version:apiVersion}/admin/metadata/layers/{layerId:int}/style` | P0 | supported | /layers/{layerId}/style (LayerStylePage) | LayerStylePage loads MapLibre and drawingInfo JSON. |
 | `Admin/AdminLayerStyleEndpoints:PUT:/api/v{version:apiVersion}/admin/metadata/layers/{layerId:int}/style` | P0 | supported | /layers/{layerId}/style (LayerStylePage) | LayerStylePage saves MapLibre and drawingInfo JSON. |
@@ -80,13 +80,13 @@
 | `Admin/CacheAdminEndpoints:GET:/api/v{version:apiVersion}/admin/cache/status` | P1 | missing |  | Cache invalidation pages; deferred to follow-up |
 | `Admin/AdminMetadataEndpoints:GET:/api/v{version:apiVersion}/admin/capabilities` | P1 | missing |  | Layer/connection metadata edit; deferred to follow-up |
 | `Admin/FeatureChangeEventsEndpoints:GET:/api/v{version:apiVersion}/admin/feature-events/replay` | P1 | missing |  | Change-event audit page; deferred to follow-up |
-| `Admin/AdminGitOpsWatchEndpoints:GET:/api/v{version:apiVersion}/admin/gitops/changes` | P1 | missing |  | GitOps watch console; deferred to follow-up |
+| `Admin/AdminGitOpsWatchEndpoints:GET:/api/v{version:apiVersion}/admin/gitops/changes` | P1 | supported | /operator/publishing (PublishingWorkspace) | Publishing workspace renders recent GitOps change history. |
 | `Admin/AdminGitOpsWatchEndpoints:GET:/api/v{version:apiVersion}/admin/gitops/changes/{id}` | P1 | missing |  | GitOps watch console; deferred to follow-up |
 | `Admin/AdminGitOpsWatchEndpoints:GET:/api/v{version:apiVersion}/admin/gitops/changes/{id}/diff` | P1 | missing |  | GitOps watch console; deferred to follow-up |
-| `Admin/AdminGitOpsWatchEndpoints:DELETE:/api/v{version:apiVersion}/admin/gitops/watch` | P1 | missing |  | GitOps watch console; deferred to follow-up |
-| `Admin/AdminGitOpsWatchEndpoints:GET:/api/v{version:apiVersion}/admin/gitops/watch` | P1 | missing |  | GitOps watch console; deferred to follow-up |
-| `Admin/AdminGitOpsWatchEndpoints:POST:/api/v{version:apiVersion}/admin/gitops/watch` | P1 | missing |  | GitOps watch console; deferred to follow-up |
-| `Admin/AdminGitOpsWatchEndpoints:PUT:/api/v{version:apiVersion}/admin/gitops/watch` | P1 | missing |  | GitOps watch console; deferred to follow-up |
+| `Admin/AdminGitOpsWatchEndpoints:DELETE:/api/v{version:apiVersion}/admin/gitops/watch` | P1 | supported | /operator/publishing (PublishingWorkspace) | Publishing workspace can remove the configured GitOps watch. |
+| `Admin/AdminGitOpsWatchEndpoints:GET:/api/v{version:apiVersion}/admin/gitops/watch` | P1 | supported | /operator/publishing (PublishingWorkspace) | Publishing workspace loads current GitOps watch configuration into the environment-state panel. |
+| `Admin/AdminGitOpsWatchEndpoints:POST:/api/v{version:apiVersion}/admin/gitops/watch` | P1 | missing |  | Create-only GitOps watch flow remains deferred; PublishingWorkspace uses the idempotent PUT endpoint. |
+| `Admin/AdminGitOpsWatchEndpoints:PUT:/api/v{version:apiVersion}/admin/gitops/watch` | P1 | supported | /operator/publishing (PublishingWorkspace) | Publishing workspace updates the GitOps watch idempotently through the shared save action. |
 | `Admin/AdminMetadataEndpoints:GET:/api/v{version:apiVersion}/admin/manifest` | P1 | missing |  | Layer/connection metadata edit; deferred to follow-up |
 | `Admin/AdminMetadataEndpoints:POST:/api/v{version:apiVersion}/admin/manifest/apply` | P1 | missing |  | Layer/connection metadata edit; deferred to follow-up |
 | `Admin/AdminStyleSuggestionEndpoints:POST:/api/v{version:apiVersion}/admin/metadata/layers/{layerId:int}/suggest-style` | P1 | missing |  | Style suggestion UX; deferred to follow-up |

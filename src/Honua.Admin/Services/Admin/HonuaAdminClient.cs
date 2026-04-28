@@ -237,6 +237,125 @@ public sealed class HonuaAdminClient : IHonuaAdminClient
     public Task<DeployOperation> RollbackDeployOperationAsync(string operationId, RollbackDeployOperationRequest request, CancellationToken cancellationToken)
         => SendAsync(nameof(RollbackDeployOperationAsync), HttpMethod.Post, $"{ApiVersionPrefix}/deploy/operations/{Uri.EscapeDataString(operationId)}/rollback", request, TypeInfo<RollbackDeployOperationRequest>(), TypeInfo<DeployOperation>(), cancellationToken);
 
+    public Task<ManifestDriftReport> GetManifestDriftAsync(bool verbose, CancellationToken cancellationToken)
+        => GetApiAsync(
+            nameof(GetManifestDriftAsync),
+            $"{ApiVersionPrefix}/manifest/drift?verbose={verbose.ToString().ToLowerInvariant()}",
+            TypeInfo<AdminApiResponse<ManifestDriftReport>>(),
+            cancellationToken);
+
+    public Task<ManifestVersionListResponse> ListManifestVersionsAsync(int limit, int offset, CancellationToken cancellationToken)
+        => GetApiAsync(
+            nameof(ListManifestVersionsAsync),
+            $"{ApiVersionPrefix}/manifest/versions?limit={Math.Clamp(limit, 1, 100)}&offset={Math.Max(0, offset)}",
+            TypeInfo<AdminApiResponse<ManifestVersionListResponse>>(),
+            cancellationToken);
+
+    public Task<ManifestVersionDetailResponse> GetManifestVersionAsync(string versionId, CancellationToken cancellationToken)
+        => GetApiAsync(
+            nameof(GetManifestVersionAsync),
+            $"{ApiVersionPrefix}/manifest/versions/{Uri.EscapeDataString(versionId)}",
+            TypeInfo<AdminApiResponse<ManifestVersionDetailResponse>>(),
+            cancellationToken);
+
+    public async Task<IReadOnlyList<ManifestPendingChangeResponse>> ListPendingManifestChangesAsync(string? status, CancellationToken cancellationToken)
+        => await GetApiAsync(
+                nameof(ListPendingManifestChangesAsync),
+                string.IsNullOrWhiteSpace(status)
+                    ? $"{ApiVersionPrefix}/manifest/pending/"
+                    : $"{ApiVersionPrefix}/manifest/pending/?status={Uri.EscapeDataString(status)}",
+                TypeInfo<AdminApiResponse<ManifestPendingChangeResponse[]>>(),
+                cancellationToken)
+            .ConfigureAwait(false);
+
+    public async Task<IReadOnlyList<ManifestPendingChangeResponse>> ListManifestApprovalHistoryAsync(CancellationToken cancellationToken)
+        => await GetApiAsync(
+                nameof(ListManifestApprovalHistoryAsync),
+                $"{ApiVersionPrefix}/manifest/pending/history",
+                TypeInfo<AdminApiResponse<ManifestPendingChangeResponse[]>>(),
+                cancellationToken)
+            .ConfigureAwait(false);
+
+    public Task<ManifestPendingChangeResponse> GetPendingManifestChangeAsync(Guid pendingId, CancellationToken cancellationToken)
+        => GetApiAsync(
+            nameof(GetPendingManifestChangeAsync),
+            $"{ApiVersionPrefix}/manifest/pending/{Uri.EscapeDataString(pendingId.ToString("D"))}",
+            TypeInfo<AdminApiResponse<ManifestPendingChangeResponse>>(),
+            cancellationToken);
+
+    public Task<ManifestApplyResult> ApprovePendingManifestChangeAsync(Guid pendingId, ManifestApproveRequest request, CancellationToken cancellationToken)
+        => SendApiAsync(
+            nameof(ApprovePendingManifestChangeAsync),
+            HttpMethod.Post,
+            $"{ApiVersionPrefix}/manifest/pending/{Uri.EscapeDataString(pendingId.ToString("D"))}/approve",
+            request,
+            TypeInfo<ManifestApproveRequest>(),
+            TypeInfo<AdminApiResponse<ManifestApplyResult>>(),
+            cancellationToken);
+
+    public Task<ManifestPendingChangeResponse> RejectPendingManifestChangeAsync(Guid pendingId, ManifestRejectRequest request, CancellationToken cancellationToken)
+        => SendApiAsync(
+            nameof(RejectPendingManifestChangeAsync),
+            HttpMethod.Post,
+            $"{ApiVersionPrefix}/manifest/pending/{Uri.EscapeDataString(pendingId.ToString("D"))}/reject",
+            request,
+            TypeInfo<ManifestRejectRequest>(),
+            TypeInfo<AdminApiResponse<ManifestPendingChangeResponse>>(),
+            cancellationToken);
+
+    public Task<GitOpsWatchConfigResponse> GetGitOpsWatchAsync(CancellationToken cancellationToken)
+        => GetApiAsync(
+            nameof(GetGitOpsWatchAsync),
+            $"{ApiVersionPrefix}/gitops/watch",
+            TypeInfo<AdminApiResponse<GitOpsWatchConfigResponse>>(),
+            cancellationToken);
+
+    public Task<GitOpsWatchConfigResponse> ConfigureGitOpsWatchAsync(GitOpsWatchConfigRequest request, CancellationToken cancellationToken)
+        => SendApiAsync(
+            nameof(ConfigureGitOpsWatchAsync),
+            HttpMethod.Put,
+            $"{ApiVersionPrefix}/gitops/watch",
+            request,
+            TypeInfo<GitOpsWatchConfigRequest>(),
+            TypeInfo<AdminApiResponse<GitOpsWatchConfigResponse>>(),
+            cancellationToken);
+
+    public async Task DeleteGitOpsWatchAsync(CancellationToken cancellationToken)
+    {
+        try
+        {
+            using var response = await _http.DeleteAsync($"{ApiVersionPrefix}/gitops/watch", cancellationToken).ConfigureAwait(false);
+            response.EnsureSuccessStatusCode();
+        }
+        catch (HttpRequestException ex)
+        {
+            _telemetry.ClientRequestFailed(nameof(DeleteGitOpsWatchAsync), ex.Message);
+            throw;
+        }
+    }
+
+    public async Task<IReadOnlyList<GitOpsChangeRecordResponse>> ListGitOpsChangesAsync(int limit, int offset, CancellationToken cancellationToken)
+        => await GetApiAsync(
+                nameof(ListGitOpsChangesAsync),
+                $"{ApiVersionPrefix}/gitops/changes?limit={Math.Clamp(limit, 1, 100)}&offset={Math.Max(0, offset)}",
+                TypeInfo<AdminApiResponse<GitOpsChangeRecordResponse[]>>(),
+                cancellationToken)
+            .ConfigureAwait(false);
+
+    public Task<GitOpsChangeRecordResponse> GetGitOpsChangeAsync(Guid changeId, CancellationToken cancellationToken)
+        => GetApiAsync(
+            nameof(GetGitOpsChangeAsync),
+            $"{ApiVersionPrefix}/gitops/changes/{Uri.EscapeDataString(changeId.ToString("D"))}",
+            TypeInfo<AdminApiResponse<GitOpsChangeRecordResponse>>(),
+            cancellationToken);
+
+    public Task<GitOpsChangeDiffResponse> GetGitOpsChangeDiffAsync(Guid changeId, CancellationToken cancellationToken)
+        => GetApiAsync(
+            nameof(GetGitOpsChangeDiffAsync),
+            $"{ApiVersionPrefix}/gitops/changes/{Uri.EscapeDataString(changeId.ToString("D"))}/diff",
+            TypeInfo<AdminApiResponse<GitOpsChangeDiffResponse>>(),
+            cancellationToken);
+
     public Task<RecentErrorsResponse> GetRecentErrorsAsync(CancellationToken cancellationToken)
         => GetAsync(nameof(GetRecentErrorsAsync), $"{ApiVersionPrefix}/observability/errors", TypeInfo<RecentErrorsResponse>(), cancellationToken);
 

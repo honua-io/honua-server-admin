@@ -13,6 +13,7 @@ public enum PublishingWorkspaceStatus
     Idle,
     Loading,
     Validating,
+    Reconciling,
     Publishing,
     Saving,
     Error
@@ -26,11 +27,10 @@ public sealed record PublishingValidationCheck(
 
 public sealed record PublishingEnvironmentState(
     string Name,
-    string DesiredRevision,
-    string ActualRevision,
-    string DesiredProtocols,
-    string ActualProtocols,
-    string DriftStatus);
+    string DesiredState,
+    string ActualState,
+    string DriftStatus,
+    string Evidence);
 
 public sealed class PublishingWorkspaceState
 {
@@ -58,6 +58,26 @@ public sealed class PublishingWorkspaceState
 
     public DeployPreflightResult? DeployPreflight { get; private set; }
 
+    public ManifestDriftReport? ManifestDrift { get; private set; }
+
+    public IReadOnlyList<ManifestVersionResponse> ManifestVersions { get; private set; } = Array.Empty<ManifestVersionResponse>();
+
+    public IReadOnlyList<ManifestPendingChangeResponse> PendingManifestChanges { get; private set; } = Array.Empty<ManifestPendingChangeResponse>();
+
+    public IReadOnlyList<ManifestPendingChangeResponse> ManifestApprovalHistory { get; private set; } = Array.Empty<ManifestPendingChangeResponse>();
+
+    public GitOpsWatchConfigResponse? GitOpsWatch { get; private set; }
+
+    public IReadOnlyList<GitOpsChangeRecordResponse> GitOpsChanges { get; private set; } = Array.Empty<GitOpsChangeRecordResponse>();
+
+    public ManifestApplyResult? LastManifestApplyResult { get; private set; }
+
+    public string? ManifestError { get; private set; }
+
+    public string? ManifestApprovalError { get; private set; }
+
+    public string? GitOpsError { get; private set; }
+
     public LayerSummary? LastPublishedLayer { get; private set; }
 
     public string? SelectedConnectionId { get; private set; }
@@ -81,6 +101,20 @@ public sealed class PublishingWorkspaceState
     public string? DraftPrimaryKey { get; private set; }
 
     public bool DraftEnabled { get; private set; } = true;
+
+    public string GitOpsRepositoryUrl { get; private set; } = string.Empty;
+
+    public string GitOpsBranch { get; private set; } = "main";
+
+    public string GitOpsManifestPath { get; private set; } = "manifests/";
+
+    public int GitOpsPollIntervalSeconds { get; private set; } = 60;
+
+    public bool GitOpsApprovalRequired { get; private set; } = true;
+
+    public bool GitOpsPruneEnabled { get; private set; }
+
+    public bool GitOpsEnabled { get; private set; } = true;
 
     public event Action? OnChanged;
 
@@ -153,16 +187,70 @@ public sealed class PublishingWorkspaceState
     {
         get
         {
-            var desiredProtocols = string.Join(", ", DesiredProtocols);
-            var actualProtocols = string.Join(", ", ServiceSettings?.EnabledProtocols ?? Array.Empty<string>());
-            return
-            [
-                new PublishingEnvironmentState("dev", "service-intent", "service-intent", desiredProtocols, actualProtocols, ProtocolDriftLabel),
-                new PublishingEnvironmentState("staging", "service-intent", "awaiting promotion", desiredProtocols, "FeatureServer", "Promotion pending"),
-                new PublishingEnvironmentState("production", "service-intent", "stable", desiredProtocols, "FeatureServer, OgcFeatures", "Review required")
-            ];
+            var states = new List<PublishingEnvironmentState>();
+            var desiredProtocols = JoinOrPlaceholder(DesiredProtocols, "No desired protocols");
+            var actualProtocols = JoinOrPlaceholder(ServiceSettings?.EnabledProtocols ?? Array.Empty<string>(), "No enabled protocols");
+            var runtimeName = string.IsNullOrWhiteSpace(DeployPreflight?.Environment)
+                ? "current"
+                : DeployPreflight.Environment!;
+            var baseline = ManifestDrift?.BaselineVersionId
+                ?? ManifestVersions.FirstOrDefault()?.VersionId
+                ?? "No manifest baseline";
+            var driftState = ManifestDrift is null
+                ? "Manifest drift not loaded"
+                : ManifestDrift.HasDrift
+                    ? $"{ManifestDrift.Resources.Count} drifted resource(s)"
+                    : ProtocolDriftLabel;
+
+            states.Add(new PublishingEnvironmentState(
+                runtimeName,
+                $"{baseline}; protocols {desiredProtocols}",
+                $"{DeployPreflight?.InstanceName ?? "current instance"}; protocols {actualProtocols}",
+                driftState,
+                ManifestDrift is null ? ManifestError ?? "No drift report" : $"Generated {ManifestDrift.GeneratedAt:yyyy-MM-dd HH:mm} UTC"));
+
+            if (GitOpsWatch is not null)
+            {
+                states.Add(new PublishingEnvironmentState(
+                    "gitops",
+                    $"{GitOpsWatch.RepositoryUrl}#{GitOpsWatch.Branch}:{GitOpsWatch.ManifestPath}",
+                    ShortSha(GitOpsWatch.LastKnownCommitSha) ?? "No commit observed",
+                    GitOpsWatch.Enabled ? "Watching" : "Paused",
+                    GitOpsWatch.LastPolledAt is null ? "Never polled" : $"Last poll {GitOpsWatch.LastPolledAt:yyyy-MM-dd HH:mm} UTC"));
+            }
+            else if (!string.IsNullOrWhiteSpace(GitOpsError))
+            {
+                states.Add(new PublishingEnvironmentState(
+                    "gitops",
+                    "Watch not configured",
+                    "Unavailable",
+                    "Not available",
+                    GitOpsError!));
+            }
+
+            if (PendingManifestChanges.Count > 0)
+            {
+                states.Add(new PublishingEnvironmentState(
+                    "approval",
+                    $"{PendingManifestChanges.Count} pending manifest change(s)",
+                    LatestGitOpsStatus(),
+                    "Review required",
+                    PendingManifestChanges[0].RequestedReason ?? PendingManifestChanges[0].ManifestHash));
+            }
+
+            return states;
         }
     }
+
+    public IReadOnlyList<ManifestDriftRecord> DriftResources => ManifestDrift?.Resources ?? Array.Empty<ManifestDriftRecord>();
+
+    public bool HasManifestDrift => ManifestDrift?.HasDrift == true || !string.Equals(ProtocolDriftLabel, "In sync", StringComparison.OrdinalIgnoreCase);
+
+    public string ManifestDriftLabel => ManifestDrift is null
+        ? ManifestError ?? "Manifest drift not loaded"
+        : ManifestDrift.HasDrift
+            ? $"{ManifestDrift.Resources.Count} drifted resource(s)"
+            : "Manifest baseline in sync";
 
     public string ProtocolDriftLabel
     {
@@ -189,7 +277,13 @@ public sealed class PublishingWorkspaceState
             await DiscoverTablesAsync(cancellationToken).ConfigureAwait(false);
             await LoadLayersAsync(cancellationToken).ConfigureAwait(false);
             await RunPreflightAsync(cancellationToken).ConfigureAwait(false);
+            await LoadReconciliationCoreAsync(cancellationToken).ConfigureAwait(false);
             Status = PublishingWorkspaceStatus.Idle;
+        }
+        catch (OperationCanceledException)
+        {
+            Status = PublishingWorkspaceStatus.Idle;
+            throw;
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
@@ -233,6 +327,48 @@ public sealed class PublishingWorkspaceState
     public void SetDraftEnabled(bool value)
     {
         DraftEnabled = value;
+        Notify();
+    }
+
+    public void SetGitOpsRepositoryUrl(string? value)
+    {
+        GitOpsRepositoryUrl = value?.Trim() ?? string.Empty;
+        Notify();
+    }
+
+    public void SetGitOpsBranch(string? value)
+    {
+        GitOpsBranch = string.IsNullOrWhiteSpace(value) ? "main" : value.Trim();
+        Notify();
+    }
+
+    public void SetGitOpsManifestPath(string? value)
+    {
+        GitOpsManifestPath = string.IsNullOrWhiteSpace(value) ? "manifests/" : value.Trim();
+        Notify();
+    }
+
+    public void SetGitOpsPollIntervalSeconds(int value)
+    {
+        GitOpsPollIntervalSeconds = Math.Max(30, value);
+        Notify();
+    }
+
+    public void SetGitOpsApprovalRequired(bool value)
+    {
+        GitOpsApprovalRequired = value;
+        Notify();
+    }
+
+    public void SetGitOpsPruneEnabled(bool value)
+    {
+        GitOpsPruneEnabled = value;
+        Notify();
+    }
+
+    public void SetGitOpsEnabled(bool value)
+    {
+        GitOpsEnabled = value;
         Notify();
     }
 
@@ -307,6 +443,167 @@ public sealed class PublishingWorkspaceState
     public async Task RunPreflightAsync(CancellationToken cancellationToken = default)
     {
         DeployPreflight = await _client.GetDeployPreflightAsync(cancellationToken).ConfigureAwait(false);
+    }
+
+    public async Task RefreshReconciliationAsync(CancellationToken cancellationToken = default)
+    {
+        Status = PublishingWorkspaceStatus.Reconciling;
+        LastError = null;
+        Notify();
+
+        try
+        {
+            await LoadReconciliationCoreAsync(cancellationToken).ConfigureAwait(false);
+            Status = PublishingWorkspaceStatus.Idle;
+        }
+        catch (OperationCanceledException)
+        {
+            Status = PublishingWorkspaceStatus.Idle;
+            throw;
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            Status = PublishingWorkspaceStatus.Error;
+            LastError = ex.Message;
+        }
+
+        Notify();
+    }
+
+    public async Task ConfigureGitOpsWatchAsync(string? configuredBy = null, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(GitOpsRepositoryUrl))
+        {
+            LastError = "GitOps repository URL is required.";
+            Notify();
+            return;
+        }
+
+        Status = PublishingWorkspaceStatus.Saving;
+        LastError = null;
+        GitOpsError = null;
+        Notify();
+
+        try
+        {
+            GitOpsWatch = await _client.ConfigureGitOpsWatchAsync(
+                new GitOpsWatchConfigRequest
+                {
+                    RepositoryUrl = GitOpsRepositoryUrl,
+                    Branch = GitOpsBranch,
+                    ManifestPath = GitOpsManifestPath,
+                    PollIntervalSeconds = GitOpsPollIntervalSeconds,
+                    ApprovalRequired = GitOpsApprovalRequired,
+                    PruneEnabled = GitOpsPruneEnabled,
+                    Enabled = GitOpsEnabled,
+                    ConfiguredBy = configuredBy
+                },
+                cancellationToken).ConfigureAwait(false);
+            HydrateGitOpsDraft(GitOpsWatch);
+            await LoadGitOpsChangesAsync(cancellationToken).ConfigureAwait(false);
+            Status = PublishingWorkspaceStatus.Idle;
+        }
+        catch (OperationCanceledException)
+        {
+            Status = PublishingWorkspaceStatus.Idle;
+            throw;
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            Status = PublishingWorkspaceStatus.Error;
+            LastError = ex.Message;
+            GitOpsError = ex.Message;
+        }
+
+        Notify();
+    }
+
+    public async Task DeleteGitOpsWatchAsync(CancellationToken cancellationToken = default)
+    {
+        Status = PublishingWorkspaceStatus.Saving;
+        LastError = null;
+        Notify();
+
+        try
+        {
+            await _client.DeleteGitOpsWatchAsync(cancellationToken).ConfigureAwait(false);
+            GitOpsWatch = null;
+            GitOpsChanges = Array.Empty<GitOpsChangeRecordResponse>();
+            GitOpsError = "No git repository watch is configured.";
+            Status = PublishingWorkspaceStatus.Idle;
+        }
+        catch (OperationCanceledException)
+        {
+            Status = PublishingWorkspaceStatus.Idle;
+            throw;
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            Status = PublishingWorkspaceStatus.Error;
+            LastError = ex.Message;
+            GitOpsError = ex.Message;
+        }
+
+        Notify();
+    }
+
+    public async Task ApprovePendingManifestAsync(Guid pendingId, string? reason = null, string? approvedBy = null, CancellationToken cancellationToken = default)
+    {
+        Status = PublishingWorkspaceStatus.Saving;
+        LastError = null;
+        LastManifestApplyResult = null;
+        Notify();
+
+        try
+        {
+            LastManifestApplyResult = await _client.ApprovePendingManifestChangeAsync(
+                pendingId,
+                new ManifestApproveRequest { ApprovedBy = approvedBy, Reason = reason },
+                cancellationToken).ConfigureAwait(false);
+            await LoadReconciliationCoreAsync(cancellationToken).ConfigureAwait(false);
+            Status = PublishingWorkspaceStatus.Idle;
+        }
+        catch (OperationCanceledException)
+        {
+            Status = PublishingWorkspaceStatus.Idle;
+            throw;
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            Status = PublishingWorkspaceStatus.Error;
+            LastError = ex.Message;
+        }
+
+        Notify();
+    }
+
+    public async Task RejectPendingManifestAsync(Guid pendingId, string? reason = null, string? rejectedBy = null, CancellationToken cancellationToken = default)
+    {
+        Status = PublishingWorkspaceStatus.Saving;
+        LastError = null;
+        Notify();
+
+        try
+        {
+            _ = await _client.RejectPendingManifestChangeAsync(
+                pendingId,
+                new ManifestRejectRequest { RejectedBy = rejectedBy, Reason = reason },
+                cancellationToken).ConfigureAwait(false);
+            await LoadReconciliationCoreAsync(cancellationToken).ConfigureAwait(false);
+            Status = PublishingWorkspaceStatus.Idle;
+        }
+        catch (OperationCanceledException)
+        {
+            Status = PublishingWorkspaceStatus.Idle;
+            throw;
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            Status = PublishingWorkspaceStatus.Error;
+            LastError = ex.Message;
+        }
+
+        Notify();
     }
 
     public async Task SaveProtocolsAsync(CancellationToken cancellationToken = default)
@@ -400,6 +697,120 @@ public sealed class PublishingWorkspaceState
         await LoadLayersAsync(cancellationToken).ConfigureAwait(false);
         Notify();
     }
+
+    private async Task LoadReconciliationCoreAsync(CancellationToken cancellationToken)
+    {
+        await LoadManifestStateAsync(cancellationToken).ConfigureAwait(false);
+        await LoadManifestApprovalStateAsync(cancellationToken).ConfigureAwait(false);
+        await LoadGitOpsStateAsync(cancellationToken).ConfigureAwait(false);
+    }
+
+    private async Task LoadManifestStateAsync(CancellationToken cancellationToken)
+    {
+        ManifestError = null;
+
+        try
+        {
+            ManifestDrift = await _client.GetManifestDriftAsync(verbose: false, cancellationToken).ConfigureAwait(false);
+            ManifestVersions = (await _client.ListManifestVersionsAsync(5, 0, cancellationToken).ConfigureAwait(false)).Versions;
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            ManifestDrift = null;
+            ManifestVersions = Array.Empty<ManifestVersionResponse>();
+            ManifestError = ex.Message;
+        }
+    }
+
+    private async Task LoadManifestApprovalStateAsync(CancellationToken cancellationToken)
+    {
+        ManifestApprovalError = null;
+
+        try
+        {
+            PendingManifestChanges = await _client.ListPendingManifestChangesAsync("pending", cancellationToken).ConfigureAwait(false);
+            ManifestApprovalHistory = await _client.ListManifestApprovalHistoryAsync(cancellationToken).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            PendingManifestChanges = Array.Empty<ManifestPendingChangeResponse>();
+            ManifestApprovalHistory = Array.Empty<ManifestPendingChangeResponse>();
+            ManifestApprovalError = ex.Message;
+        }
+    }
+
+    private async Task LoadGitOpsStateAsync(CancellationToken cancellationToken)
+    {
+        GitOpsError = null;
+
+        try
+        {
+            GitOpsWatch = await _client.GetGitOpsWatchAsync(cancellationToken).ConfigureAwait(false);
+            HydrateGitOpsDraft(GitOpsWatch);
+            await LoadGitOpsChangesAsync(cancellationToken).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            GitOpsWatch = null;
+            GitOpsChanges = Array.Empty<GitOpsChangeRecordResponse>();
+            GitOpsError = ex.Message;
+        }
+    }
+
+    private async Task LoadGitOpsChangesAsync(CancellationToken cancellationToken)
+    {
+        GitOpsChanges = await _client.ListGitOpsChangesAsync(5, 0, cancellationToken).ConfigureAwait(false);
+    }
+
+    private void HydrateGitOpsDraft(GitOpsWatchConfigResponse watch)
+    {
+        GitOpsRepositoryUrl = watch.RepositoryUrl;
+        GitOpsBranch = string.IsNullOrWhiteSpace(watch.Branch) ? "main" : watch.Branch;
+        GitOpsManifestPath = string.IsNullOrWhiteSpace(watch.ManifestPath) ? "manifests/" : watch.ManifestPath;
+        GitOpsPollIntervalSeconds = watch.PollIntervalSeconds <= 0 ? 60 : watch.PollIntervalSeconds;
+        GitOpsApprovalRequired = watch.ApprovalRequired;
+        GitOpsPruneEnabled = watch.PruneEnabled;
+        GitOpsEnabled = watch.Enabled;
+    }
+
+    private string LatestGitOpsStatus()
+    {
+        var latest = GitOpsChanges.FirstOrDefault();
+        if (latest is null)
+        {
+            return "No GitOps changes loaded";
+        }
+
+        var commit = ShortSha(latest.CommitSha) ?? latest.CommitSha;
+        return string.IsNullOrWhiteSpace(latest.Status)
+            ? commit
+            : $"{latest.Status} at {commit}";
+    }
+
+    private static string JoinOrPlaceholder(IEnumerable<string> values, string placeholder)
+    {
+        var materialized = values.Where(value => !string.IsNullOrWhiteSpace(value)).ToArray();
+        return materialized.Length == 0 ? placeholder : string.Join(", ", materialized);
+    }
+
+    private static string? ShortSha(string? sha)
+        => string.IsNullOrWhiteSpace(sha)
+            ? null
+            : sha.Length <= 12
+                ? sha
+                : sha[..12];
 
     private void Notify() => OnChanged?.Invoke();
 }
