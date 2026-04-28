@@ -44,7 +44,7 @@
         {
             <div class="spec-dsl-accordions flex-grow-1 overflow-auto">
                 <MudExpansionPanels MultiExpansion="true">
-                    @foreach (var sectionId in Enum.GetValues<SpecSectionId>())
+                    @foreach (var sectionId in SectionOrder)
                     {
                         <MudExpansionPanel Expanded="true" data-testid="@($"section-{sectionId}")">
                             <TitleContent>
@@ -67,6 +67,15 @@
 @code {
     private bool _busy;
     private bool ActiveWork => State.Status is WorkspaceStatus.Planning or WorkspaceStatus.Applying or WorkspaceStatus.Cancelling;
+    private static readonly SpecSectionId[] SectionOrder =
+    [
+        SpecSectionId.Sources,
+        SpecSectionId.Scope,
+        SpecSectionId.Parameters,
+        SpecSectionId.Compute,
+        SpecSectionId.Map,
+        SpecSectionId.Output
+    ];
 
     protected override void OnInitialized()
     {

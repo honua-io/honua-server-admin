@@ -7,6 +7,17 @@ namespace Honua.Admin.Tests;
 public sealed class SpecWorkspaceStateTests
 {
     [Fact]
+    public void SpecSectionId_keeps_legacy_serialized_values()
+    {
+        Assert.Equal(0, (int)SpecSectionId.Sources);
+        Assert.Equal(1, (int)SpecSectionId.Scope);
+        Assert.Equal(2, (int)SpecSectionId.Compute);
+        Assert.Equal(3, (int)SpecSectionId.Map);
+        Assert.Equal(4, (int)SpecSectionId.Output);
+        Assert.Equal(5, (int)SpecSectionId.Parameters);
+    }
+
+    [Fact]
     public async Task InsertDslTokenAsync_replaces_the_active_editor_selection()
     {
         var storage = new MemoryBrowserStorageService();
@@ -56,6 +67,59 @@ public sealed class SpecWorkspaceStateTests
         Assert.Single(state.Spec.Compute);
         Assert.Equal("@parcels.county=Big Island", state.Spec.Compute[0].Args["where"]);
         Assert.DoesNotContain(state.Diagnostics, d => d.Code == "invalid-compute-token");
+    }
+
+    [Fact]
+    public async Task Parameters_section_parses_defaults_and_required_bindings()
+    {
+        var storage = new MemoryBrowserStorageService();
+        var state = new SpecWorkspaceState(
+            new StubSpecWorkspaceClient(),
+            storage,
+            new NullSpecWorkspaceTelemetry(),
+            new CatalogCache());
+
+        await state.InitializeAsync("operator");
+        await state.UpdateSectionTextAsync(SpecSectionId.Parameters, "$county type=string default=\"Big Island\" required=true");
+
+        var parameter = Assert.Single(state.Spec.Parameters);
+        Assert.Equal("county", parameter.Name);
+        Assert.Equal("string", parameter.Type);
+        Assert.Equal("Big Island", parameter.Default);
+        Assert.True(parameter.Required);
+        Assert.DoesNotContain(state.Diagnostics, d => d.Section == SpecSectionId.Parameters && d.Severity == ValidationSeverity.Red);
+    }
+
+    [Fact]
+    public async Task Parameters_section_parses_required_flag_from_colon_style_lines()
+    {
+        var storage = new MemoryBrowserStorageService();
+        var state = new SpecWorkspaceState(
+            new StubSpecWorkspaceClient(),
+            storage,
+            new NullSpecWorkspaceTelemetry(),
+            new CatalogCache());
+
+        await state.InitializeAsync("operator");
+        await state.UpdateSectionTextAsync(
+            SpecSectionId.Parameters,
+            "$county: string = Honolulu required=true\n$start_date: date required=true");
+
+        Assert.Collection(
+            state.Spec.Parameters,
+            county =>
+            {
+                Assert.Equal("county", county.Name);
+                Assert.Equal("Honolulu", county.Default);
+                Assert.True(county.Required);
+            },
+            startDate =>
+            {
+                Assert.Equal("start_date", startDate.Name);
+                Assert.Null(startDate.Default);
+                Assert.True(startDate.Required);
+            });
+        Assert.DoesNotContain(state.Diagnostics, d => d.Section == SpecSectionId.Parameters && d.Severity == ValidationSeverity.Red);
     }
 
     [Fact]

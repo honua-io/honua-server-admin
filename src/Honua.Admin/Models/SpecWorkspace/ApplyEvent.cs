@@ -72,6 +72,9 @@ public sealed record ApplyPayload
     [JsonPropertyName("tableColumns")]
     public IReadOnlyList<string> TableColumns { get; init; } = System.Array.Empty<string>();
 
+    [JsonPropertyName("parameterBindings")]
+    public IReadOnlyList<PlanParameterBinding> ParameterBindings { get; init; } = System.Array.Empty<PlanParameterBinding>();
+
     [JsonPropertyName("appScaffold")]
     public AppScaffold? AppScaffold { get; init; }
 }

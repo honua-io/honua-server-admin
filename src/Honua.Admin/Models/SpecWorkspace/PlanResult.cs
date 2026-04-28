@@ -18,6 +18,9 @@ public sealed record PlanResult
     [JsonPropertyName("warnings")]
     public IReadOnlyList<PlanWarning> Warnings { get; init; } = System.Array.Empty<PlanWarning>();
 
+    [JsonPropertyName("parameters")]
+    public IReadOnlyList<PlanParameterBinding> Parameters { get; init; } = System.Array.Empty<PlanParameterBinding>();
+
     [JsonPropertyName("failed")]
     public bool Failed { get; init; }
 
@@ -65,6 +68,13 @@ public sealed record PlanWarning(
     [property: JsonPropertyName("nodeId")] string? NodeId,
     [property: JsonPropertyName("severity")] PlanWarningSeverity Severity,
     [property: JsonPropertyName("message")] string Message);
+
+public sealed record PlanParameterBinding(
+    [property: JsonPropertyName("name")] string Name,
+    [property: JsonPropertyName("type")] string Type,
+    [property: JsonPropertyName("default")] string? Default,
+    [property: JsonPropertyName("required")] bool Required,
+    [property: JsonPropertyName("contentHash")] string ContentHash);
 
 public enum PlanWarningSeverity
 {

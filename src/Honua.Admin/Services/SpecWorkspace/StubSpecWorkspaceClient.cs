@@ -305,6 +305,11 @@ public sealed partial class StubSpecWorkspaceClient : ISpecWorkspaceClient
 
         var nodes = new List<PlanNode>();
         var warnings = new List<PlanWarning>();
+        var parameterBindings = BuildParameterBindings(document.Parameters);
+        var parameterDefaults = document.Parameters
+            .GroupBy(p => p.Name, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(group => group.Key, group => group.First(), StringComparer.OrdinalIgnoreCase);
+        var parameterHash = BuildParameterSetHash(document.Parameters);
         var nodeHashes = new Dictionary<string, string>(StringComparer.Ordinal);
         var depth = 0;
         foreach (var source in document.Sources)
@@ -364,7 +369,9 @@ public sealed partial class StubSpecWorkspaceClient : ISpecWorkspaceClient
                 step.Op,
                 string.Join(",", step.Inputs.OrderBy(input => input, StringComparer.Ordinal)),
                 string.Join(",", inputHashes),
-                string.Join(",", step.Args.OrderBy(kv => kv.Key, StringComparer.Ordinal).Select(kv => $"{kv.Key}={kv.Value}")));
+                string.Join(",", step.Args
+                    .OrderBy(kv => kv.Key, StringComparer.Ordinal)
+                    .Select(kv => $"{kv.Key}={ResolveParameterReferences(kv.Value, parameterDefaults)}")));
             nodeHashes[nodeId] = computeHash;
             nodes.Add(new PlanNode
             {
@@ -411,7 +418,8 @@ public sealed partial class StubSpecWorkspaceClient : ISpecWorkspaceClient
                 "output",
                 effectiveOutputKind.ToString(),
                 document.Output.Target ?? "preview",
-                string.Join(",", outputInputs.Select(input => ResolveNodeHash(nodeHashes, input))));
+                string.Join(",", outputInputs.Select(input => ResolveNodeHash(nodeHashes, input))),
+                parameterHash);
             nodes.Add(new PlanNode
             {
                 Id = outputId,
@@ -431,7 +439,8 @@ public sealed partial class StubSpecWorkspaceClient : ISpecWorkspaceClient
         {
             JobId = Guid.NewGuid().ToString("n"),
             Nodes = nodes,
-            Warnings = warnings
+            Warnings = warnings,
+            Parameters = parameterBindings
         });
     }
 
@@ -549,6 +558,9 @@ public sealed partial class StubSpecWorkspaceClient : ISpecWorkspaceClient
             SpecSectionId.Scope => document.Scope.Bbox is null && document.Scope.Crs is null
                 ? "global, no CRS pinned"
                 : $"crs={document.Scope.Crs ?? "default"}",
+            SpecSectionId.Parameters => document.Parameters.Count == 0
+                ? "no parameters bound"
+                : $"{document.Parameters.Count} parameter(s)",
             SpecSectionId.Compute => document.Compute.Count == 0
                 ? "no compute steps"
                 : string.Join(" → ", document.Compute.Select(c => c.Op)),
@@ -654,6 +666,14 @@ public sealed partial class StubSpecWorkspaceClient : ISpecWorkspaceClient
                 }
             }
 
+            foreach (var parameterName in ExtractParameterReferences(step.Args.Values))
+            {
+                if (!document.Parameters.Any(p => string.Equals(p.Name, parameterName, StringComparison.OrdinalIgnoreCase)))
+                {
+                    diagnostics.Add(new ValidationDiagnostic(SpecSectionId.Compute, ValidationSeverity.Red, "unknown-parameter", $"parameter '${parameterName}' is not declared", parameterName));
+                }
+            }
+
             if (step.Op == "aggregate" && step.Args.TryGetValue("by", out var by))
             {
                 var columnRef = by.TrimStart('@');
@@ -680,6 +700,32 @@ public sealed partial class StubSpecWorkspaceClient : ISpecWorkspaceClient
             {
                 diagnostics.Add(new ValidationDiagnostic(SpecSectionId.Compute, ValidationSeverity.Yellow, "non-deterministic-op", "join can produce non-deterministic row ordering in the stub", "join"));
             }
+        }
+
+        foreach (var parameter in document.Parameters)
+        {
+            if (!IsSupportedParameterType(parameter.Type))
+            {
+                diagnostics.Add(new ValidationDiagnostic(SpecSectionId.Parameters, ValidationSeverity.Red, "unknown-parameter-type", $"parameter '{parameter.Name}' has unsupported type '{parameter.Type}'", parameter.Type));
+            }
+
+            if (parameter.Required && string.IsNullOrWhiteSpace(parameter.Default))
+            {
+                diagnostics.Add(new ValidationDiagnostic(SpecSectionId.Parameters, ValidationSeverity.Yellow, "required-parameter-unbound", $"required parameter '{parameter.Name}' has no default binding", parameter.Name));
+            }
+
+            if (!string.IsNullOrWhiteSpace(parameter.Default) && !DefaultMatchesParameterType(parameter))
+            {
+                diagnostics.Add(new ValidationDiagnostic(SpecSectionId.Parameters, ValidationSeverity.Red, "parameter-default-type-mismatch", $"default for '{parameter.Name}' does not match {parameter.Type}", parameter.Default));
+            }
+        }
+
+        foreach (var duplicate in document.Parameters
+            .GroupBy(p => p.Name, StringComparer.OrdinalIgnoreCase)
+            .Where(group => group.Count() > 1)
+            .Select(group => group.Key))
+        {
+            diagnostics.Add(new ValidationDiagnostic(SpecSectionId.Parameters, ValidationSeverity.Red, "duplicate-parameter", $"parameter '{duplicate}' is declared more than once", duplicate));
         }
 
         if (document.Scope.Crs is { Length: > 0 } crs && !(crs.StartsWith("EPSG:", StringComparison.OrdinalIgnoreCase) || crs.Equals("WGS84", StringComparison.OrdinalIgnoreCase)))
@@ -926,6 +972,7 @@ public sealed partial class StubSpecWorkspaceClient : ISpecWorkspaceClient
         {
             SpecSectionId.Sources => (object)doc.Sources,
             SpecSectionId.Scope => doc.Scope,
+            SpecSectionId.Parameters => doc.Parameters,
             SpecSectionId.Compute => doc.Compute,
             SpecSectionId.Map => doc.Map,
             SpecSectionId.Output => doc.Output,
@@ -1046,6 +1093,30 @@ public sealed partial class StubSpecWorkspaceClient : ISpecWorkspaceClient
         _ => PlanMaterializationKind.Ephemeral
     };
 
+    private static IReadOnlyList<PlanParameterBinding> BuildParameterBindings(IReadOnlyList<SpecParameterEntry> parameters) =>
+        parameters
+            .OrderBy(parameter => parameter.Name, StringComparer.OrdinalIgnoreCase)
+            .Select(parameter => new PlanParameterBinding(
+                parameter.Name,
+                parameter.Type,
+                parameter.Default,
+                parameter.Required,
+                BuildContentHash(
+                    "parameter",
+                    parameter.Name.ToLowerInvariant(),
+                    parameter.Type.ToLowerInvariant(),
+                    parameter.Default ?? string.Empty,
+                    parameter.Required ? "true" : "false")))
+            .ToArray();
+
+    private static string BuildParameterSetHash(IReadOnlyList<SpecParameterEntry> parameters) =>
+        BuildContentHash(
+            "parameters",
+            string.Join(
+                ",",
+                BuildParameterBindings(parameters)
+                    .Select(parameter => $"{parameter.Name}:{parameter.Type}:{parameter.Default}:{parameter.Required}:{parameter.ContentHash}")));
+
     private static MaterializedResource? BuildMaterializedResource(PlanNode node)
     {
         if (node.Materialization is not (PlanMaterializationKind.DurableApp or PlanMaterializationKind.DurableDataset or PlanMaterializationKind.DurableService))
@@ -1067,17 +1138,66 @@ public sealed partial class StubSpecWorkspaceClient : ISpecWorkspaceClient
     private static string ResolveNodeHash(IReadOnlyDictionary<string, string> nodeHashes, string nodeId) =>
         nodeHashes.TryGetValue(nodeId, out var hash) ? hash : nodeId;
 
+    private static string ResolveParameterReferences(
+        string value,
+        IReadOnlyDictionary<string, SpecParameterEntry> parameters) =>
+        Regex.Replace(value, @"\$([a-zA-Z_]\w*)", match =>
+        {
+            var name = match.Groups[1].Value;
+            if (!parameters.TryGetValue(name, out var parameter))
+            {
+                return match.Value;
+            }
+
+            return $"{parameter.Name}:{parameter.Type}:{parameter.Default ?? string.Empty}:{parameter.Required}";
+        });
+
+    private static IReadOnlyList<string> ExtractParameterReferences(IEnumerable<string> values) =>
+        values
+            .SelectMany(value => Regex.Matches(value, @"\$([a-zA-Z_]\w*)").Select(match => match.Groups[1].Value))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+
+    private static bool IsSupportedParameterType(string type) =>
+        type.ToLowerInvariant() is "string" or "number" or "boolean" or "date" or "quantity" or "enum";
+
+    private static bool DefaultMatchesParameterType(SpecParameterEntry parameter)
+    {
+        var value = parameter.Default;
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return true;
+        }
+
+        return parameter.Type.ToLowerInvariant() switch
+        {
+            "number" => double.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out _),
+            "boolean" => bool.TryParse(value, out _),
+            "quantity" => Regex.IsMatch(value, @"^\d+(?:\.\d+)?(m|km|mi)$", RegexOptions.IgnoreCase),
+            _ => true
+        };
+    }
+
     private ApplyPayload BuildPayload(SpecDocument document)
     {
         var effectiveOutputKind = ResolveEffectiveOutputKind(document);
+        var parameterBindings = BuildParameterBindings(document.Parameters);
         if (effectiveOutputKind == SpecOutputKind.AppScaffold)
         {
+            var scaffoldParameters = document.Parameters.Count > 0
+                ? document.Parameters
+                    .OrderBy(parameter => parameter.Name, StringComparer.OrdinalIgnoreCase)
+                    .Select(parameter => new AppScaffoldParameter(parameter.Name, parameter.Type, parameter.Default))
+                    .ToArray()
+                : new[] { new AppScaffoldParameter("date", "date", DateTime.UtcNow.ToString("O", CultureInfo.InvariantCulture)) };
+
             return new ApplyPayload
             {
                 Kind = SpecOutputKind.AppScaffold,
+                ParameterBindings = parameterBindings,
                 AppScaffold = new AppScaffold(
                     "Preview App",
-                    new[] { new AppScaffoldParameter("date", "date", DateTime.UtcNow.ToString("O", CultureInfo.InvariantCulture)) },
+                    scaffoldParameters,
                     "single-column")
             };
         }
@@ -1097,6 +1217,7 @@ public sealed partial class StubSpecWorkspaceClient : ISpecWorkspaceClient
             return new ApplyPayload
             {
                 Kind = SpecOutputKind.Map,
+                ParameterBindings = parameterBindings,
                 MapFeatures = features
             };
         }
@@ -1127,6 +1248,7 @@ public sealed partial class StubSpecWorkspaceClient : ISpecWorkspaceClient
             return new ApplyPayload
             {
                 Kind = SpecOutputKind.Analysis,
+                ParameterBindings = parameterBindings,
                 TableColumns = new[] { groupBy, metric },
                 TableRows = rows
             };
@@ -1151,6 +1273,7 @@ public sealed partial class StubSpecWorkspaceClient : ISpecWorkspaceClient
             return new ApplyPayload
             {
                 Kind = SpecOutputKind.Analysis,
+                ParameterBindings = parameterBindings,
                 TableColumns = new[] { "id", "status" },
                 TableRows = rows
             };
@@ -1158,7 +1281,8 @@ public sealed partial class StubSpecWorkspaceClient : ISpecWorkspaceClient
 
         return new ApplyPayload
         {
-            Kind = SpecOutputKind.None
+            Kind = SpecOutputKind.None,
+            ParameterBindings = parameterBindings
         };
     }
 

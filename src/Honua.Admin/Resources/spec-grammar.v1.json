@@ -3,9 +3,10 @@
   "sections": [
     { "id": "sources", "title": "Sources", "order": 0 },
     { "id": "scope", "title": "Scope", "order": 1 },
-    { "id": "compute", "title": "Compute", "order": 2 },
-    { "id": "map", "title": "Map", "order": 3 },
-    { "id": "output", "title": "Output", "order": 4 }
+    { "id": "parameters", "title": "Parameters", "order": 2 },
+    { "id": "compute", "title": "Compute", "order": 3 },
+    { "id": "map", "title": "Map", "order": 4 },
+    { "id": "output", "title": "Output", "order": 5 }
   ],
   "operators": [
     {

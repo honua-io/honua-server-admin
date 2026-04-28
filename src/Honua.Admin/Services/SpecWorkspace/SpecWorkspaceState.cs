@@ -964,6 +964,7 @@ public sealed class SpecWorkspaceState : IAsyncDisposable
         {
             SpecSectionId.Sources => "source",
             SpecSectionId.Scope => "scope field",
+            SpecSectionId.Parameters => "parameter",
             SpecSectionId.Compute => "compute step",
             SpecSectionId.Map => "map layer",
             SpecSectionId.Output => "output field",

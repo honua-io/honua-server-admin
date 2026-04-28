@@ -23,7 +23,7 @@
                 @($"{GrammarOperatorCount} operators")
             </MudChip>
             <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="@DraftCoverageColor" data-testid="spec-readiness-draft">
-                @($"{DraftSectionCount}/5 drafted")
+                @($"{DraftSectionCount}/{DraftSectionTotal} drafted")
             </MudChip>
             <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="Color.Success" data-testid="spec-readiness-plan-apply">
                 plan/apply
@@ -82,14 +82,17 @@
     private int DraftSectionCount =>
         (State.Spec.Sources.Count > 0 ? 1 : 0) +
         (State.Spec.Scope.Bbox is not null || !string.IsNullOrWhiteSpace(State.Spec.Scope.Crs) ? 1 : 0) +
+        (State.Spec.Parameters.Count > 0 ? 1 : 0) +
         (State.Spec.Compute.Count > 0 ? 1 : 0) +
         (State.Spec.Map.Layers.Count > 0 ? 1 : 0) +
         (State.Spec.Output.Kind != SpecOutputKind.None ? 1 : 0);
 
+    private int DraftSectionTotal => Enum.GetValues<SpecSectionId>().Length;
+
     private Color DraftCoverageColor => DraftSectionCount switch
     {
         0 => Color.Default,
-        < 5 => Color.Warning,
+        var count when count < DraftSectionTotal => Color.Warning,
         _ => Color.Success
     };
 
