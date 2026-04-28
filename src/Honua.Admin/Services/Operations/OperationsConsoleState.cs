@@ -58,13 +58,13 @@ public sealed class OperationsConsoleState
     public int RecentErrorCount => RecentErrors?.Errors.Count ?? 0;
 
     public string ReleaseHealthLabel => DeployPreflight is null
-        ? "Unknown"
+        ? (SectionError("Deploy preflight") is null ? "Unknown" : "Preflight unavailable")
         : DeployPreflight.ReadyForCoordinatedDeploy
             ? "Ready"
             : "Needs attention";
 
     public string ReleaseEvidenceLabel => LatestManifestVersion is null
-        ? "No manifest version loaded"
+        ? (SectionError("Manifest versions") is null ? "No manifest version loaded" : "Manifest evidence unavailable")
         : $"{LatestManifestVersion.VersionId} · {LatestManifestVersion.ResourceCount} resource(s)";
 
     public string DriftLabel
@@ -73,12 +73,19 @@ public sealed class OperationsConsoleState
         {
             if (ManifestDrift is null)
             {
-                return "Unknown";
+                return SectionError("Manifest drift") is null
+                    ? "Unknown"
+                    : "Drift unavailable";
             }
 
             if (ManifestDrift.HasDrift)
             {
                 return $"{ManifestDrift.Resources.Count} drifted resource(s)";
+            }
+
+            if (SectionError("Manifest approvals") is not null)
+            {
+                return "Approval state unknown";
             }
 
             return PendingApprovals.Count == 0
@@ -91,9 +98,19 @@ public sealed class OperationsConsoleState
     {
         get
         {
+            if (SectionError("Recent errors") is not null)
+            {
+                return "Recent errors unavailable";
+            }
+
             if (RecentErrorCount > 0)
             {
                 return $"{RecentErrorCount} recent error(s)";
+            }
+
+            if (SectionError("Telemetry") is not null)
+            {
+                return "Telemetry unavailable";
             }
 
             if (TelemetryStatus?.TracingEnabled == true && TelemetryStatus.OtlpConfigured)
@@ -106,6 +123,9 @@ public sealed class OperationsConsoleState
     }
 
     public event Action? OnChanged;
+
+    private string? SectionError(string section)
+        => _sectionErrors.TryGetValue(section, out var message) ? message : null;
 
     public async Task RefreshAsync(CancellationToken cancellationToken = default)
     {

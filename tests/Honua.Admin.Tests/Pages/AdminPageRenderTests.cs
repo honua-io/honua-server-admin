@@ -163,6 +163,21 @@ public sealed class AdminPageRenderTests : TestContext
         });
     }
 
+    [Fact]
+    public void OperationsConsole_RendersRecentErrorsFailureInsteadOfEmptyState()
+    {
+        Services.AddScoped<IHonuaAdminClient>(_ => new RecentErrorsUnavailableClient());
+        Services.AddScoped<OperationsConsoleState>();
+
+        var cut = RenderWithMudHost<Honua.Admin.Pages.Operator.OperationsConsole>();
+
+        cut.WaitForAssertion(() =>
+        {
+            cut.Markup.MarkupMatchesContaining("Recent errors unavailable");
+            Assert.False(cut.Markup.Contains("No recent errors loaded.", StringComparison.OrdinalIgnoreCase), cut.Markup);
+        });
+    }
+
     private IRenderedFragment RenderAdminPage(Type pageType)
     {
         return Render(builder =>
@@ -206,6 +221,12 @@ public sealed class AdminPageRenderTests : TestContext
     {
         public override Task<FeatureOverview> GetFeatureOverviewAsync(CancellationToken cancellationToken)
             => throw new HttpRequestException("simulated client failure");
+    }
+
+    private sealed class RecentErrorsUnavailableClient : StubHonuaAdminClient
+    {
+        public override Task<RecentErrorsResponse> GetRecentErrorsAsync(CancellationToken cancellationToken)
+            => throw new InvalidOperationException("recent errors unavailable");
     }
 
     private sealed class NullAdminTelemetry : IAdminTelemetry

@@ -60,7 +60,7 @@
                         <MudText Typo="Typo.overline">Drift</MudText>
                         <MudText Typo="Typo.h6">@State.DriftLabel</MudText>
                         <MudText Typo="Typo.body2">@(State.ManifestDrift?.BaselineVersionId ?? SectionError("Manifest drift") ?? "No baseline loaded")</MudText>
-                        <MudText Typo="Typo.caption">@($"{State.PendingApprovals.Count} pending approval(s)")</MudText>
+                        <MudText Typo="Typo.caption">@(SectionError("Manifest approvals") ?? $"{State.PendingApprovals.Count} pending approval(s)")</MudText>
                     </MudCardContent>
                     <MudCardActions>
                         <MudButton Href="/operator/publishing" Variant="Variant.Text" Size="Size.Small" StartIcon="@Icons.Material.Filled.Publish">
@@ -150,6 +150,12 @@
                             </RowTemplate>
                         </MudTable>
                     }
+                    else if (!string.IsNullOrWhiteSpace(SectionError("Manifest drift")))
+                    {
+                        <MudAlert Severity="Severity.Warning" Dense="true" Variant="Variant.Text">
+                            @SectionError("Manifest drift")
+                        </MudAlert>
+                    }
                     else
                     {
                         <MudAlert Severity="Severity.Success" Dense="true" Variant="Variant.Text">
@@ -192,6 +198,12 @@
                                 <MudTd>@context.Message</MudTd>
                             </RowTemplate>
                         </MudTable>
+                    }
+                    else if (!string.IsNullOrWhiteSpace(SectionError("Recent errors")))
+                    {
+                        <MudAlert Severity="Severity.Warning" Dense="true" Variant="Variant.Text">
+                            @SectionError("Recent errors")
+                        </MudAlert>
                     }
                     else
                     {

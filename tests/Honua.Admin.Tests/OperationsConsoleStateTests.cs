@@ -62,8 +62,34 @@ public sealed class OperationsConsoleStateTests
 
         Assert.Equal(OperationsConsoleStatus.Partial, state.Status);
         Assert.Null(state.DeployPreflight);
-        Assert.Equal("Unknown", state.ReleaseHealthLabel);
+        Assert.Equal("Preflight unavailable", state.ReleaseHealthLabel);
         Assert.Contains("Deploy preflight", state.SectionErrors.Keys);
+    }
+
+    [Fact]
+    public async Task RefreshAsync_reports_unknown_drift_when_approvals_fail()
+    {
+        var state = new OperationsConsoleState(new ApprovalsUnavailableNoDriftClient());
+
+        await state.RefreshAsync();
+
+        Assert.Equal(OperationsConsoleStatus.Partial, state.Status);
+        Assert.Empty(state.PendingApprovals);
+        Assert.Equal("Approval state unknown", state.DriftLabel);
+        Assert.Contains("Manifest approvals", state.SectionErrors.Keys);
+    }
+
+    [Fact]
+    public async Task RefreshAsync_reports_recent_errors_unavailable_when_error_buffer_fails()
+    {
+        var state = new OperationsConsoleState(new RecentErrorsUnavailableClient());
+
+        await state.RefreshAsync();
+
+        Assert.Equal(OperationsConsoleStatus.Partial, state.Status);
+        Assert.Null(state.RecentErrors);
+        Assert.Equal("Recent errors unavailable", state.TroubleshootingLabel);
+        Assert.Contains("Recent errors", state.SectionErrors.Keys);
     }
 
     private sealed class PartialOperationsUnavailableClient : StubHonuaAdminClient
@@ -87,5 +113,20 @@ public sealed class OperationsConsoleStateTests
                 ? base.GetDeployPreflightAsync(cancellationToken)
                 : throw new InvalidOperationException("preflight unavailable");
         }
+    }
+
+    private sealed class ApprovalsUnavailableNoDriftClient : StubHonuaAdminClient
+    {
+        public override Task<ManifestDriftReport> GetManifestDriftAsync(bool verbose, CancellationToken cancellationToken)
+            => Task.FromResult(ManifestDrift with { HasDrift = false, Resources = Array.Empty<ManifestDriftRecord>() });
+
+        public override Task<IReadOnlyList<ManifestPendingChangeResponse>> ListPendingManifestChangesAsync(string? status, CancellationToken cancellationToken)
+            => throw new InvalidOperationException("approvals unavailable");
+    }
+
+    private sealed class RecentErrorsUnavailableClient : StubHonuaAdminClient
+    {
+        public override Task<RecentErrorsResponse> GetRecentErrorsAsync(CancellationToken cancellationToken)
+            => throw new InvalidOperationException("recent errors unavailable");
     }
 }
