@@ -211,6 +211,45 @@ public sealed class AppBuilderStateTests
     }
 
     [Fact]
+    public async Task PublishReadiness_flags_missing_enterprise_custom_domain_channel()
+    {
+        var state = new AppBuilderState(new FixedAppBuilderClient(Snapshot("Enterprise dashboard") with
+        {
+            Quota = new AppQuotaState
+            {
+                Edition = "Enterprise",
+                AppLimit = null,
+                PublishedApps = 12,
+            },
+            PublishChannels =
+            [
+                new AppPublishChannel
+                {
+                    ChannelId = "standalone-url",
+                    Kind = AppPublishChannelKind.StandaloneUrl,
+                    Label = "Standalone URL",
+                    Enabled = true,
+                    Message = "Ready",
+                },
+                new AppPublishChannel
+                {
+                    ChannelId = "iframe-embed",
+                    Kind = AppPublishChannelKind.IframeEmbed,
+                    Label = "Iframe embed",
+                    Enabled = true,
+                    Message = "Ready",
+                },
+            ],
+        }));
+        await state.LoadAsync();
+
+        var customDomain = Assert.Single(state.PublishReadinessChecks, check => check.Key == "custom-domain");
+
+        Assert.False(customDomain.Passed);
+        Assert.Equal("Custom domain publishing channel is not configured.", customDomain.Message);
+    }
+
+    [Fact]
     public async Task PublishAsync_clears_stale_publish_result_when_retry_fails()
     {
         var state = new AppBuilderState(new FailingRetryAppBuilderClient());

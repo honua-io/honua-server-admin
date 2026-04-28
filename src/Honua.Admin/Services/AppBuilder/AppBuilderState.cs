@@ -84,6 +84,7 @@ public sealed class AppBuilderState
             var embed = PublishChannels.FirstOrDefault(channel => channel.Kind == AppPublishChannelKind.IframeEmbed);
             var customDomain = PublishChannels.FirstOrDefault(channel => channel.Kind == AppPublishChannelKind.CustomDomain);
             var quotaLimit = Quota.AppLimit?.ToString() ?? "unlimited";
+            var isEnterprise = string.Equals(Quota.Edition, "Enterprise", StringComparison.OrdinalIgnoreCase);
 
             return
             [
@@ -112,8 +113,8 @@ public sealed class AppBuilderState
                 {
                     Key = "custom-domain",
                     Label = "Custom domain",
-                    Passed = customDomain is null || customDomain.Enabled || !string.Equals(Quota.Edition, "Enterprise", StringComparison.OrdinalIgnoreCase),
-                    Message = customDomain?.Message ?? "Custom domains can be configured from Enterprise branding."
+                    Passed = !isEnterprise || customDomain?.Enabled == true,
+                    Message = customDomain?.Message ?? (isEnterprise ? "Custom domain publishing channel is not configured." : "Custom domains can be configured from Enterprise branding.")
                 }
             ];
         }
