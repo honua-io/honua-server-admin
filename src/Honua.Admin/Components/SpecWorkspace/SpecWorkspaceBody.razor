@@ -6,31 +6,60 @@
 @inject IJSRuntime JS
 @implements IAsyncDisposable
 
-<div class="spec-workspace-root" data-testid="spec-workspace-root"
-     style="@($"grid-template-columns: {State.Layout.Nl}fr 6px {State.Layout.Dsl}fr 6px {State.Layout.Preview}fr;")">
+<div class="spec-workspace-shell" data-testid="spec-workspace-shell">
+    <MudPaper Class="spec-readiness-bar pa-3" Elevation="0" aria-label="Spec workspace S1 readiness">
+        <MudStack Row AlignItems="AlignItems.Center" Spacing="2" Class="spec-readiness-content">
+            <MudStack Row AlignItems="AlignItems.Center" Spacing="1">
+                <MudText Typo="Typo.subtitle1">Spec workspace S1</MudText>
+                <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="Color.Primary" data-testid="spec-readiness-grammar">
+                    @($"grammar {GrammarVersion}")
+                </MudChip>
+            </MudStack>
+            <MudSpacer />
+            <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" data-testid="spec-readiness-sections">
+                @($"{GrammarSectionCount} sections")
+            </MudChip>
+            <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" data-testid="spec-readiness-operators">
+                @($"{GrammarOperatorCount} operators")
+            </MudChip>
+            <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="@DraftCoverageColor" data-testid="spec-readiness-draft">
+                @($"{DraftSectionCount}/5 drafted")
+            </MudChip>
+            <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="Color.Success" data-testid="spec-readiness-plan-apply">
+                plan/apply
+            </MudChip>
+            <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="Color.Success" data-testid="spec-readiness-preview">
+                map/table/app preview
+            </MudChip>
+        </MudStack>
+    </MudPaper>
 
-    <div class="spec-workspace-cell spec-workspace-nl">
-        <ConversationPane />
-    </div>
+    <div class="spec-workspace-root" data-testid="spec-workspace-root"
+         style="@($"grid-template-columns: {State.Layout.Nl}fr 6px {State.Layout.Dsl}fr 6px {State.Layout.Preview}fr;")">
 
-    <div class="spec-workspace-splitter"
-         data-splitter-left="nl"
-         data-splitter-right="dsl"
-         @onpointerdown="(e => BeginDragAsync(e, SpecSplitter.NlDsl))"
-         data-testid="splitter-nl-dsl"></div>
+        <div class="spec-workspace-cell spec-workspace-nl">
+            <ConversationPane />
+        </div>
 
-    <div class="spec-workspace-cell spec-workspace-dsl">
-        <DslPane />
-    </div>
+        <div class="spec-workspace-splitter"
+             data-splitter-left="nl"
+             data-splitter-right="dsl"
+             @onpointerdown="(e => BeginDragAsync(e, SpecSplitter.NlDsl))"
+             data-testid="splitter-nl-dsl"></div>
 
-    <div class="spec-workspace-splitter"
-         data-splitter-left="dsl"
-         data-splitter-right="preview"
-         @onpointerdown="(e => BeginDragAsync(e, SpecSplitter.DslPreview))"
-         data-testid="splitter-dsl-preview"></div>
+        <div class="spec-workspace-cell spec-workspace-dsl">
+            <DslPane />
+        </div>
 
-    <div class="spec-workspace-cell spec-workspace-preview">
-        <PreviewPane />
+        <div class="spec-workspace-splitter"
+             data-splitter-left="dsl"
+             data-splitter-right="preview"
+             @onpointerdown="(e => BeginDragAsync(e, SpecSplitter.DslPreview))"
+             data-testid="splitter-dsl-preview"></div>
+
+        <div class="spec-workspace-cell spec-workspace-preview">
+            <PreviewPane />
+        </div>
     </div>
 </div>
 
@@ -43,6 +72,31 @@
 
     private DotNetObjectReference<SpecWorkspaceBody>? _selfRef;
     private bool _interopReady;
+
+    private string GrammarVersion => State.Grammar?.Version ?? "loading";
+
+    private int GrammarSectionCount => State.Grammar?.Sections.Count ?? Enum.GetValues<SpecSectionId>().Length;
+
+    private int GrammarOperatorCount => State.Grammar?.Operators.Count ?? 0;
+
+    private int DraftSectionCount =>
+        (State.Spec.Sources.Count > 0 ? 1 : 0) +
+        (State.Spec.Scope.Bbox is not null || !string.IsNullOrWhiteSpace(State.Spec.Scope.Crs) ? 1 : 0) +
+        (State.Spec.Compute.Count > 0 ? 1 : 0) +
+        (State.Spec.Map.Layers.Count > 0 ? 1 : 0) +
+        (State.Spec.Output.Kind != SpecOutputKind.None ? 1 : 0);
+
+    private Color DraftCoverageColor => DraftSectionCount switch
+    {
+        0 => Color.Default,
+        < 5 => Color.Warning,
+        _ => Color.Success
+    };
+
+    protected override void OnInitialized()
+    {
+        State.OnChanged += StateChanged;
+    }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -60,6 +114,8 @@
             }
         }
     }
+
+    private void StateChanged() => InvokeAsync(StateHasChanged);
 
     [JSInvokable]
     public Task OnSplitterDrag(string splitterId, double deltaFraction)
@@ -99,6 +155,7 @@
 
     public ValueTask DisposeAsync()
     {
+        State.OnChanged -= StateChanged;
         _selfRef?.Dispose();
         return ValueTask.CompletedTask;
     }
