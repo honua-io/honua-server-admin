@@ -8,12 +8,14 @@ using System.Threading;
 using System.Threading.Tasks;
 using Bunit;
 using Honua.Admin.Models.Admin;
+using Honua.Admin.Models.SpecWorkspace;
 using Honua.Admin.Pages.Admin;
 using Honua.Admin.Services.Admin;
 using Honua.Admin.Services.Annotations;
 using Honua.Admin.Services.Operations;
 using Honua.Admin.Services.PrintService;
 using Honua.Admin.Services.Publishing;
+using Honua.Admin.Services.SpecWorkspace;
 using Honua.Admin.Services.UsageAnalytics;
 using Microsoft.Extensions.DependencyInjection;
 using MudBlazor;
@@ -37,6 +39,11 @@ public sealed class AdminPageRenderTests : TestContext
         Services.AddScoped<IPrintServiceClient, StubPrintServiceClient>();
         Services.AddScoped<PrintServiceState>();
         Services.AddScoped<OperationsConsoleState>();
+        Services.AddScoped<CatalogCache>();
+        Services.AddScoped<IBrowserStorageService, MemoryBrowserStorageService>();
+        Services.AddScoped<ISpecWorkspaceTelemetry, NullSpecWorkspaceTelemetry>();
+        Services.AddScoped<ISpecWorkspaceClient, StubSpecWorkspaceClient>();
+        Services.AddScoped<SpecWorkspaceState>();
         Services.AddTestRealtime();
     }
 
@@ -251,6 +258,30 @@ public sealed class AdminPageRenderTests : TestContext
     }
 
     [Fact]
+    public async Task SpecWorkspace_RendersS1ReadinessEvidence()
+    {
+        var cut = RenderWithMudHost<Honua.Admin.Pages.Operator.SpecWorkspace>();
+
+        cut.WaitForAssertion(() =>
+        {
+            cut.Markup.MarkupMatchesContaining("Spec workspace S1");
+            cut.Markup.MarkupMatchesContaining("grammar v1");
+            cut.Markup.MarkupMatchesContaining("5 sections");
+            cut.Markup.MarkupMatchesContaining("plan/apply");
+            cut.Markup.MarkupMatchesContaining("map/table/app preview");
+            cut.Find("[aria-label='Spec workspace S1 readiness']");
+        });
+
+        var state = Services.GetRequiredService<SpecWorkspaceState>();
+        await cut.InvokeAsync(() => state.UpdateSectionTextAsync(SpecSectionId.Sources, "@parcels = parcels"));
+
+        cut.WaitForAssertion(() =>
+        {
+            cut.Markup.MarkupMatchesContaining("1/5 drafted");
+        });
+    }
+
+    [Fact]
     public void UsageAnalytics_RendersMetricsDrilldownsAndExports()
     {
         var cut = RenderWithMudHost<Honua.Admin.Pages.Operator.UsageAnalytics>();
@@ -350,6 +381,35 @@ public sealed class AdminPageRenderTests : TestContext
         public void PageNavigated(string pageRoute, string? principalId) { }
         public void DestructiveAction(string action, string? targetId, string? principalId) { }
         public void ClientRequestFailed(string operation, string error) { }
+    }
+
+    private sealed class NullSpecWorkspaceTelemetry : ISpecWorkspaceTelemetry
+    {
+        public void Record(string eventName, IReadOnlyDictionary<string, object?>? dimensions = null) { }
+        public void RecordLatency(string eventName, long elapsedMillis, IReadOnlyDictionary<string, object?>? dimensions = null) { }
+    }
+
+    private sealed class MemoryBrowserStorageService : IBrowserStorageService
+    {
+        private readonly Dictionary<string, string> _items = new(StringComparer.Ordinal);
+
+        public ValueTask<string?> GetAsync(string key, CancellationToken cancellationToken = default)
+        {
+            _items.TryGetValue(key, out var value);
+            return ValueTask.FromResult<string?>(value);
+        }
+
+        public ValueTask SetAsync(string key, string value, CancellationToken cancellationToken = default)
+        {
+            _items[key] = value;
+            return ValueTask.CompletedTask;
+        }
+
+        public ValueTask RemoveAsync(string key, CancellationToken cancellationToken = default)
+        {
+            _items.Remove(key);
+            return ValueTask.CompletedTask;
+        }
     }
 }
 

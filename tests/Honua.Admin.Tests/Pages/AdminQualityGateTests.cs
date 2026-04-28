@@ -14,6 +14,7 @@ using Honua.Admin.Services.Annotations;
 using Honua.Admin.Services.Operations;
 using Honua.Admin.Services.PrintService;
 using Honua.Admin.Services.Publishing;
+using Honua.Admin.Services.SpecWorkspace;
 using Honua.Admin.Services.UsageAnalytics;
 using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.DependencyInjection;
@@ -44,6 +45,11 @@ public sealed class AdminQualityGateTests : TestContext
         Services.AddScoped<UsageAnalyticsState>();
         Services.AddScoped<IPrintServiceClient, StubPrintServiceClient>();
         Services.AddScoped<PrintServiceState>();
+        Services.AddScoped<CatalogCache>();
+        Services.AddScoped<IBrowserStorageService, BrowserStorageService>();
+        Services.AddScoped<ISpecWorkspaceTelemetry, NullSpecWorkspaceTelemetry>();
+        Services.AddScoped<ISpecWorkspaceClient, StubSpecWorkspaceClient>();
+        Services.AddScoped<SpecWorkspaceState>();
         Services.AddTestRealtime();
     }
 
@@ -69,6 +75,13 @@ public sealed class AdminQualityGateTests : TestContext
             typeof(Honua.Admin.Pages.Operator.AdminReadiness),
             "Administration readiness",
             new[] { "[aria-label='Administration readiness surfaces']", "[aria-label='Administration readiness checklist']", "[aria-label='Readiness connection inventory']", "[aria-label='Gated feature diagnostics']" },
+        ];
+        yield return
+        [
+            "Spec workspace",
+            typeof(Honua.Admin.Pages.Operator.SpecWorkspace),
+            "Spec workspace S1",
+            new[] { "[aria-label='Spec workspace S1 readiness']", "[data-testid='spec-workspace-root']", "[data-testid='spec-nl-pane']", "[data-testid='spec-dsl-pane']", "[data-testid='spec-preview-pane']" },
         ];
         yield return
         [
@@ -286,5 +299,11 @@ public sealed class AdminQualityGateTests : TestContext
         public void PageNavigated(string pageRoute, string? principalId) { }
         public void DestructiveAction(string action, string? targetId, string? principalId) { }
         public void ClientRequestFailed(string operation, string error) { }
+    }
+
+    private sealed class NullSpecWorkspaceTelemetry : ISpecWorkspaceTelemetry
+    {
+        public void Record(string eventName, IReadOnlyDictionary<string, object?>? properties = null) { }
+        public void RecordLatency(string eventName, long elapsedMillis, IReadOnlyDictionary<string, object?>? properties = null) { }
     }
 }

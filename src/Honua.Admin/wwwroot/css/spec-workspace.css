@@ -1,8 +1,26 @@
+.spec-workspace-shell {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    height: calc(100vh - 128px);
+    min-height: 520px;
+}
+
+.spec-readiness-bar {
+    border: 1px solid var(--mud-palette-divider, #e0e0e0);
+    background: #ffffff;
+}
+
+.spec-readiness-content {
+    min-width: 0;
+    flex-wrap: wrap;
+}
+
 .spec-workspace-root {
     display: grid;
     grid-template-rows: 100%;
-    height: calc(100vh - 128px);
-    min-height: 480px;
+    flex: 1 1 auto;
+    min-height: 420px;
     gap: 0;
 }
 

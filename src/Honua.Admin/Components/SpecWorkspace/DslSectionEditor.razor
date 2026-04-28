@@ -9,6 +9,7 @@
     <div class="spec-editor-shell">
         <pre class="spec-editor-underlay" aria-hidden="true">@((MarkupString)BuildHighlightedMarkup())</pre>
         <textarea class="spec-editor-input"
+                  aria-label="@($"{SectionId} spec section editor")"
                   value="@State.GetSectionText(SectionId)"
                   @ref="_editorRef"
                   @oninput="HandleInputAsync"
