@@ -11,6 +11,7 @@ using Honua.Admin.Models.Admin;
 using Honua.Admin.Pages.Admin;
 using Honua.Admin.Services.Admin;
 using Honua.Admin.Services.Annotations;
+using Honua.Admin.Services.PrintService;
 using Honua.Admin.Services.Publishing;
 using Honua.Admin.Services.UsageAnalytics;
 using Microsoft.AspNetCore.Components;
@@ -39,6 +40,8 @@ public sealed class AdminQualityGateTests : TestContext
         Services.AddScoped<PublishingWorkspaceState>();
         Services.AddScoped<IUsageAnalyticsClient, StubUsageAnalyticsClient>();
         Services.AddScoped<UsageAnalyticsState>();
+        Services.AddScoped<IPrintServiceClient, StubPrintServiceClient>();
+        Services.AddScoped<PrintServiceState>();
         Services.AddTestRealtime();
     }
 
@@ -113,6 +116,13 @@ public sealed class AdminQualityGateTests : TestContext
             typeof(Honua.Admin.Pages.Operator.UsageAnalytics),
             "Queries per second",
             new[] { "[aria-label='Usage analytics toolbar']", "[aria-label='Popular layers']" },
+        ];
+        yield return
+        [
+            "Print service",
+            typeof(Honua.Admin.Pages.Operator.PrintService),
+            "Letter portrait",
+            new[] { "[aria-label='Print service toolbar']", "[aria-label='Print preview']", "[aria-label='Print job queue']" },
         ];
     }
 

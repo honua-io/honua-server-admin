@@ -8,6 +8,7 @@ using Honua.Admin.Services.DataConnections.Providers;
 using Honua.Admin.Services.Identity;
 using Honua.Admin.Services.LicenseWorkspace;
 using Honua.Admin.Services.Operations;
+using Honua.Admin.Services.PrintService;
 using Honua.Admin.Services.Publishing;
 using Honua.Admin.Services.SpatialSql;
 using Honua.Admin.Services.SpecWorkspace;
@@ -53,6 +54,11 @@ builder.Services.AddScoped<PublishingWorkspaceState>();
 // analytics read model while durable server-side aggregation is defined.
 builder.Services.AddScoped<IUsageAnalyticsClient, StubUsageAnalyticsClient>();
 builder.Services.AddScoped<UsageAnalyticsState>();
+
+// Print service workspace (issue #3) exposes the admin-side template, preview,
+// and queue workflow while server-side render endpoints are wired separately.
+builder.Services.AddScoped<IPrintServiceClient, StubPrintServiceClient>();
+builder.Services.AddScoped<PrintServiceState>();
 
 // Admin client + auth wiring (ticket #28 — restored from PR #17 onto the post-#27 shell).
 builder.Services.AddSingleton<AdminAuthStateProvider>();
