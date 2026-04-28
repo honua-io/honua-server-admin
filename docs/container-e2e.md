@@ -13,7 +13,11 @@ available and runs the `Category=ContainerE2E` test lane.
 
 By default, `HONUA_ADMIN_CONTAINER_E2E=false`, so the test lane exits without
 starting containers. Set the repository variable `HONUA_ADMIN_CONTAINER_E2E` to
-`true` when a pullable Honua Server image is available for CI.
+`true` when a pullable Honua Server image is available for CI. When enabled, the
+lane starts PostGIS and Honua Server once, seeds a real spatial table, then
+exercises the admin readiness, connection, layer publishing, style, service
+settings, observability, and deploy preflight paths through the real
+`HonuaAdminClient`.
 
 ## Configuration
 
@@ -26,6 +30,7 @@ starting containers. Set the repository variable `HONUA_ADMIN_CONTAINER_E2E` to
 | `HONUA_POSTGIS_DATABASE` | `honua_integration` | PostGIS database name. |
 | `HONUA_POSTGIS_USERNAME` | `honua_test` | PostGIS username. |
 | `HONUA_POSTGIS_PASSWORD` | `honua_test` | PostGIS password. |
+| `HONUA_ADMIN_CONTAINER_ENCRYPTION_MASTER_KEY` | `container-e2e-master-key-0123456789` | Master key passed to Honua Server for secure connection encryption during the live container run. |
 | `HONUA_SERVER_CONTAINER_PORT` | `8080` | HTTP port exposed inside the Honua Server container. |
 | `HONUA_SERVER_WAIT_PATH` | `/api/v1/admin/features/` | HTTP path used by Testcontainers readiness checks. |
 

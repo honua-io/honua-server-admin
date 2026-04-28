@@ -138,6 +138,12 @@ jobs:
       - name: Verify Docker is available
         run: docker info
 
+      - name: Report container E2E configuration
+        run: |
+          echo "HONUA_ADMIN_CONTAINER_E2E=${HONUA_ADMIN_CONTAINER_E2E}"
+          echo "HONUA_SERVER_IMAGE=${HONUA_SERVER_IMAGE}"
+          echo "HONUA_POSTGIS_IMAGE=${HONUA_POSTGIS_IMAGE}"
+
       - name: Run container E2E lane
         run: |
           dotnet test tests/Honua.Admin.IntegrationTests/Honua.Admin.IntegrationTests.csproj \
