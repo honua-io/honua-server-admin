@@ -104,6 +104,43 @@ public sealed class StubSpecWorkspaceClientTests
     }
 
     [Fact]
+    public async Task PlanAsync_uses_effective_map_output_when_analysis_output_has_map_layers()
+    {
+        var document = new SpecDocument
+        {
+            Sources = new[] { new SpecSourceEntry("parcels", "parcels", "v1") },
+            Map = new SpecMap
+            {
+                Layers = new[] { new SpecMapLayer("parcels", "viridis") }
+            },
+            Output = new SpecOutput { Kind = SpecOutputKind.Analysis, Target = "preview" }
+        };
+
+        var plan = await _client.PlanAsync(document, CancellationToken.None);
+        var payload = await CollectCompletedPayloadAsync(document);
+
+        var output = Assert.Single(plan.Nodes, node => node.Id == "output-map");
+        Assert.Equal(PlanMaterializationKind.PreviewOnly, output.Materialization);
+        Assert.Equal(SpecOutputKind.Map, payload!.Kind);
+    }
+
+    [Fact]
+    public async Task PlanAsync_skips_output_node_when_requested_map_has_no_effective_payload()
+    {
+        var document = new SpecDocument
+        {
+            Sources = new[] { new SpecSourceEntry("parcels", "parcels", "v1") },
+            Output = new SpecOutput { Kind = SpecOutputKind.Map, Target = "preview" }
+        };
+
+        var plan = await _client.PlanAsync(document, CancellationToken.None);
+        var payload = await CollectCompletedPayloadAsync(document);
+
+        Assert.DoesNotContain(plan.Nodes, node => node.Op == "output");
+        Assert.Equal(SpecOutputKind.None, payload!.Kind);
+    }
+
+    [Fact]
     public async Task ApplyAsync_emits_cache_keys_and_materialized_durable_outputs()
     {
         var document = BuildAppScaffoldDocument();

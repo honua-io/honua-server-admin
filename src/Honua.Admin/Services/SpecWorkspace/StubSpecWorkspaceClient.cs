@@ -389,21 +389,22 @@ public sealed partial class StubSpecWorkspaceClient : ISpecWorkspaceClient
             });
         }
 
-        if (document.Output.Kind != SpecOutputKind.None)
+        var effectiveOutputKind = ResolveEffectiveOutputKind(document);
+        if (effectiveOutputKind != SpecOutputKind.None)
         {
-            var outputId = $"output-{document.Output.Kind.ToString().ToLowerInvariant()}";
+            var outputId = $"output-{effectiveOutputKind.ToString().ToLowerInvariant()}";
             nodes.Add(new PlanNode
             {
                 Id = outputId,
                 Op = "output",
-                Inputs = ResolveOutputInputs(document, document.Output.Kind),
+                Inputs = ResolveOutputInputs(document, effectiveOutputKind),
                 Depth = depth + 1,
                 EstimatedRows = 0,
                 EstimatedBytes = 0,
-                EstimatedMillis = document.Output.Kind == SpecOutputKind.AppScaffold ? 120 : 25,
-                ContentHash = BuildContentHash("output", document.Output.Kind.ToString(), document.Output.Target ?? "preview"),
-                CachePolicy = document.Output.Kind == SpecOutputKind.AppScaffold ? PlanCachePolicy.None : PlanCachePolicy.ContentHash,
-                Materialization = MaterializationForOutput(document.Output.Kind)
+                EstimatedMillis = effectiveOutputKind == SpecOutputKind.AppScaffold ? 120 : 25,
+                ContentHash = BuildContentHash("output", effectiveOutputKind.ToString(), document.Output.Target ?? "preview"),
+                CachePolicy = effectiveOutputKind == SpecOutputKind.AppScaffold ? PlanCachePolicy.None : PlanCachePolicy.ContentHash,
+                Materialization = MaterializationForOutput(effectiveOutputKind)
             });
         }
 
@@ -999,6 +1000,26 @@ public sealed partial class StubSpecWorkspaceClient : ISpecWorkspaceClient
         return inputs;
     }
 
+    private static SpecOutputKind ResolveEffectiveOutputKind(SpecDocument document)
+    {
+        if (document.Output.Kind == SpecOutputKind.AppScaffold)
+        {
+            return SpecOutputKind.AppScaffold;
+        }
+
+        if (document.Map.Layers.Count > 0)
+        {
+            return SpecOutputKind.Map;
+        }
+
+        if (document.Compute.Any(step => step.Op == "aggregate") || document.Output.Kind == SpecOutputKind.Analysis)
+        {
+            return SpecOutputKind.Analysis;
+        }
+
+        return SpecOutputKind.None;
+    }
+
     private static PlanMaterializationKind MaterializationForOutput(SpecOutputKind kind) => kind switch
     {
         SpecOutputKind.Map => PlanMaterializationKind.PreviewOnly,
@@ -1026,7 +1047,8 @@ public sealed partial class StubSpecWorkspaceClient : ISpecWorkspaceClient
 
     private ApplyPayload BuildPayload(SpecDocument document)
     {
-        if (document.Output.Kind == SpecOutputKind.AppScaffold)
+        var effectiveOutputKind = ResolveEffectiveOutputKind(document);
+        if (effectiveOutputKind == SpecOutputKind.AppScaffold)
         {
             return new ApplyPayload
             {
@@ -1038,7 +1060,7 @@ public sealed partial class StubSpecWorkspaceClient : ISpecWorkspaceClient
             };
         }
 
-        if (document.Map.Layers.Count > 0)
+        if (effectiveOutputKind == SpecOutputKind.Map)
         {
             var features = new List<MapFeature>();
             foreach (var layer in document.Map.Layers)
@@ -1057,7 +1079,7 @@ public sealed partial class StubSpecWorkspaceClient : ISpecWorkspaceClient
             };
         }
 
-        if (document.Compute.Any(c => c.Op == "aggregate"))
+        if (effectiveOutputKind == SpecOutputKind.Analysis && document.Compute.Any(c => c.Op == "aggregate"))
         {
             var step = document.Compute.First(c => c.Op == "aggregate");
             var groupBy = step.Args.TryGetValue("by", out var by) ? by : "group";
@@ -1088,7 +1110,7 @@ public sealed partial class StubSpecWorkspaceClient : ISpecWorkspaceClient
             };
         }
 
-        if (document.Output.Kind == SpecOutputKind.Analysis)
+        if (effectiveOutputKind == SpecOutputKind.Analysis)
         {
             IReadOnlyList<IReadOnlyDictionary<string, string>> rows = new[]
             {
