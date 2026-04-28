@@ -374,8 +374,13 @@ public sealed class AdminPageRenderTests : TestContext
             cut.Markup.MarkupMatchesContaining("Public API key");
             cut.Markup.MarkupMatchesContaining("Code examples");
             cut.Markup.MarkupMatchesContaining("JavaScript");
+            cut.Markup.MarkupMatchesContaining("Usage analytics");
+            cut.Markup.MarkupMatchesContaining("Feedback and data quality");
+            cut.Markup.MarkupMatchesContaining("stale asset status values");
             cut.Find("[data-testid='open-data-api-access']");
             cut.Find("[data-testid='open-data-code-example-Python']");
+            cut.Find("[data-testid='open-data-usage-downloads']");
+            cut.Find("[data-testid='open-data-feedback-harbor-assets-quality-1']");
             cut.Markup.MarkupMatchesContaining("Readiness checks");
         });
     }

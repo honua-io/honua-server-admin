@@ -178,6 +178,39 @@
                     }
                 </div>
 
+                <MudText Typo="Typo.h6" Class="mt-4">Usage analytics</MudText>
+                <div class="open-data-usage-grid" aria-label="Open data usage analytics">
+                    <div data-testid="open-data-usage-downloads">
+                        <span>30-day downloads</span>
+                        <strong>@FormatCount(selected.Usage.DownloadsLast30Days)</strong>
+                    </div>
+                    <div data-testid="open-data-usage-api-calls">
+                        <span>30-day API calls</span>
+                        <strong>@FormatCount(selected.Usage.ApiCallsLast30Days)</strong>
+                    </div>
+                    <div data-testid="open-data-usage-consumers">
+                        <span>Unique consumers</span>
+                        <strong>@FormatCount(selected.Usage.UniqueConsumersLast30Days)</strong>
+                    </div>
+                    <div data-testid="open-data-usage-last-api-call">
+                        <span>Last API call</span>
+                        <strong>@FormatApiDate(selected.Usage.LastApiCallAt)</strong>
+                    </div>
+                </div>
+                @if (selected.Usage.PopularFormats.Count > 0)
+                {
+                    <div class="open-data-usage-formats" aria-label="Open data popular formats">
+                        @foreach (var format in selected.Usage.PopularFormats)
+                        {
+                            <div class="open-data-usage-format" data-testid="@($"open-data-format-usage-{format.Format}")">
+                                <MudIcon Icon="@Icons.Material.Filled.FileDownload" Size="Size.Small" />
+                                <span>@FormatDownload(format.Format)</span>
+                                <strong>@FormatCount(format.DownloadsLast30Days)</strong>
+                            </div>
+                        }
+                    </div>
+                }
+
                 <MudText Typo="Typo.h6" Class="mt-4">Preview response</MudText>
                 <pre class="open-data-code" aria-label="Open data sample API response"><code>@selected.SampleResponse</code></pre>
             </section>
@@ -277,6 +310,36 @@
                     </div>
                 </div>
 
+                <div class="open-data-feedback" aria-label="Open data feedback reports">
+                    <MudText Typo="Typo.subtitle2">Feedback and data quality</MudText>
+                    @if (selected.FeedbackReports.Count == 0)
+                    {
+                        <div class="open-data-empty" data-testid="open-data-feedback-empty">
+                            No feedback reports are open for this dataset.
+                        </div>
+                    }
+                    else
+                    {
+                        @foreach (var report in selected.FeedbackReports.OrderByDescending(report => report.CreatedAt))
+                        {
+                            <article class="open-data-feedback-row" data-testid="@($"open-data-feedback-{report.ReportId}")">
+                                <MudStack Row AlignItems="AlignItems.Center" Spacing="1">
+                                    <MudChip T="string" Size="Size.Small" Color="@FeedbackSeverityColor(report.Severity)" Variant="Variant.Outlined">
+                                        @report.Severity
+                                    </MudChip>
+                                    <MudChip T="string" Size="Size.Small" Color="@FeedbackStatusColor(report.Status)" Variant="Variant.Outlined">
+                                        @report.Status
+                                    </MudChip>
+                                    <MudSpacer />
+                                    <small>@FormatApiDate(report.CreatedAt)</small>
+                                </MudStack>
+                                <strong>@report.Summary</strong>
+                                <span>@report.Reporter</span>
+                            </article>
+                        }
+                    }
+                </div>
+
                 <div class="open-data-validation" aria-label="Open data validation checks">
                     <MudText Typo="Typo.subtitle2">Readiness checks</MudText>
                     @foreach (var check in State.ValidationChecks)
@@ -354,6 +417,13 @@
         return $"{bytes / 1_000d:0.0} KB";
     }
 
+    private static string FormatCount(int value)
+        => value >= 1_000_000
+            ? $"{value / 1_000_000d:0.0}M"
+            : value >= 1_000
+                ? $"{value / 1_000d:0.0}k"
+                : value.ToString("n0", CultureInfo.CurrentCulture);
+
     private static string FormatApiDate(DateTimeOffset? value)
         => value?.ToLocalTime().ToString("MMM d, yyyy", CultureInfo.CurrentCulture) ?? "not recorded";
 
@@ -372,6 +442,21 @@
         OpenDataDatasetStatus.Scheduled => Color.Info,
         OpenDataDatasetStatus.InReview => Color.Warning,
         OpenDataDatasetStatus.Blocked => Color.Error,
+        _ => Color.Default
+    };
+
+    private static Color FeedbackSeverityColor(OpenDataFeedbackSeverity severity) => severity switch
+    {
+        OpenDataFeedbackSeverity.High => Color.Error,
+        OpenDataFeedbackSeverity.Medium => Color.Warning,
+        _ => Color.Info
+    };
+
+    private static Color FeedbackStatusColor(OpenDataFeedbackStatus status) => status switch
+    {
+        OpenDataFeedbackStatus.Resolved => Color.Success,
+        OpenDataFeedbackStatus.Accepted => Color.Warning,
+        OpenDataFeedbackStatus.Triaged => Color.Info,
         _ => Color.Default
     };
 }

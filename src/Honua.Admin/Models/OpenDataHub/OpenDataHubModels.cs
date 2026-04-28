@@ -37,6 +37,21 @@ public enum OpenDataCodeLanguage
     Python
 }
 
+public enum OpenDataFeedbackSeverity
+{
+    Low,
+    Medium,
+    High
+}
+
+public enum OpenDataFeedbackStatus
+{
+    New,
+    Triaged,
+    Accepted,
+    Resolved
+}
+
 public sealed record OpenDataHubSnapshot
 {
     public IReadOnlyList<OpenDataDataset> Datasets { get; init; } = Array.Empty<OpenDataDataset>();
@@ -66,6 +81,8 @@ public sealed record OpenDataDataset
     public IReadOnlyList<OpenDataDownloadOption> Downloads { get; init; } = Array.Empty<OpenDataDownloadOption>();
     public IReadOnlyList<OpenDataApiEndpoint> ApiEndpoints { get; init; } = Array.Empty<OpenDataApiEndpoint>();
     public OpenDataEmbedConfig EmbedConfig { get; init; } = new();
+    public OpenDataUsageSummary Usage { get; init; } = new();
+    public IReadOnlyList<OpenDataFeedbackReport> FeedbackReports { get; init; } = Array.Empty<OpenDataFeedbackReport>();
 }
 
 public sealed record OpenDataApiAccess
@@ -112,6 +129,31 @@ public sealed record OpenDataEmbedConfig
     public string BrandingMode { get; init; } = string.Empty;
     public bool Responsive { get; init; }
     public bool WcagReady { get; init; }
+}
+
+public sealed record OpenDataUsageSummary
+{
+    public int DownloadsLast30Days { get; init; }
+    public int ApiCallsLast30Days { get; init; }
+    public int UniqueConsumersLast30Days { get; init; }
+    public DateTimeOffset? LastApiCallAt { get; init; }
+    public IReadOnlyList<OpenDataFormatUsage> PopularFormats { get; init; } = Array.Empty<OpenDataFormatUsage>();
+}
+
+public sealed record OpenDataFormatUsage
+{
+    public OpenDataDownloadFormat Format { get; init; }
+    public int DownloadsLast30Days { get; init; }
+}
+
+public sealed record OpenDataFeedbackReport
+{
+    public string ReportId { get; init; } = string.Empty;
+    public DateTimeOffset CreatedAt { get; init; }
+    public string Reporter { get; init; } = string.Empty;
+    public OpenDataFeedbackSeverity Severity { get; init; }
+    public OpenDataFeedbackStatus Status { get; init; }
+    public string Summary { get; init; } = string.Empty;
 }
 
 public sealed record OpenDataHubMetric

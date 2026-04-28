@@ -217,8 +217,111 @@ public sealed class StubOpenDataHubClient : IOpenDataHubClient
                 BrandingMode = "White label",
                 Responsive = true,
                 WcagReady = embedEnabled
-            }
+            },
+            Usage = UsageFor(datasetId, apiEnabled),
+            FeedbackReports = FeedbackReportsFor(datasetId, status)
         };
+    }
+
+    private static OpenDataUsageSummary UsageFor(string datasetId, bool apiEnabled)
+    {
+        var seed = DeterministicSeed(Slug(datasetId));
+        var downloadBase = 240 + seed % 920;
+        var apiBase = apiEnabled ? 8_000 + seed % 38_000 : seed % 900;
+        return new OpenDataUsageSummary
+        {
+            DownloadsLast30Days = downloadBase,
+            ApiCallsLast30Days = apiBase,
+            UniqueConsumersLast30Days = apiEnabled ? 38 + seed % 180 : 4 + seed % 18,
+            LastApiCallAt = apiEnabled ? DateTimeOffset.Parse("2026-04-27T22:15:00Z") : null,
+            PopularFormats =
+            [
+                new OpenDataFormatUsage
+                {
+                    Format = OpenDataDownloadFormat.GeoJson,
+                    DownloadsLast30Days = Math.Max(downloadBase / 2, 1)
+                },
+                new OpenDataFormatUsage
+                {
+                    Format = OpenDataDownloadFormat.Csv,
+                    DownloadsLast30Days = Math.Max(downloadBase / 3, 1)
+                },
+                new OpenDataFormatUsage
+                {
+                    Format = OpenDataDownloadFormat.GeoParquet,
+                    DownloadsLast30Days = Math.Max(downloadBase / 5, 1)
+                }
+            ]
+        };
+    }
+
+    private static IReadOnlyList<OpenDataFeedbackReport> FeedbackReportsFor(string datasetId, OpenDataDatasetStatus status)
+    {
+        var slug = Slug(datasetId);
+        if (status == OpenDataDatasetStatus.Published)
+        {
+            return
+            [
+                new OpenDataFeedbackReport
+                {
+                    ReportId = $"{slug}-quality-1",
+                    CreatedAt = DateTimeOffset.Parse("2026-04-25T15:20:00Z"),
+                    Reporter = "civic-apps@honua.local",
+                    Severity = OpenDataFeedbackSeverity.Medium,
+                    Status = OpenDataFeedbackStatus.Triaged,
+                    Summary = "Several public API users report stale asset status values near pier 4."
+                },
+                new OpenDataFeedbackReport
+                {
+                    ReportId = $"{slug}-schema-2",
+                    CreatedAt = DateTimeOffset.Parse("2026-04-22T09:00:00Z"),
+                    Reporter = "data-quality@honua.local",
+                    Severity = OpenDataFeedbackSeverity.Low,
+                    Status = OpenDataFeedbackStatus.Resolved,
+                    Summary = "Column description for asset_type was missing from the catalog metadata."
+                }
+            ];
+        }
+
+        if (status == OpenDataDatasetStatus.Blocked)
+        {
+            return
+            [
+                new OpenDataFeedbackReport
+                {
+                    ReportId = $"{slug}-license-1",
+                    CreatedAt = DateTimeOffset.Parse("2026-04-26T18:05:00Z"),
+                    Reporter = "review@honua.local",
+                    Severity = OpenDataFeedbackSeverity.High,
+                    Status = OpenDataFeedbackStatus.Accepted,
+                    Summary = "License terms conflict with public download requirements."
+                }
+            ];
+        }
+
+        return
+        [
+            new OpenDataFeedbackReport
+            {
+                ReportId = $"{slug}-review-1",
+                CreatedAt = DateTimeOffset.Parse("2026-04-24T13:45:00Z"),
+                Reporter = "publisher@honua.local",
+                Severity = OpenDataFeedbackSeverity.Medium,
+                Status = OpenDataFeedbackStatus.New,
+                Summary = "Review requested for geography label and sample response coverage."
+            }
+        ];
+    }
+
+    private static int DeterministicSeed(string value)
+    {
+        var seed = 17;
+        foreach (var character in value)
+        {
+            seed = unchecked(seed * 31 + character);
+        }
+
+        return seed == int.MinValue ? int.MaxValue : Math.Abs(seed);
     }
 
     private static IReadOnlyList<OpenDataCodeExample> CodeExamples(string slug, string stacCollectionId) =>
