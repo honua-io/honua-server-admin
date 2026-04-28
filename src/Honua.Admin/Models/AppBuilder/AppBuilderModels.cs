@@ -115,4 +115,5 @@ public sealed record AppPublishResult
     public string EmbedUrl { get; init; } = string.Empty;
     public DateTimeOffset PublishedAt { get; init; }
     public string Message { get; init; } = string.Empty;
+    public bool ConsumedQuotaSlot { get; init; }
 }

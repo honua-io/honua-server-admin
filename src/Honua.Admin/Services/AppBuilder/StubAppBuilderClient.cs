@@ -5,6 +5,8 @@ namespace Honua.Admin.Services.AppBuilder;
 
 public sealed class StubAppBuilderClient : IAppBuilderClient
 {
+    private readonly HashSet<string> _publishedDraftIds = new(StringComparer.Ordinal);
+
     public Task<AppBuilderSnapshot> GetSnapshotAsync(CancellationToken cancellationToken)
     {
         var snapshot = new AppBuilderSnapshot
@@ -105,13 +107,17 @@ public sealed class StubAppBuilderClient : IAppBuilderClient
     }
 
     public Task<AppPublishResult> PublishAsync(AppDraft draft, CancellationToken cancellationToken)
-        => Task.FromResult(new AppPublishResult
+    {
+        var consumedQuotaSlot = _publishedDraftIds.Add(draft.DraftId);
+        return Task.FromResult(new AppPublishResult
         {
             PublishedUrl = $"https://apps.honua.local/{Slug(draft.Name)}",
             EmbedUrl = $"https://apps.honua.local/embed/{Slug(draft.Name)}",
             PublishedAt = DateTimeOffset.Parse("2026-04-28T00:00:00Z"),
-            Message = $"{draft.Name} is ready for preview."
+            Message = $"{draft.Name} is ready for preview.",
+            ConsumedQuotaSlot = consumedQuotaSlot
         });
+    }
 
     private static AppWidgetDefinition Widget(
         AppWidgetKind kind,

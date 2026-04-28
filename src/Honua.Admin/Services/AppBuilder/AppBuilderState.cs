@@ -297,7 +297,11 @@ public sealed class AppBuilderState
         try
         {
             LastPublish = await _client.PublishAsync(Draft, cancellationToken).ConfigureAwait(false);
-            Quota = Quota with { PublishedApps = Quota.PublishedApps + 1 };
+            if (LastPublish.ConsumedQuotaSlot)
+            {
+                Quota = Quota with { PublishedApps = Quota.PublishedApps + 1 };
+            }
+
             Status = AppBuilderStatus.Published;
         }
         catch (OperationCanceledException)
