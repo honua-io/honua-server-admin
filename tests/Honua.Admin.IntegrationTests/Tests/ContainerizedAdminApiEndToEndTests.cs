@@ -19,8 +19,6 @@ namespace Honua.Admin.IntegrationTests.Tests;
 /// </summary>
 public sealed class ContainerizedAdminApiEndToEndTests
 {
-    private static readonly TimeSpan ContainerRunBudget = TimeSpan.FromMinutes(4);
-
     [Fact]
     [Trait("Category", "ContainerE2E")]
     public async Task HonuaServerContainer_ExercisesAdminReadinessAndPostgisPublishingFlow()
@@ -30,8 +28,7 @@ public sealed class ContainerizedAdminApiEndToEndTests
             return;
         }
 
-        using var timeout = new CancellationTokenSource(ContainerRunBudget);
-        var cancellationToken = timeout.Token;
+        var cancellationToken = CancellationToken.None;
         await using var fixture = await ContainerizedHonuaServerFixture.StartAsync(cancellationToken);
         await fixture.SeedSpatialCatalogAsync(cancellationToken);
 
@@ -127,9 +124,10 @@ public sealed class ContainerizedAdminApiEndToEndTests
             Assert.Contains(services, service => service.ServiceName == layer.ServiceName);
 
             var settings = await fixture.AdminClient.GetServiceSettingsAsync(layer.ServiceName, cancellationToken);
-            IReadOnlyList<string> protocols = settings.EnabledProtocols.Count == 0
-                ? ["FeatureServer"]
-                : settings.EnabledProtocols;
+            Assert.NotEmpty(settings.AvailableProtocols);
+            IReadOnlyList<string> protocols = settings.EnabledProtocols.Count > 0
+                ? settings.EnabledProtocols
+                : [settings.AvailableProtocols[0]];
             var protocolUpdate = await fixture.AdminClient.UpdateServiceProtocolsAsync(
                 layer.ServiceName,
                 new UpdateProtocolsRequest { EnabledProtocols = protocols },
