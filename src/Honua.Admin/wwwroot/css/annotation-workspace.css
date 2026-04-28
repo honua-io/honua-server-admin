@@ -1,0 +1,241 @@
+.annotation-root {
+    display: flex;
+    flex-direction: column;
+    height: calc(100vh - 128px);
+    min-height: 560px;
+    gap: 8px;
+}
+
+.annotation-toolbar {
+    flex: 0 0 auto;
+}
+
+.annotation-grid {
+    flex: 1 1 auto;
+    display: grid;
+    grid-template-columns: minmax(220px, 0.72fr) minmax(420px, 1.6fr) minmax(280px, 0.92fr);
+    gap: 8px;
+    min-height: 0;
+}
+
+.annotation-pane {
+    min-width: 0;
+    min-height: 0;
+    overflow: auto;
+    border: 1px solid var(--mud-palette-divider, #d9dee3);
+    border-radius: 6px;
+    background: var(--mud-palette-surface, #ffffff);
+    padding: 12px;
+}
+
+.annotation-set-name {
+    width: min(300px, 34vw);
+}
+
+.annotation-control-block {
+    padding-top: 12px;
+    margin-top: 12px;
+    border-top: 1px solid var(--mud-palette-divider, #d9dee3);
+}
+
+.annotation-swatch-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin: 8px 0;
+}
+
+.annotation-swatch {
+    width: 28px;
+    height: 28px;
+    border: 2px solid #ffffff;
+    outline: 1px solid #c9d1d9;
+    border-radius: 50%;
+    cursor: pointer;
+}
+
+.annotation-swatch:focus-visible {
+    outline: 2px solid #2563eb;
+    outline-offset: 2px;
+}
+
+.annotation-swatch-active {
+    border-color: #111827;
+}
+
+.annotation-edition-row {
+    flex-wrap: wrap;
+}
+
+.annotation-gates .mud-list-item {
+    min-height: 32px;
+}
+
+.annotation-map-pane {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.annotation-map-header {
+    flex: 0 0 auto;
+    padding-bottom: 8px;
+}
+
+.annotation-map-shell {
+    flex: 1 1 auto;
+    min-height: 360px;
+    overflow: hidden;
+    border: 1px solid #c8d2cf;
+    border-radius: 6px;
+    background: #eef4f1;
+}
+
+.annotation-map-svg {
+    width: 100%;
+    height: 100%;
+    display: block;
+}
+
+.annotation-map-water {
+    fill: #e8f2f0;
+}
+
+.annotation-map-channel {
+    fill: none;
+    stroke: #7c8f88;
+    stroke-width: 10;
+    stroke-opacity: 0.35;
+    stroke-linecap: round;
+}
+
+.annotation-map-road {
+    fill: none;
+    stroke: #f5f0e8;
+    stroke-width: 18;
+    stroke-linecap: round;
+}
+
+.annotation-map-parcel {
+    fill: #d9e7df;
+    stroke: #8aa198;
+    stroke-width: 2;
+}
+
+.annotation-shape {
+    cursor: pointer;
+}
+
+.annotation-shape-selected > * {
+    filter: drop-shadow(0 0 4px rgba(15, 118, 110, 0.7));
+}
+
+.annotation-label {
+    fill: #1f2937;
+    font-family: Roboto, Arial, sans-serif;
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.annotation-thread circle {
+    fill: #ffffff;
+    stroke-width: 3;
+}
+
+.annotation-thread text {
+    fill: #111827;
+    font-family: Roboto, Arial, sans-serif;
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.annotation-thread-open circle {
+    stroke: #2563eb;
+}
+
+.annotation-thread-pending circle {
+    stroke: #b45309;
+}
+
+.annotation-thread-resolved circle {
+    stroke: #15803d;
+}
+
+.annotation-tab-body {
+    padding-top: 12px;
+}
+
+.annotation-layer-list,
+.annotation-thread-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.annotation-layer-row {
+    display: grid;
+    grid-template-columns: 24px minmax(0, 1fr) 36px 36px;
+    gap: 6px;
+    align-items: center;
+    border: 1px solid var(--mud-palette-divider, #d9dee3);
+    border-radius: 6px;
+    padding: 6px;
+}
+
+.annotation-layer-active {
+    border-color: #0f766e;
+    background: #eefaf7;
+}
+
+.annotation-layer-hidden {
+    opacity: 0.55;
+}
+
+.annotation-layer-main {
+    min-width: 0;
+}
+
+.annotation-thread-card {
+    border: 1px solid var(--mud-palette-divider, #d9dee3);
+    border-radius: 6px;
+    padding: 8px;
+}
+
+.annotation-thread-card-selected {
+    border-color: #2563eb;
+    background: #eff6ff;
+}
+
+.annotation-comment {
+    margin: 8px 0;
+    padding-left: 8px;
+    border-left: 3px solid #d1d5db;
+}
+
+@media (max-width: 1100px) {
+    .annotation-root {
+        height: auto;
+    }
+
+    .annotation-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .annotation-map-shell {
+        height: 520px;
+    }
+}
+
+@media (max-width: 720px) {
+    .annotation-set-name {
+        width: 100%;
+    }
+
+    .annotation-toolbar .mud-stack-row {
+        flex-wrap: wrap;
+    }
+
+    .annotation-map-shell {
+        height: 420px;
+    }
+}

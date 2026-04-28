@@ -26,6 +26,7 @@ This is the official admin UI for managing Honua Server instances:
 - **Identity Workspace**: OIDC provider lifecycle (list / create / edit / enable / delete), provider status, auth diagnostics, and API-key gap surface — see [Identity workspace](#identity-workspace) below
 - **License Workspace**: BYOL license status, entitlement inspection, expiry banding, replace flow, and operator-actionable diagnostics — see [License workspace](#license-workspace) below
 - **Spatial SQL Playground**: Browser-based PostGIS-aware SQL editor with schema autocomplete, MapLibre preview, EXPLAIN tree, and named-view save flow — see [Spatial SQL playground](#spatial-sql-playground) below
+- **Map Annotations Workspace**: Drawing tools, annotation-layer controls, saved sets, comment review, and GeoJSON / SVG / PDF export stubs at `/operator/annotations` - see [Map annotations workspace](#map-annotations-workspace) below
 - **Data Connections Workspace**: List / create / edit / soft-disable / delete / preflight data connections, with a structured diagnostic grid and a managed-Postgres capability matrix — see [Data connections workspace](#data-connections-workspace) below
 
 Coverage of the wider honua-server admin API is tracked in
@@ -403,6 +404,32 @@ The S1 scope deliberately excludes Monaco / CodeMirror integration, write
 SQL beyond the per-query override, multi-database routing, query history
 sharing across operators, and live `pg_proc` introspection — each is
 tracked as a follow-on against `honua-server` or a future admin ticket.
+
+### Map annotations workspace
+
+The annotations workspace (ticket `#8`) lives at `/operator/annotations`
+and reuses the shared operator shell. It is an admin-UI slice backed by
+`AnnotationWorkspaceState` until saved-map, comment, and collaboration
+APIs are available from honua-server.
+
+The route includes:
+
+- A drawing toolbar for select, pen, rectangle, circle, polygon, arrow,
+  text, comment pin, and comment area modes.
+- Stroke and fill controls with constrained width and opacity values.
+- Annotation layers kept separate from the locked feature-data reference
+  layer, with visibility and lock toggles.
+- In-memory saved annotation sets with load/restore behavior.
+- Comment threads with Community / Pro / Enterprise edition gates for
+  comment limits, guest comments, threaded comments, and moderation.
+- GeoJSON and SVG exports for visible annotations, plus an
+  Enterprise-gated PDF review packet stub.
+
+The current scope deliberately uses deterministic sample placement instead
+of pointer-driven drawing. The state and export surfaces are covered by
+unit tests so the upcoming map-canvas, saved-map storage, and live
+collaboration integrations can replace the stubbed placement flow without
+changing the route contract.
 
 ### Data connections workspace
 

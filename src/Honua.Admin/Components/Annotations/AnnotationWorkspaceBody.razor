@@ -1,0 +1,580 @@
+@using System.Globalization
+@using Honua.Admin.Models.Annotations
+@using Honua.Admin.Services.Annotations
+@inject AnnotationWorkspaceState State
+@inject IJSRuntime JS
+@implements IDisposable
+
+<div class="annotation-root" data-testid="annotation-workspace-root">
+    <div class="annotation-toolbar" aria-label="Annotation workspace toolbar">
+        <MudStack Row AlignItems="AlignItems.Center" Spacing="1">
+            @foreach (var option in ToolOptions)
+            {
+                <MudIconButton Icon="@option.Icon"
+                               Color="@(State.ActiveTool == option.Tool ? Color.Primary : Color.Default)"
+                               Variant="@(State.ActiveTool == option.Tool ? Variant.Filled : Variant.Text)"
+                               Size="Size.Small"
+                               aria-label="@option.Label"
+                               title="@option.Label"
+                               OnClick="@(() => State.SelectTool(option.Tool))"
+                               data-testid="@($"annotation-tool-{option.Tool}")" />
+            }
+            <MudDivider Vertical="true" FlexItem="true" Class="mx-1" />
+            <MudButton StartIcon="@Icons.Material.Filled.AddLocationAlt"
+                       Color="Color.Primary"
+                       Variant="Variant.Filled"
+                       Size="Size.Small"
+                       OnClick="PlaceAnnotation"
+                       data-testid="annotation-place-button">
+                Place
+            </MudButton>
+            <MudSpacer />
+            <MudTextField T="string"
+                          Label="Set name"
+                          Variant="Variant.Outlined"
+                          Margin="Margin.Dense"
+                          Value="@_setName"
+                          ValueChanged="OnSetNameChanged"
+                          aria-label="Annotation set name"
+                          Class="annotation-set-name" />
+            <MudButton StartIcon="@Icons.Material.Filled.Save"
+                       Variant="Variant.Outlined"
+                       Size="Size.Small"
+                       OnClick="SaveSet"
+                       data-testid="annotation-save-set">
+                Save
+            </MudButton>
+            <MudMenu Label="Load"
+                     StartIcon="@Icons.Material.Filled.FolderOpen"
+                     Variant="Variant.Outlined"
+                     Size="Size.Small"
+                     Disabled="@(State.SavedSets.Count == 0)"
+                     data-testid="annotation-load-menu">
+                @foreach (var savedSet in State.SavedSets)
+                {
+                    var set = savedSet;
+                    <MudMenuItem OnClick="@(() => LoadSet(set.Id))">@set.Name</MudMenuItem>
+                }
+            </MudMenu>
+        </MudStack>
+        @if (!string.IsNullOrWhiteSpace(State.LastError))
+        {
+            <MudAlert Severity="Severity.Warning" Dense="true" Variant="Variant.Filled" Class="mt-2" data-testid="annotation-error">
+                @State.LastError
+            </MudAlert>
+        }
+    </div>
+
+    <div class="annotation-grid">
+        <div class="annotation-pane annotation-tools" aria-label="Drawing controls">
+            <MudText Typo="Typo.h6">Drawing</MudText>
+            <MudText Typo="Typo.caption" Color="Color.Secondary">@ActiveToolLabel</MudText>
+
+            <div class="annotation-control-block">
+                <MudText Typo="Typo.subtitle2">Stroke</MudText>
+                <div class="annotation-swatch-row" role="group" aria-label="Stroke color">
+                    @foreach (var color in Palette)
+                    {
+                        <button type="button"
+                                class="@SwatchClass(State.Style.StrokeColor, color)"
+                                style="@($"background:{color}")"
+                                aria-label="@($"Stroke {color}")"
+                                title="@($"Stroke {color}")"
+                                @onclick="@(() => State.SetStrokeColor(color))"></button>
+                    }
+                </div>
+                <MudNumericField T="double"
+                                 Label="Width"
+                                 Variant="Variant.Outlined"
+                                 Margin="Margin.Dense"
+                                 Min="1"
+                                 Max="8"
+                                 Step="1"
+                                 Value="@State.Style.StrokeWidth"
+                                 ValueChanged="State.SetStrokeWidth"
+                                 aria-label="Stroke width" />
+            </div>
+
+            <div class="annotation-control-block">
+                <MudText Typo="Typo.subtitle2">Fill</MudText>
+                <div class="annotation-swatch-row" role="group" aria-label="Fill color">
+                    @foreach (var color in Palette)
+                    {
+                        <button type="button"
+                                class="@SwatchClass(State.Style.FillColor, color)"
+                                style="@($"background:{color}")"
+                                aria-label="@($"Fill {color}")"
+                                title="@($"Fill {color}")"
+                                @onclick="@(() => State.SetFillColor(color))"></button>
+                    }
+                </div>
+                <MudNumericField T="double"
+                                 Label="Opacity"
+                                 Variant="Variant.Outlined"
+                                 Margin="Margin.Dense"
+                                 Min="0"
+                                 Max="1"
+                                 Step="0.1"
+                                 Value="@State.Style.FillOpacity"
+                                 ValueChanged="State.SetFillOpacity"
+                                 aria-label="Fill opacity" />
+            </div>
+
+            <div class="annotation-control-block">
+                <MudText Typo="Typo.subtitle2">Edition</MudText>
+                <MudStack Row Spacing="1" Class="annotation-edition-row">
+                    @foreach (var edition in EditionOptions)
+                    {
+                        <MudButton Variant="@(State.ActiveEdition == edition ? Variant.Filled : Variant.Outlined)"
+                                   Color="@(State.ActiveEdition == edition ? Color.Primary : Color.Default)"
+                                   Size="Size.Small"
+                                   OnClick="@(() => State.SetEdition(edition))"
+                                   data-testid="@($"annotation-edition-{edition}")">
+                            @edition
+                        </MudButton>
+                    }
+                </MudStack>
+                <MudList T="string" Dense="true" Class="annotation-gates" data-testid="annotation-edition-gates">
+                    <MudListItem T="string" Icon="@Icons.Material.Filled.Comment">
+                        @(State.CommentLimit == int.MaxValue ? "Unlimited comments" : $"{State.CommentCount}/{State.CommentLimit} comments")
+                    </MudListItem>
+                    <MudListItem T="string" Icon="@(State.AllowsGuestComments ? Icons.Material.Filled.CheckCircle : Icons.Material.Filled.Block)">
+                        Guest comments
+                    </MudListItem>
+                    <MudListItem T="string" Icon="@(State.AllowsModeration ? Icons.Material.Filled.CheckCircle : Icons.Material.Filled.Block)">
+                        Moderation
+                    </MudListItem>
+                </MudList>
+            </div>
+        </div>
+
+        <div class="annotation-pane annotation-map-pane" aria-label="Annotation map">
+            <div class="annotation-map-header">
+                <MudStack Row AlignItems="AlignItems.Center" Spacing="1">
+                    <MudText Typo="Typo.h6">@State.CurrentSetName</MudText>
+                    <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="Color.Info">
+                        @State.VisibleShapes.Count() visible
+                    </MudChip>
+                    <MudSpacer />
+                    <MudChip T="string" Size="Size.Small" Variant="Variant.Filled" Color="Color.Primary">
+                        @State.ActiveEdition
+                    </MudChip>
+                </MudStack>
+            </div>
+
+            <div class="annotation-map-shell" data-testid="annotation-map">
+                <svg class="annotation-map-svg" viewBox="0 0 800 500" role="img" aria-label="Annotation preview">
+                    <rect x="0" y="0" width="800" height="500" class="annotation-map-water" />
+                    <path d="M74 354 C206 262 325 310 444 218 S646 178 724 112" class="annotation-map-channel" />
+                    <path d="M88 380 L190 312 L306 330 L438 248 L580 218 L722 138" class="annotation-map-road" />
+                    <polygon points="104,362 192,316 306,332 428,260 520,246 500,326 358,374 220,404" class="annotation-map-parcel" />
+                    <polygon points="532,238 620,210 704,148 738,206 630,276 548,292" class="annotation-map-parcel" />
+                    @foreach (var shape in State.VisibleShapes)
+                    {
+                        <g class="@ShapeClass(shape)" @onclick="@(() => State.SelectShape(shape.Id))" data-testid="@($"annotation-shape-{shape.Id}")">
+                            @RenderShape(shape)
+                        </g>
+                    }
+                    @foreach (var thread in State.Threads)
+                    {
+                        var anchor = Project(thread.Anchor);
+                        <g class="@ThreadClass(thread)" data-testid="@($"annotation-thread-{thread.Id}")">
+                            <circle cx="@anchor.X" cy="@anchor.Y" r="10" />
+                            <text x="@(anchor.X + 14)" y="@(anchor.Y + 4)">@(thread.Comments.Count)</text>
+                        </g>
+                    }
+                </svg>
+            </div>
+        </div>
+
+        <div class="annotation-pane annotation-side" aria-label="Annotation management">
+            <MudTabs Rounded="false" Elevation="0" ActivePanelIndex="@_activeSideTab" ActivePanelIndexChanged="OnSideTabChanged">
+                <MudTabPanel Text="Layers" data-testid="annotation-layers-tab">
+                    <MudStack Spacing="2" Class="annotation-tab-body">
+                        <MudTextField T="string"
+                                      Label="Layer name"
+                                      Variant="Variant.Outlined"
+                                      Margin="Margin.Dense"
+                                      Value="@_newLayerName"
+                                      ValueChanged="OnNewLayerNameChanged"
+                                      aria-label="New annotation layer name" />
+                        <MudButton StartIcon="@Icons.Material.Filled.Add"
+                                   Variant="Variant.Outlined"
+                                   Size="Size.Small"
+                                   OnClick="AddLayer"
+                                   data-testid="annotation-add-layer">
+                            Add layer
+                        </MudButton>
+
+                        <div class="annotation-layer-list" aria-label="Annotation layers">
+                            @foreach (var layer in State.Layers.OrderBy(layer => layer.SortOrder))
+                            {
+                                <div class="@LayerClass(layer)" data-testid="@($"annotation-layer-{layer.Name}")">
+                                    <MudIcon Icon="@(layer.IsFeatureLayer ? Icons.Material.Filled.Map : Icons.Material.Filled.Layers)" Size="Size.Small" />
+                                    <div class="annotation-layer-main">
+                                        <MudButton Variant="Variant.Text"
+                                                   Size="Size.Small"
+                                                   Disabled="@layer.IsFeatureLayer"
+                                                   OnClick="@(() => State.SelectLayer(layer.Id))">
+                                            @layer.Name
+                                        </MudButton>
+                                        <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                            @State.Shapes.Count(shape => shape.LayerId == layer.Id) item(s)
+                                        </MudText>
+                                    </div>
+                                    <MudIconButton Icon="@(layer.IsVisible ? Icons.Material.Filled.Visibility : Icons.Material.Filled.VisibilityOff)"
+                                                   Size="Size.Small"
+                                                   aria-label="@($"{layer.Name} visibility")"
+                                                   title="@($"{layer.Name} visibility")"
+                                                   OnClick="@(() => State.ToggleLayerVisibility(layer.Id))" />
+                                    <MudIconButton Icon="@(layer.IsLocked ? Icons.Material.Filled.Lock : Icons.Material.Filled.LockOpen)"
+                                                   Size="Size.Small"
+                                                   Disabled="@layer.IsFeatureLayer"
+                                                   aria-label="@($"{layer.Name} lock")"
+                                                   title="@($"{layer.Name} lock")"
+                                                   OnClick="@(() => State.ToggleLayerLock(layer.Id))" />
+                                </div>
+                            }
+                        </div>
+                    </MudStack>
+                </MudTabPanel>
+
+                <MudTabPanel Text="Comments" data-testid="annotation-comments-tab">
+                    <MudStack Spacing="2" Class="annotation-tab-body">
+                        <MudTextField T="string"
+                                      Label="Comment"
+                                      Variant="Variant.Outlined"
+                                      Margin="Margin.Dense"
+                                      Lines="3"
+                                      Value="@_commentBody"
+                                      ValueChanged="OnCommentChanged"
+                                      aria-label="Annotation comment" />
+                        <MudStack Row Spacing="1">
+                            <MudButton StartIcon="@Icons.Material.Filled.PushPin"
+                                       Color="Color.Primary"
+                                       Variant="Variant.Filled"
+                                       Size="Size.Small"
+                                       OnClick="@(() => AddComment(false))"
+                                       data-testid="annotation-add-comment">
+                                Post
+                            </MudButton>
+                            <MudButton StartIcon="@Icons.Material.Filled.PersonAdd"
+                                       Variant="Variant.Outlined"
+                                       Size="Size.Small"
+                                       Disabled="@(!State.AllowsGuestComments)"
+                                       OnClick="@(() => AddComment(true))"
+                                       data-testid="annotation-add-guest-comment">
+                                Guest
+                            </MudButton>
+                        </MudStack>
+
+                        <div class="annotation-thread-list" aria-label="Annotation comment threads">
+                            @foreach (var thread in State.Threads.OrderByDescending(thread => thread.Comments.Last().CreatedAt))
+                            {
+                                <div class="@ThreadCardClass(thread)" data-testid="@($"annotation-thread-card-{thread.Id}")">
+                                    <MudStack Row AlignItems="AlignItems.Center" Spacing="1">
+                                        <MudIcon Icon="@Icons.Material.Filled.Forum" Size="Size.Small" />
+                                        <MudText Typo="Typo.subtitle2">@thread.AnchorTool</MudText>
+                                        <MudSpacer />
+                                        <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="@ThreadColor(thread.Status)">
+                                            @thread.Status
+                                        </MudChip>
+                                    </MudStack>
+                                    @foreach (var comment in thread.Comments)
+                                    {
+                                        <div class="annotation-comment">
+                                            <MudText Typo="Typo.body2">@comment.Body</MudText>
+                                            <MudText Typo="Typo.caption" Color="Color.Secondary">@comment.Author</MudText>
+                                        </div>
+                                    }
+                                    <MudTextField T="string"
+                                                  Label="Reply"
+                                                  Variant="Variant.Outlined"
+                                                  Margin="Margin.Dense"
+                                                  Value="@ReplyValue(thread.Id)"
+                                                  ValueChanged="@((string value) => OnReplyChanged(thread.Id, value))"
+                                                  Disabled="@(!State.AllowsThreadedComments)"
+                                                  aria-label="@($"Reply to {thread.AnchorTool} thread")" />
+                                    <MudStack Row Spacing="1">
+                                        <MudButton Size="Size.Small"
+                                                   Variant="Variant.Text"
+                                                   Disabled="@(!State.AllowsThreadedComments || string.IsNullOrWhiteSpace(ReplyValue(thread.Id)))"
+                                                   OnClick="@(() => AddReply(thread.Id))">
+                                            Reply
+                                        </MudButton>
+                                        <MudButton Size="Size.Small"
+                                                   Variant="Variant.Text"
+                                                   Disabled="@(!State.AllowsModeration || thread.Status != AnnotationCommentStatus.Pending)"
+                                                   OnClick="@(() => State.ApproveThread(thread.Id))">
+                                            Approve
+                                        </MudButton>
+                                        <MudButton Size="Size.Small"
+                                                   Variant="Variant.Text"
+                                                   OnClick="@(() => State.ResolveThread(thread.Id))">
+                                            Resolve
+                                        </MudButton>
+                                    </MudStack>
+                                </div>
+                            }
+                        </div>
+                    </MudStack>
+                </MudTabPanel>
+
+                <MudTabPanel Text="Export" data-testid="annotation-export-tab">
+                    <MudStack Spacing="2" Class="annotation-tab-body">
+                        <MudButton StartIcon="@Icons.Material.Filled.DataObject"
+                                   Variant="Variant.Outlined"
+                                   Size="Size.Small"
+                                   OnClick="ExportGeoJson"
+                                   data-testid="annotation-export-geojson">
+                            GeoJSON
+                        </MudButton>
+                        <MudButton StartIcon="@Icons.Material.Filled.Image"
+                                   Variant="Variant.Outlined"
+                                   Size="Size.Small"
+                                   OnClick="ExportSvg"
+                                   data-testid="annotation-export-svg">
+                            SVG
+                        </MudButton>
+                        <MudButton StartIcon="@Icons.Material.Filled.PictureAsPdf"
+                                   Variant="Variant.Outlined"
+                                   Size="Size.Small"
+                                   Disabled="@(!State.AllowsPdfExport)"
+                                   OnClick="ExportPdf"
+                                   data-testid="annotation-export-pdf">
+                            PDF
+                        </MudButton>
+                        @if (State.LastExport is not null)
+                        {
+                            <MudTextField T="string"
+                                          Label="@State.LastExport.FileName"
+                                          Value="@PreviewExport(State.LastExport.Content)"
+                                          ReadOnly="true"
+                                          Lines="8"
+                                          Variant="Variant.Outlined"
+                                          aria-label="Last annotation export"
+                                          data-testid="annotation-export-preview" />
+                        }
+                    </MudStack>
+                </MudTabPanel>
+            </MudTabs>
+        </div>
+    </div>
+</div>
+
+@code {
+    private static readonly (AnnotationTool Tool, string Label, string Icon)[] ToolOptions =
+    [
+        (AnnotationTool.Select, "Select", Icons.Material.Filled.NearMe),
+        (AnnotationTool.Pen, "Pen", Icons.Material.Filled.Draw),
+        (AnnotationTool.Rectangle, "Rectangle", Icons.Material.Filled.CropSquare),
+        (AnnotationTool.Circle, "Circle", Icons.Material.Filled.Circle),
+        (AnnotationTool.Polygon, "Polygon", Icons.Material.Filled.Pentagon),
+        (AnnotationTool.Arrow, "Arrow", Icons.Material.Filled.ArrowForward),
+        (AnnotationTool.Text, "Text", Icons.Material.Filled.TextFields),
+        (AnnotationTool.CommentPin, "Comment pin", Icons.Material.Filled.PushPin),
+        (AnnotationTool.CommentArea, "Comment area", Icons.Material.Filled.RateReview)
+    ];
+
+    private static readonly string[] Palette =
+    [
+        "#0f766e",
+        "#2563eb",
+        "#7c3aed",
+        "#b91c1c",
+        "#b45309",
+        "#111827"
+    ];
+
+    private static readonly AnnotationEdition[] EditionOptions =
+    [
+        AnnotationEdition.Community,
+        AnnotationEdition.Pro,
+        AnnotationEdition.Enterprise
+    ];
+
+    private string _setName = string.Empty;
+    private string _newLayerName = string.Empty;
+    private string _commentBody = string.Empty;
+    private Guid? _replyThreadId;
+    private string _replyBody = string.Empty;
+    private int _activeSideTab;
+
+    private string ActiveToolLabel => ToolOptions.First(option => option.Tool == State.ActiveTool).Label;
+
+    protected override void OnInitialized()
+    {
+        _setName = State.CurrentSetName;
+        State.OnChanged += StateChanged;
+    }
+
+    public void Dispose()
+    {
+        State.OnChanged -= StateChanged;
+    }
+
+    private void StateChanged()
+    {
+        _setName = State.CurrentSetName;
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void OnSetNameChanged(string value) => _setName = value;
+
+    private void OnNewLayerNameChanged(string value) => _newLayerName = value;
+
+    private void OnCommentChanged(string value) => _commentBody = value;
+
+    private string ReplyValue(Guid threadId) => _replyThreadId == threadId ? _replyBody : string.Empty;
+
+    private void OnReplyChanged(Guid threadId, string value)
+    {
+        _replyThreadId = threadId;
+        _replyBody = value;
+    }
+
+    private void OnSideTabChanged(int index) => _activeSideTab = index;
+
+    private void SaveSet() => State.SaveCurrentSet(_setName);
+
+    private void LoadSet(Guid setId) => State.LoadSet(setId);
+
+    private void AddLayer()
+    {
+        State.AddLayer(_newLayerName);
+        _newLayerName = string.Empty;
+    }
+
+    private void PlaceAnnotation() => State.PlaceDraftAnnotation();
+
+    private void AddComment(bool guest)
+    {
+        if (State.AddComment(_commentBody, guest) is not null)
+        {
+            _commentBody = string.Empty;
+        }
+    }
+
+    private void AddReply(Guid threadId)
+    {
+        State.AddReply(threadId, _replyBody);
+        if (State.LastError is null)
+        {
+            _replyThreadId = null;
+            _replyBody = string.Empty;
+        }
+    }
+
+    private async Task ExportGeoJson() => await DownloadAsync(State.ExportGeoJson());
+
+    private async Task ExportSvg() => await DownloadAsync(State.ExportSvg());
+
+    private async Task ExportPdf()
+    {
+        if (State.ExportPdf() is { } payload)
+        {
+            await DownloadAsync(payload);
+        }
+    }
+
+    private async Task DownloadAsync(AnnotationExportPayload payload)
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("annotationWorkspace.downloadFile", payload.FileName, payload.MimeType, payload.Content);
+        }
+        catch
+        {
+            // Tests and pre-render do not require the browser download helper.
+        }
+    }
+
+    private RenderFragment RenderShape(AnnotationShape shape) => builder =>
+    {
+        var sequence = 0;
+        var strokeWidth = shape.Style.StrokeWidth.ToString("0.##", CultureInfo.InvariantCulture);
+        if (shape.GeometryKind == AnnotationGeometryKind.Point)
+        {
+            var point = Project(shape.Points.FirstOrDefault());
+            builder.OpenElement(sequence++, "circle");
+            builder.AddAttribute(sequence++, "cx", point.X);
+            builder.AddAttribute(sequence++, "cy", point.Y);
+            builder.AddAttribute(sequence++, "r", 8);
+            builder.AddAttribute(sequence++, "fill", shape.Style.FillColor);
+            builder.AddAttribute(sequence++, "fill-opacity", shape.Style.FillOpacity.ToString("0.##", CultureInfo.InvariantCulture));
+            builder.AddAttribute(sequence++, "stroke", shape.Style.StrokeColor);
+            builder.AddAttribute(sequence++, "stroke-width", strokeWidth);
+            builder.CloseElement();
+            if (!string.IsNullOrWhiteSpace(shape.Text))
+            {
+                builder.OpenElement(sequence++, "text");
+                builder.AddAttribute(sequence++, "x", point.X + 12);
+                builder.AddAttribute(sequence++, "y", point.Y + 4);
+                builder.AddAttribute(sequence++, "class", "annotation-label");
+                builder.AddContent(sequence++, shape.Text);
+                builder.CloseElement();
+            }
+            return;
+        }
+
+        var points = string.Join(" ", shape.Points.Select(point =>
+        {
+            var projected = Project(point);
+            return string.Create(CultureInfo.InvariantCulture, $"{projected.X:0.##},{projected.Y:0.##}");
+        }));
+        builder.OpenElement(sequence++, shape.GeometryKind == AnnotationGeometryKind.Polygon ? "polygon" : "polyline");
+        builder.AddAttribute(sequence++, "points", points);
+        builder.AddAttribute(sequence++, "fill", shape.GeometryKind == AnnotationGeometryKind.Polygon ? shape.Style.FillColor : "none");
+        builder.AddAttribute(sequence++, "fill-opacity", shape.Style.FillOpacity.ToString("0.##", CultureInfo.InvariantCulture));
+        builder.AddAttribute(sequence++, "stroke", shape.Style.StrokeColor);
+        builder.AddAttribute(sequence++, "stroke-width", strokeWidth);
+        builder.AddAttribute(sequence++, "stroke-linecap", "round");
+        builder.AddAttribute(sequence++, "stroke-linejoin", "round");
+        builder.CloseElement();
+    };
+
+    private static (double X, double Y) Project(AnnotationPoint point)
+    {
+        const double minLongitude = -157.91;
+        const double maxLongitude = -157.83;
+        const double minLatitude = 21.285;
+        const double maxLatitude = 21.335;
+        var x = (point.Longitude - minLongitude) / (maxLongitude - minLongitude) * 800;
+        var y = (maxLatitude - point.Latitude) / (maxLatitude - minLatitude) * 500;
+        return (Math.Clamp(x, 24, 776), Math.Clamp(y, 24, 476));
+    }
+
+    private static string SwatchClass(string active, string color) =>
+        string.Equals(active, color, StringComparison.OrdinalIgnoreCase)
+            ? "annotation-swatch annotation-swatch-active"
+            : "annotation-swatch";
+
+    private string LayerClass(AnnotationLayer layer)
+    {
+        var active = layer.Id == State.ActiveLayerId ? " annotation-layer-active" : string.Empty;
+        var hidden = layer.IsVisible ? string.Empty : " annotation-layer-hidden";
+        return $"annotation-layer-row{active}{hidden}";
+    }
+
+    private string ShapeClass(AnnotationShape shape) =>
+        shape.Id == State.SelectedShapeId ? "annotation-shape annotation-shape-selected" : "annotation-shape";
+
+    private static string ThreadClass(AnnotationThread thread) =>
+        $"annotation-thread annotation-thread-{thread.Status.ToString().ToLowerInvariant()}";
+
+    private string ThreadCardClass(AnnotationThread thread)
+    {
+        var selected = thread.Id == State.SelectedThreadId ? " annotation-thread-card-selected" : string.Empty;
+        return $"annotation-thread-card{selected}";
+    }
+
+    private static Color ThreadColor(AnnotationCommentStatus status) => status switch
+    {
+        AnnotationCommentStatus.Pending => Color.Warning,
+        AnnotationCommentStatus.Resolved => Color.Success,
+        _ => Color.Info
+    };
+
+    private static string PreviewExport(string content) =>
+        content.Length <= 1200 ? content : content[..1200];
+}

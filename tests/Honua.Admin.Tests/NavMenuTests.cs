@@ -4,10 +4,8 @@ using Xunit;
 namespace Honua.Admin.Tests;
 
 /// <summary>
-/// Light text-based assertions on NavMenu.razor — confirms the spatial SQL entry
-/// lives in the same shared shell as the spec workspace, satisfying the contract
-/// constraint that the page registers in the spec-editor shell rather than a
-/// parallel layout.
+/// Light text-based assertions on NavMenu.razor - confirms operator workspaces
+/// live in the same shared shell rather than parallel layouts.
 /// </summary>
 public sealed class NavMenuTests
 {
@@ -24,6 +22,16 @@ public sealed class NavMenuTests
     }
 
     [Fact]
+    public void NavMenu_registers_annotation_workspace_under_operator_route()
+    {
+        var path = Path.Combine(System.AppContext.BaseDirectory, NavMenuPath);
+        var contents = File.ReadAllText(path);
+
+        Assert.Contains("/operator/annotations", contents, System.StringComparison.Ordinal);
+        Assert.Contains("Map annotations", contents, System.StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void NavMenu_uses_a_single_MudNavMenu_so_sql_page_lives_in_the_shared_shell()
     {
         var path = Path.Combine(System.AppContext.BaseDirectory, NavMenuPath);
@@ -37,10 +45,13 @@ public sealed class NavMenuTests
 
         var operatorSpec = contents.IndexOf("/operator/spec", System.StringComparison.Ordinal);
         var operatorSql = contents.IndexOf("/operator/sql", System.StringComparison.Ordinal);
+        var operatorAnnotations = contents.IndexOf("/operator/annotations", System.StringComparison.Ordinal);
         var menuClose = contents.IndexOf("</MudNavMenu>", System.StringComparison.Ordinal);
 
         Assert.True(operatorSpec > 0);
         Assert.True(operatorSql > 0);
+        Assert.True(operatorAnnotations > 0);
         Assert.True(operatorSql < menuClose);
+        Assert.True(operatorAnnotations < menuClose);
     }
 }
