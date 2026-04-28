@@ -90,6 +90,7 @@ public sealed class PublishingWorkspaceStateTests
         Assert.Null(state.LastError);
         Assert.Equal(StubHonuaAdminClient.PrimaryConnectionId.ToString("D"), client.LastTestedConnectionId);
         Assert.NotNull(state.SelectedConnectionTest);
+        Assert.NotNull(state.CurrentConnectionTest);
         Assert.True(state.SelectedConnectionTest.IsHealthy);
         Assert.Contains(state.EnvironmentStates, row => row.Name == "connection" && row.DriftStatus == "Ready");
     }
@@ -107,6 +108,23 @@ public sealed class PublishingWorkspaceStateTests
         Assert.True(state.HasBlockingValidation);
         Assert.Contains(state.ValidationChecks, check => check.Key == "health" && !check.Passed);
         Assert.Contains(state.EnvironmentStates, row => row.Name == "connection" && row.DriftStatus == "Needs attention");
+    }
+
+    [Fact]
+    public async Task InitializeAsync_clears_stale_connection_test_when_selection_changes()
+    {
+        var client = new ReassigningConnectionClient();
+        var state = new PublishingWorkspaceState(client);
+        await state.InitializeAsync();
+        await state.TestSelectedConnectionAsync();
+
+        client.UseSecondaryConnection = true;
+        await state.InitializeAsync();
+
+        Assert.Equal(ReassigningConnectionClient.SecondaryConnectionId.ToString("D"), state.SelectedConnectionId);
+        Assert.Null(state.SelectedConnectionTest);
+        Assert.Null(state.CurrentConnectionTest);
+        Assert.All(state.ValidationChecks, check => Assert.True(check.Passed, check.Message));
     }
 
     [Fact]
@@ -368,6 +386,46 @@ public sealed class PublishingWorkspaceStateTests
                 IsHealthy = false,
                 TestedAt = DateTimeOffset.Parse("2026-04-25T00:00:00Z"),
                 Message = "Connection timeout"
+            });
+    }
+
+    private sealed class ReassigningConnectionClient : StubHonuaAdminClient
+    {
+        public static readonly Guid SecondaryConnectionId = Guid.Parse("99999999-9999-9999-9999-999999999999");
+
+        public bool UseSecondaryConnection { get; set; }
+
+        public override Task<IReadOnlyList<ConnectionSummary>> ListConnectionsAsync(CancellationToken cancellationToken)
+            => Task.FromResult<IReadOnlyList<ConnectionSummary>>(
+                [
+                    UseSecondaryConnection
+                        ? new ConnectionSummary
+                        {
+                            ConnectionId = SecondaryConnectionId,
+                            Name = "secondary-postgis",
+                            Host = "secondary.local",
+                            Port = 5432,
+                            DatabaseName = "gis",
+                            Username = "honua",
+                            SslRequired = true,
+                            SslMode = "Require",
+                            StorageType = "PostgreSQL",
+                            IsActive = true,
+                            HealthStatus = "Healthy",
+                            CreatedAt = DateTimeOffset.Parse("2026-04-25T00:00:00Z"),
+                            CreatedBy = "admin"
+                        }
+                        : Connections[0]
+                ]);
+
+        public override Task<TestConnectionResult> TestConnectionAsync(string connectionId, CancellationToken cancellationToken)
+            => Task.FromResult(new TestConnectionResult
+            {
+                ConnectionId = PrimaryConnectionId,
+                ConnectionName = "primary-postgis",
+                IsHealthy = false,
+                TestedAt = DateTimeOffset.Parse("2026-04-25T00:00:00Z"),
+                Message = "Primary connection timeout"
             });
     }
 

@@ -109,14 +109,14 @@
                     </button>
                 }
             </div>
-            @if (State.SelectedConnectionTest is not null)
+            @if (State.CurrentConnectionTest is { } connectionTest)
             {
-                <MudAlert Severity="@(State.SelectedConnectionTest.IsHealthy ? Severity.Success : Severity.Warning)"
+                <MudAlert Severity="@(connectionTest.IsHealthy ? Severity.Success : Severity.Warning)"
                           Variant="Variant.Text"
                           Dense="true"
                           Class="mt-2"
                           data-testid="publishing-connection-test-result">
-                    @State.SelectedConnectionTest.Message
+                    @connectionTest.Message
                 </MudAlert>
             }
 
@@ -562,7 +562,7 @@
     private async Task TestConnectionAsync()
     {
         await State.TestSelectedConnectionAsync();
-        if (State.LastError is null && State.SelectedConnectionTest is not null)
+        if (State.LastError is null && State.CurrentConnectionTest is not null)
         {
             Snackbar.Add("Connection test passed.", Severity.Success);
         }
