@@ -22,6 +22,16 @@ public sealed class NavMenuTests
     }
 
     [Fact]
+    public void NavMenu_registers_control_center_under_operator_route()
+    {
+        var path = Path.Combine(System.AppContext.BaseDirectory, NavMenuPath);
+        var contents = File.ReadAllText(path);
+
+        Assert.Contains("/operator/control-center", contents, System.StringComparison.Ordinal);
+        Assert.Contains("Control center", contents, System.StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void NavMenu_registers_annotation_workspace_under_operator_route()
     {
         var path = Path.Combine(System.AppContext.BaseDirectory, NavMenuPath);
@@ -73,6 +83,7 @@ public sealed class NavMenuTests
         var open = System.Text.RegularExpressions.Regex.Matches(contents, "<MudNavMenu").Count;
         Assert.Equal(1, open);
 
+        var operatorControlCenter = contents.IndexOf("/operator/control-center", System.StringComparison.Ordinal);
         var operatorSpec = contents.IndexOf("/operator/spec", System.StringComparison.Ordinal);
         var operatorSql = contents.IndexOf("/operator/sql", System.StringComparison.Ordinal);
         var operatorAnnotations = contents.IndexOf("/operator/annotations", System.StringComparison.Ordinal);
@@ -81,12 +92,14 @@ public sealed class NavMenuTests
         var operatorPrint = contents.IndexOf("/operator/print", System.StringComparison.Ordinal);
         var menuClose = contents.IndexOf("</MudNavMenu>", System.StringComparison.Ordinal);
 
+        Assert.True(operatorControlCenter > 0);
         Assert.True(operatorSpec > 0);
         Assert.True(operatorSql > 0);
         Assert.True(operatorAnnotations > 0);
         Assert.True(operatorPublishing > 0);
         Assert.True(operatorAnalytics > 0);
         Assert.True(operatorPrint > 0);
+        Assert.True(operatorControlCenter < menuClose);
         Assert.True(operatorSql < menuClose);
         Assert.True(operatorAnnotations < menuClose);
         Assert.True(operatorPublishing < menuClose);

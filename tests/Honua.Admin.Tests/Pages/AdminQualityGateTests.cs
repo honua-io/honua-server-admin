@@ -11,6 +11,7 @@ using Honua.Admin.Models.Admin;
 using Honua.Admin.Pages.Admin;
 using Honua.Admin.Services.Admin;
 using Honua.Admin.Services.Annotations;
+using Honua.Admin.Services.Operations;
 using Honua.Admin.Services.PrintService;
 using Honua.Admin.Services.Publishing;
 using Honua.Admin.Services.UsageAnalytics;
@@ -37,6 +38,7 @@ public sealed class AdminQualityGateTests : TestContext
         Services.AddScoped<IAdminTelemetry, NullAdminTelemetry>();
         Services.AddScoped<IHonuaAdminClient>(_ => new StubHonuaAdminClient());
         Services.AddScoped<AnnotationWorkspaceState>();
+        Services.AddScoped<OperationsConsoleState>();
         Services.AddScoped<PublishingWorkspaceState>();
         Services.AddScoped<IUsageAnalyticsClient, StubUsageAnalyticsClient>();
         Services.AddScoped<UsageAnalyticsState>();
@@ -53,6 +55,13 @@ public sealed class AdminQualityGateTests : TestContext
             typeof(Honua.Admin.Pages.Index),
             "Honua Server Administration",
             new[] { "[aria-label='Feature overview']", "a[href='/connections']" },
+        ];
+        yield return
+        [
+            "Control center",
+            typeof(Honua.Admin.Pages.Operator.ControlCenter),
+            "Governance queue",
+            new[] { "[aria-label='Control center surfaces']", "[aria-label='Governance queue']", "[aria-label='Release evidence control center']" },
         ];
         yield return
         [

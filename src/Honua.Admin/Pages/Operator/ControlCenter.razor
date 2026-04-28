@@ -1,0 +1,283 @@
+@page "/operator/control-center"
+@using Honua.Admin.Services.Operations
+@inherits Honua.Admin.Shared.AdminPageBase
+@implements IDisposable
+@inject OperationsConsoleState State
+@inject IAdminRealtimeEvents RealtimeEvents
+
+<PageTitle>Admin control center - Honua Server Admin</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4" data-testid="control-center-root">
+    <MudStack Row AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Class="mb-4">
+        <MudStack Row AlignItems="AlignItems.Center" Spacing="1">
+            <MudText Typo="Typo.h4">
+                <MudIcon Icon="@Icons.Material.Filled.AdminPanelSettings" Class="mr-2" />
+                Admin control center
+            </MudText>
+            <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="@StatusColor(State.Status)" data-testid="control-center-status">
+                @State.Status
+            </MudChip>
+        </MudStack>
+        <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Refresh" OnClick="RefreshAsync" Disabled="@IsBusy">
+            Refresh
+        </MudButton>
+    </MudStack>
+
+    <ErrorBanner Message="@ErrorMessage" />
+    @if (!string.IsNullOrWhiteSpace(State.LastError))
+    {
+        <MudAlert Severity="Severity.Warning" Dense="true" Variant="Variant.Filled" Class="mb-4" data-testid="control-center-warning">
+            @State.LastError
+        </MudAlert>
+    }
+
+    @if (IsBusy && State.DeployPreflight is null)
+    {
+        <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="320px" Animation="Animation.Wave" />
+    }
+    else
+    {
+        <MudGrid Class="mb-4" aria-label="Control center surfaces">
+            <MudItem xs="12" md="3">
+                <MudCard Elevation="1">
+                    <MudCardContent>
+                        <MudText Typo="Typo.overline">Publishing</MudText>
+                        <MudText Typo="Typo.h6">@State.DriftLabel</MudText>
+                        <MudText Typo="Typo.body2">@PublishingSummary</MudText>
+                        <MudText Typo="Typo.caption">@PendingApprovalSummary</MudText>
+                    </MudCardContent>
+                    <MudCardActions>
+                        <MudButton Href="/operator/publishing" Variant="Variant.Text" Size="Size.Small" StartIcon="@Icons.Material.Filled.Publish">
+                            Publishing
+                        </MudButton>
+                    </MudCardActions>
+                </MudCard>
+            </MudItem>
+            <MudItem xs="12" md="3">
+                <MudCard Elevation="1">
+                    <MudCardContent>
+                        <MudText Typo="Typo.overline">Operations</MudText>
+                        <MudText Typo="Typo.h6">@State.ReleaseHealthLabel</MudText>
+                        <MudText Typo="Typo.body2">@(State.DeployPreflight?.Message ?? SectionError("Deploy preflight") ?? "No preflight loaded")</MudText>
+                        <MudText Typo="Typo.caption">@($"{State.DeployPreflight?.Environment ?? "unknown"} / {State.DeployPreflight?.InstanceName ?? "unknown"}")</MudText>
+                    </MudCardContent>
+                    <MudCardActions>
+                        <MudButton Href="/operator/operations" Variant="Variant.Text" Size="Size.Small" StartIcon="@Icons.Material.Filled.Settings">
+                            Operations
+                        </MudButton>
+                    </MudCardActions>
+                </MudCard>
+            </MudItem>
+            <MudItem xs="12" md="3">
+                <MudCard Elevation="1">
+                    <MudCardContent>
+                        <MudText Typo="Typo.overline">Release evidence</MudText>
+                        <MudText Typo="Typo.h6">@State.ReleaseEvidenceLabel</MudText>
+                        <MudText Typo="Typo.body2">@LatestGitOpsEvidence()</MudText>
+                        <MudText Typo="Typo.caption">@MigrationEvidence()</MudText>
+                    </MudCardContent>
+                    <MudCardActions>
+                        <MudButton Href="/deploy" Variant="Variant.Text" Size="Size.Small" StartIcon="@Icons.Material.Filled.RocketLaunch">
+                            Deploy
+                        </MudButton>
+                    </MudCardActions>
+                </MudCard>
+            </MudItem>
+            <MudItem xs="12" md="3">
+                <MudCard Elevation="1">
+                    <MudCardContent>
+                        <MudText Typo="Typo.overline">Troubleshooting</MudText>
+                        <MudText Typo="Typo.h6">@State.TroubleshootingLabel</MudText>
+                        <MudText Typo="Typo.body2">@(State.TelemetryStatus?.OtlpEndpoint ?? SectionError("Telemetry") ?? "No OTLP endpoint")</MudText>
+                        <MudText Typo="Typo.caption">@(State.RecentErrors?.InstanceId ?? "unknown instance")</MudText>
+                    </MudCardContent>
+                    <MudCardActions>
+                        <MudButton Href="/observability" Variant="Variant.Text" Size="Size.Small" StartIcon="@Icons.Material.Filled.MonitorHeart">
+                            Observability
+                        </MudButton>
+                    </MudCardActions>
+                </MudCard>
+            </MudItem>
+        </MudGrid>
+
+        @if (State.SectionErrors.Count > 0)
+        {
+            <MudAlert Severity="Severity.Warning" Dense="true" Variant="Variant.Outlined" Class="mb-4" data-testid="control-center-section-errors">
+                @string.Join("; ", State.SectionErrors.Select(error => $"{error.Key}: {error.Value}"))
+            </MudAlert>
+        }
+
+        <MudGrid>
+            <MudItem xs="12" lg="5">
+                <MudPaper Elevation="1" Class="pa-4" aria-label="Governance queue">
+                    <MudStack Row AlignItems="AlignItems.Center" Class="mb-2">
+                        <MudText Typo="Typo.h6">Governance queue</MudText>
+                        <MudSpacer />
+                        <MudButton Href="/operator/publishing" Variant="Variant.Text" Size="Size.Small">Review intent</MudButton>
+                    </MudStack>
+                    @if (State.PendingApprovals.Count > 0)
+                    {
+                        <MudTable Items="State.PendingApprovals" Dense="true" Hover="true" aria-label="Pending manifest approvals">
+                            <HeaderContent>
+                                <MudTh>Requested by</MudTh>
+                                <MudTh>Reason</MudTh>
+                                <MudTh>Resources</MudTh>
+                                <MudTh>Hash</MudTh>
+                            </HeaderContent>
+                            <RowTemplate>
+                                <MudTd>@context.RequestedBy</MudTd>
+                                <MudTd>@(context.RequestedReason ?? "No reason supplied")</MudTd>
+                                <MudTd>@context.ResourceCount</MudTd>
+                                <MudTd>@ShortHash(context.ManifestHash)</MudTd>
+                            </RowTemplate>
+                        </MudTable>
+                    }
+                    else if (!string.IsNullOrWhiteSpace(SectionError("Manifest approvals")))
+                    {
+                        <MudAlert Severity="Severity.Warning" Dense="true" Variant="Variant.Text">
+                            @SectionError("Manifest approvals")
+                        </MudAlert>
+                    }
+                    else
+                    {
+                        <MudAlert Severity="Severity.Success" Dense="true" Variant="Variant.Text">
+                            No pending manifest approvals.
+                        </MudAlert>
+                    }
+
+                    <MudDivider Class="my-4" />
+                    <MudText Typo="Typo.subtitle2">Drift evidence</MudText>
+                    @if (State.ManifestDrift?.Resources.Count > 0)
+                    {
+                        @foreach (var resource in State.ManifestDrift.Resources.Take(4))
+                        {
+                            <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="Color.Warning" Class="mr-1 mt-1">
+                                @($"{resource.Identifier.DisplayName}: {resource.DriftType}")
+                            </MudChip>
+                        }
+                    }
+                    else if (!string.IsNullOrWhiteSpace(SectionError("Manifest drift")))
+                    {
+                        <MudText Typo="Typo.body2" Color="Color.Warning">@SectionError("Manifest drift")</MudText>
+                    }
+                    else
+                    {
+                        <MudText Typo="Typo.body2" Color="Color.Success">Manifest baseline in sync.</MudText>
+                    }
+                </MudPaper>
+            </MudItem>
+
+            <MudItem xs="12" lg="4">
+                <MudPaper Elevation="1" Class="pa-4">
+                    <MudStack Row AlignItems="AlignItems.Center" Class="mb-2">
+                        <MudText Typo="Typo.h6">Release evidence</MudText>
+                        <MudSpacer />
+                        <MudButton Href="/operator/operations" Variant="Variant.Text" Size="Size.Small">Operations</MudButton>
+                    </MudStack>
+                    <MudSimpleTable Dense="true" Hover="true" aria-label="Release evidence control center">
+                        <tbody>
+                            <tr><td>Preflight</td><td>@(State.DeployPreflight?.Status ?? SectionError("Deploy preflight") ?? "unknown")</td></tr>
+                            <tr><td>Version</td><td>@(State.DeployPreflight?.ServerVersion ?? "unknown")</td></tr>
+                            <tr><td>Migration</td><td>@MigrationEvidence()</td></tr>
+                            <tr><td>Latest manifest</td><td>@(State.LatestManifestVersion?.ManifestHash ?? SectionError("Manifest versions") ?? "none")</td></tr>
+                            <tr><td>Latest GitOps change</td><td>@LatestGitOpsEvidence()</td></tr>
+                        </tbody>
+                    </MudSimpleTable>
+                </MudPaper>
+            </MudItem>
+
+            <MudItem xs="12" lg="3">
+                <MudPaper Elevation="1" Class="pa-4" aria-label="Troubleshooting handoff">
+                    <MudText Typo="Typo.h6" Class="mb-2">Troubleshooting handoff</MudText>
+                    <MudList T="string" Dense="true">
+                        <MudListItem Href="/observability" Icon="@Icons.Material.Filled.Insights">
+                            Logs, traces, metrics, and recent errors
+                        </MudListItem>
+                        <MudListItem Href="/operator/operations" Icon="@Icons.Material.Filled.Settings">
+                            Rollout health, drift, and release evidence
+                        </MudListItem>
+                        <MudListItem Href="/deploy" Icon="@Icons.Material.Filled.RocketLaunch">
+                            Promotion, rollback, and operation status
+                        </MudListItem>
+                        <MudListItem Href="/server-info" Icon="@Icons.Material.Filled.Info">
+                            Version, configuration, and OpenAPI
+                        </MudListItem>
+                    </MudList>
+                </MudPaper>
+            </MudItem>
+        </MudGrid>
+    }
+</MudContainer>
+
+@code {
+    protected override async Task OnInitializedAsync()
+    {
+        State.OnChanged += StateChanged;
+        RealtimeEvents.RecentErrorReceived += OnRecentErrorReceived;
+        RealtimeEvents.MigrationStatusChanged += OnMigrationStatusChanged;
+        Telemetry.PageNavigated("/operator/control-center", principalId: null);
+        await RefreshAsync();
+    }
+
+    public void Dispose()
+    {
+        State.OnChanged -= StateChanged;
+        RealtimeEvents.RecentErrorReceived -= OnRecentErrorReceived;
+        RealtimeEvents.MigrationStatusChanged -= OnMigrationStatusChanged;
+    }
+
+    private bool IsBusy => IsLoading || State.Status == OperationsConsoleStatus.Loading;
+
+    private string PublishingSummary => State.ManifestDrift is null
+        ? SectionError("Manifest drift") ?? "Desired-vs-actual state is not loaded"
+        : State.ManifestDrift.HasDrift
+            ? State.ManifestDrift.BaselineVersionId ?? "No baseline version loaded"
+            : "Desired and observed state match";
+
+    private string PendingApprovalSummary => SectionError("Manifest approvals")
+        ?? $"{State.PendingApprovals.Count} pending approval(s)";
+
+    private Task RefreshAsync() => ExecuteAsync(() => State.RefreshAsync(CancellationToken.None));
+
+    private void StateChanged() => InvokeAsync(StateHasChanged);
+
+    private void OnRecentErrorReceived(RecentErrorEntry entry)
+        => State.ApplyRecentError(entry);
+
+    private void OnMigrationStatusChanged(MigrationObservabilityResponse status)
+        => State.ApplyMigrationStatus(status);
+
+    private string? SectionError(string section)
+        => State.SectionErrors.TryGetValue(section, out var message) ? message : null;
+
+    private string LatestGitOpsEvidence()
+    {
+        var latest = State.LatestGitOpsChange;
+        if (latest is null)
+        {
+            return SectionError("GitOps changes") ?? "No GitOps change loaded";
+        }
+
+        return $"{ShortHash(latest.CommitSha)} - {latest.Status}";
+    }
+
+    private string MigrationEvidence()
+        => State.MigrationStatus is null
+            ? SectionError("Migrations") ?? "No migration status loaded"
+            : $"{State.MigrationStatus.Status} - {(State.MigrationStatus.UpgradeRequired ? "upgrade required" : "no upgrade")}";
+
+    private static string ShortHash(string? value)
+        => string.IsNullOrWhiteSpace(value)
+            ? "none"
+            : value.Length <= 12
+                ? value
+                : value[..12];
+
+    private static Color StatusColor(OperationsConsoleStatus status) => status switch
+    {
+        OperationsConsoleStatus.Error => Color.Error,
+        OperationsConsoleStatus.Loading => Color.Info,
+        OperationsConsoleStatus.Partial => Color.Warning,
+        _ => Color.Default
+    };
+}
