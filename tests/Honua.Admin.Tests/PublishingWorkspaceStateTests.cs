@@ -165,6 +165,45 @@ public sealed class PublishingWorkspaceStateTests
         Assert.Contains(state.EnvironmentStates, row => row.Name == "gitops");
     }
 
+    [Fact]
+    public async Task InitializeAsync_preserves_manifest_drift_when_version_history_fails()
+    {
+        var state = new PublishingWorkspaceState(new ManifestVersionUnavailableClient());
+
+        await state.InitializeAsync();
+
+        Assert.Equal(PublishingWorkspaceStatus.Idle, state.Status);
+        Assert.NotNull(state.ManifestDrift);
+        Assert.Empty(state.ManifestVersions);
+        Assert.Contains("Manifest versions", state.ManifestError, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task InitializeAsync_preserves_pending_approvals_when_approval_history_fails()
+    {
+        var state = new PublishingWorkspaceState(new ManifestApprovalHistoryUnavailableClient());
+
+        await state.InitializeAsync();
+
+        Assert.Equal(PublishingWorkspaceStatus.Idle, state.Status);
+        Assert.NotEmpty(state.PendingManifestChanges);
+        Assert.Empty(state.ManifestApprovalHistory);
+        Assert.Contains("Approval history", state.ManifestApprovalError, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task InitializeAsync_preserves_gitops_watch_when_change_history_fails()
+    {
+        var state = new PublishingWorkspaceState(new GitOpsChangesUnavailableClient());
+
+        await state.InitializeAsync();
+
+        Assert.Equal(PublishingWorkspaceStatus.Idle, state.Status);
+        Assert.NotNull(state.GitOpsWatch);
+        Assert.Empty(state.GitOpsChanges);
+        Assert.Contains("GitOps changes", state.GitOpsError, StringComparison.OrdinalIgnoreCase);
+    }
+
     private sealed class RecordingPublishingClient : StubHonuaAdminClient
     {
         public PublishLayerRequest? LastPublishRequest { get; private set; }
@@ -242,5 +281,23 @@ public sealed class PublishingWorkspaceStateTests
 
         public override Task<GitOpsWatchConfigResponse> GetGitOpsWatchAsync(CancellationToken cancellationToken)
             => throw new InvalidOperationException("gitops unavailable");
+    }
+
+    private sealed class ManifestVersionUnavailableClient : StubHonuaAdminClient
+    {
+        public override Task<ManifestVersionListResponse> ListManifestVersionsAsync(int limit, int offset, CancellationToken cancellationToken)
+            => throw new InvalidOperationException("versions unavailable");
+    }
+
+    private sealed class ManifestApprovalHistoryUnavailableClient : StubHonuaAdminClient
+    {
+        public override Task<IReadOnlyList<ManifestPendingChangeResponse>> ListManifestApprovalHistoryAsync(CancellationToken cancellationToken)
+            => throw new InvalidOperationException("history unavailable");
+    }
+
+    private sealed class GitOpsChangesUnavailableClient : StubHonuaAdminClient
+    {
+        public override Task<IReadOnlyList<GitOpsChangeRecordResponse>> ListGitOpsChangesAsync(int limit, int offset, CancellationToken cancellationToken)
+            => throw new InvalidOperationException("changes unavailable");
     }
 }

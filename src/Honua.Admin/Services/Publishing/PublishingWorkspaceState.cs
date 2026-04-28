@@ -712,7 +712,6 @@ public sealed class PublishingWorkspaceState
         try
         {
             ManifestDrift = await _client.GetManifestDriftAsync(verbose: false, cancellationToken).ConfigureAwait(false);
-            ManifestVersions = (await _client.ListManifestVersionsAsync(5, 0, cancellationToken).ConfigureAwait(false)).Versions;
         }
         catch (OperationCanceledException)
         {
@@ -721,8 +720,21 @@ public sealed class PublishingWorkspaceState
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
             ManifestDrift = null;
+            ManifestError = $"Manifest drift: {ex.Message}";
+        }
+
+        try
+        {
+            ManifestVersions = (await _client.ListManifestVersionsAsync(5, 0, cancellationToken).ConfigureAwait(false)).Versions;
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
             ManifestVersions = Array.Empty<ManifestVersionResponse>();
-            ManifestError = ex.Message;
+            ManifestError = CombineErrors(ManifestError, $"Manifest versions: {ex.Message}");
         }
     }
 
@@ -733,7 +745,6 @@ public sealed class PublishingWorkspaceState
         try
         {
             PendingManifestChanges = await _client.ListPendingManifestChangesAsync("pending", cancellationToken).ConfigureAwait(false);
-            ManifestApprovalHistory = await _client.ListManifestApprovalHistoryAsync(cancellationToken).ConfigureAwait(false);
         }
         catch (OperationCanceledException)
         {
@@ -742,8 +753,21 @@ public sealed class PublishingWorkspaceState
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
             PendingManifestChanges = Array.Empty<ManifestPendingChangeResponse>();
+            ManifestApprovalError = $"Pending approvals: {ex.Message}";
+        }
+
+        try
+        {
+            ManifestApprovalHistory = await _client.ListManifestApprovalHistoryAsync(cancellationToken).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
             ManifestApprovalHistory = Array.Empty<ManifestPendingChangeResponse>();
-            ManifestApprovalError = ex.Message;
+            ManifestApprovalError = CombineErrors(ManifestApprovalError, $"Approval history: {ex.Message}");
         }
     }
 
@@ -755,7 +779,6 @@ public sealed class PublishingWorkspaceState
         {
             GitOpsWatch = await _client.GetGitOpsWatchAsync(cancellationToken).ConfigureAwait(false);
             HydrateGitOpsDraft(GitOpsWatch);
-            await LoadGitOpsChangesAsync(cancellationToken).ConfigureAwait(false);
         }
         catch (OperationCanceledException)
         {
@@ -765,7 +788,22 @@ public sealed class PublishingWorkspaceState
         {
             GitOpsWatch = null;
             GitOpsChanges = Array.Empty<GitOpsChangeRecordResponse>();
-            GitOpsError = ex.Message;
+            GitOpsError = $"GitOps watch: {ex.Message}";
+            return;
+        }
+
+        try
+        {
+            await LoadGitOpsChangesAsync(cancellationToken).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            GitOpsChanges = Array.Empty<GitOpsChangeRecordResponse>();
+            GitOpsError = $"GitOps changes: {ex.Message}";
         }
     }
 
@@ -811,6 +849,9 @@ public sealed class PublishingWorkspaceState
             : sha.Length <= 12
                 ? sha
                 : sha[..12];
+
+    private static string CombineErrors(string? current, string next)
+        => string.IsNullOrWhiteSpace(current) ? next : $"{current} {next}";
 
     private void Notify() => OnChanged?.Invoke();
 }
