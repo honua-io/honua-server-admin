@@ -95,10 +95,31 @@ public sealed class StubAppBuilderClient : IAppBuilderClient
                 AutoRefreshSeconds = 60,
                 Widgets =
                 [
-                    Instance(AppWidgetKind.Map, "Operational map", "Harbor assets", 1, 1, 6, 4),
-                    Instance(AppWidgetKind.Indicator, "Open incidents", "Incidents count", 7, 1, 3, 2),
-                    Instance(AppWidgetKind.Chart, "Incidents by type", "Incident types", 7, 3, 3, 2),
-                    Instance(AppWidgetKind.List, "Recent work orders", "Work orders", 1, 5, 9, 2)
+                    Instance("widget-map", AppWidgetKind.Map, "Operational map", "Harbor assets", 1, 1, 6, 4),
+                    Instance("widget-indicator", AppWidgetKind.Indicator, "Open incidents", "Incidents count", 7, 1, 3, 2),
+                    Instance("widget-chart", AppWidgetKind.Chart, "Incidents by type", "Incident types", 7, 3, 3, 2),
+                    Instance("widget-list", AppWidgetKind.List, "Recent work orders", "Work orders", 1, 5, 9, 2)
+                ],
+                Interactions =
+                [
+                    Interaction(
+                        "interaction-map-chart",
+                        "widget-map",
+                        "Operational map",
+                        AppInteractionEventKind.MapFeatureClick,
+                        "widget-chart",
+                        "Incidents by type",
+                        AppInteractionActionKind.FilterWidget,
+                        "asset_id"),
+                    Interaction(
+                        "interaction-map-list",
+                        "widget-map",
+                        "Operational map",
+                        AppInteractionEventKind.MapFeatureClick,
+                        "widget-list",
+                        "Recent work orders",
+                        AppInteractionActionKind.FilterWidget,
+                        "asset_id")
                 ]
             }
         };
@@ -152,6 +173,7 @@ public sealed class StubAppBuilderClient : IAppBuilderClient
         };
 
     private static AppWidgetInstance Instance(
+        string widgetId,
         AppWidgetKind kind,
         string title,
         string binding,
@@ -160,6 +182,7 @@ public sealed class StubAppBuilderClient : IAppBuilderClient
         int width,
         int height) => new()
         {
+            WidgetId = widgetId,
             Kind = kind,
             Title = title,
             DataBinding = binding,
@@ -167,6 +190,27 @@ public sealed class StubAppBuilderClient : IAppBuilderClient
             Row = row,
             Width = width,
             Height = height
+        };
+
+    private static AppWidgetInteraction Interaction(
+        string interactionId,
+        string sourceWidgetId,
+        string sourceTitle,
+        AppInteractionEventKind eventKind,
+        string targetWidgetId,
+        string targetTitle,
+        AppInteractionActionKind action,
+        string binding) => new()
+        {
+            InteractionId = interactionId,
+            SourceWidgetId = sourceWidgetId,
+            SourceTitle = sourceTitle,
+            Event = eventKind,
+            TargetWidgetId = targetWidgetId,
+            TargetTitle = targetTitle,
+            Action = action,
+            Binding = binding,
+            Enabled = true
         };
 
     private static string Slug(string value)
