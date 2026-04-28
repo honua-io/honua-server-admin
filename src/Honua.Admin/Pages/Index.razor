@@ -1,6 +1,9 @@
 @page "/"
 @using MudBlazor
 @inherits Honua.Admin.Shared.AdminPageBase
+@implements IDisposable
+@inject IAdminRealtimeConnection Realtime
+@inject IAdminRealtimeEvents RealtimeEvents
 
 <PageTitle>Honua Server Admin</PageTitle>
 
@@ -56,6 +59,61 @@
                         <MudText Typo="Typo.overline">Total features</MudText>
                         <MudText Typo="Typo.h4">@_overview.Features.Count</MudText>
                     </MudCardContent>
+                </MudCard>
+            </MudItem>
+        </MudGrid>
+
+        <MudText Typo="Typo.h5" Class="mt-8 mb-2">Operations pulse</MudText>
+        <MudGrid>
+            <MudItem xs="12" md="4">
+                <MudCard Elevation="1">
+                    <MudCardContent>
+                        <MudStack Row AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
+                            <MudText Typo="Typo.overline">Recent errors</MudText>
+                            @LiveChip()
+                        </MudStack>
+                        <MudText Typo="Typo.h5">@(_errors?.Errors.Count ?? 0)</MudText>
+                        <MudText Typo="Typo.caption">@(LatestError?.Path ?? _errors?.InstanceId ?? "No recent errors")</MudText>
+                    </MudCardContent>
+                    <MudCardActions>
+                        <MudButton Href="/observability" Variant="Variant.Text" Size="Size.Small" StartIcon="@Icons.Material.Filled.MonitorHeart">
+                            Observability
+                        </MudButton>
+                    </MudCardActions>
+                </MudCard>
+            </MudItem>
+            <MudItem xs="12" md="4">
+                <MudCard Elevation="1">
+                    <MudCardContent>
+                        <MudStack Row AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
+                            <MudText Typo="Typo.overline">Migrations</MudText>
+                            @LiveChip()
+                        </MudStack>
+                        <MudText Typo="Typo.h5">@(_migrations?.Status ?? "Unknown")</MudText>
+                        <MudText Typo="Typo.caption">@(_migrations?.Message ?? "No migration status loaded")</MudText>
+                    </MudCardContent>
+                    <MudCardActions>
+                        <MudButton Href="/operator/operations" Variant="Variant.Text" Size="Size.Small" StartIcon="@Icons.Material.Filled.Settings">
+                            Operations
+                        </MudButton>
+                    </MudCardActions>
+                </MudCard>
+            </MudItem>
+            <MudItem xs="12" md="4">
+                <MudCard Elevation="1">
+                    <MudCardContent>
+                        <MudStack Row AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
+                            <MudText Typo="Typo.overline">Connection health</MudText>
+                            @LiveChip()
+                        </MudStack>
+                        <MudText Typo="Typo.h5">@(_connectionHealth?.HealthStatus ?? "No update")</MudText>
+                        <MudText Typo="Typo.caption">@ConnectionHealthCaption</MudText>
+                    </MudCardContent>
+                    <MudCardActions>
+                        <MudButton Href="/operator/data-connections" Variant="Variant.Text" Size="Size.Small" StartIcon="@Icons.Material.Filled.Storage">
+                            Connections
+                        </MudButton>
+                    </MudCardActions>
                 </MudCard>
             </MudItem>
         </MudGrid>
@@ -127,13 +185,88 @@
 
 @code {
     private FeatureOverview? _overview;
+    private RecentErrorsResponse? _errors;
+    private MigrationObservabilityResponse? _migrations;
+    private DataConnectionHealthChangedEvent? _connectionHealth;
+
+    private RecentErrorEntry? LatestError => _errors?.Errors.FirstOrDefault();
+
+    private string ConnectionHealthCaption
+    {
+        get
+        {
+            if (_connectionHealth is null)
+            {
+                return "Awaiting connection health event";
+            }
+
+            var name = string.IsNullOrWhiteSpace(_connectionHealth.Name)
+                ? _connectionHealth.ConnectionId.ToString()
+                : _connectionHealth.Name;
+            var lastChecked = _connectionHealth.LastHealthCheck?.ToString("u") ?? "just now";
+            return $"{name} - {lastChecked}";
+        }
+    }
 
     protected override async Task OnInitializedAsync()
     {
+        Realtime.StateChanged += OnRealtimeStateChanged;
+        RealtimeEvents.RecentErrorReceived += OnRecentErrorReceived;
+        RealtimeEvents.MigrationStatusChanged += OnMigrationStatusChanged;
+        RealtimeEvents.ConnectionHealthChanged += OnConnectionHealthChanged;
         Telemetry.PageNavigated("/", principalId: null);
         await ExecuteAsync(async () =>
         {
             _overview = await AdminClient.GetFeatureOverviewAsync(CancellationToken.None);
+            _errors = await AdminClient.GetRecentErrorsAsync(CancellationToken.None);
+            _migrations = await AdminClient.GetMigrationStatusAsync(CancellationToken.None);
         });
+    }
+
+    private RenderFragment LiveChip() => builder =>
+    {
+        if (Realtime.Status != AdminRealtimeConnectionStatus.Connected)
+        {
+            return;
+        }
+
+        builder.OpenComponent<MudChip<string>>(0);
+        builder.AddAttribute(1, "Size", Size.Small);
+        builder.AddAttribute(2, "Color", Color.Success);
+        builder.AddAttribute(3, "Variant", Variant.Outlined);
+        builder.AddAttribute(4, "ChildContent", (RenderFragment)(chipBuilder => chipBuilder.AddContent(5, "Live")));
+        builder.CloseComponent();
+    };
+
+    private void OnRealtimeStateChanged()
+        => _ = InvokeAsync(StateHasChanged);
+
+    private void OnRecentErrorReceived(RecentErrorEntry entry)
+        => _ = InvokeAsync(() =>
+        {
+            _errors = AdminRealtimeReducers.AddRecentError(_errors, entry);
+            StateHasChanged();
+        });
+
+    private void OnMigrationStatusChanged(MigrationObservabilityResponse status)
+        => _ = InvokeAsync(() =>
+        {
+            _migrations = status;
+            StateHasChanged();
+        });
+
+    private void OnConnectionHealthChanged(DataConnectionHealthChangedEvent health)
+        => _ = InvokeAsync(() =>
+        {
+            _connectionHealth = health;
+            StateHasChanged();
+        });
+
+    public void Dispose()
+    {
+        Realtime.StateChanged -= OnRealtimeStateChanged;
+        RealtimeEvents.RecentErrorReceived -= OnRecentErrorReceived;
+        RealtimeEvents.MigrationStatusChanged -= OnMigrationStatusChanged;
+        RealtimeEvents.ConnectionHealthChanged -= OnConnectionHealthChanged;
     }
 }

@@ -216,6 +216,56 @@ public sealed class DeployOrchestrationState
         Notify();
     }
 
+    public bool ApplyRealtimeOperation(DeployOperation operation)
+    {
+        if (string.IsNullOrWhiteSpace(operation.OperationId))
+        {
+            return false;
+        }
+
+        var target = _targets.FirstOrDefault(item =>
+            string.Equals(item.Operation?.OperationId, operation.OperationId, StringComparison.OrdinalIgnoreCase));
+
+        var operationTarget = operation.Target;
+        if (target is null && !string.IsNullOrWhiteSpace(operationTarget?.TargetId))
+        {
+            target = _targets.FirstOrDefault(item =>
+                string.Equals(item.TargetId, operationTarget.TargetId, StringComparison.OrdinalIgnoreCase));
+        }
+
+        if (target is null && operationTarget is not null && !string.IsNullOrWhiteSpace(operationTarget.TargetId))
+        {
+            target = new DeployFleetTarget(
+                operationTarget.TargetId,
+                operationTarget.DesiredRevision,
+                operationTarget.CurrentRevision)
+            {
+                Selected = false
+            };
+            _targets.Add(target);
+        }
+
+        if (target is null)
+        {
+            return false;
+        }
+
+        target.Operation = operation;
+        target.LastError = null;
+        target.LastAction = "Realtime operation update";
+        target.LastUpdated = operation.UpdatedAt == default
+            ? DateTimeOffset.UtcNow
+            : operation.UpdatedAt;
+        if (Status == DeployOrchestrationStatus.Error && _targets.All(item => item.LastError is null))
+        {
+            Status = DeployOrchestrationStatus.Idle;
+            LastError = null;
+        }
+
+        Notify();
+        return true;
+    }
+
     public Task PlanTargetAsync(DeployFleetTarget target, CancellationToken cancellationToken = default)
         => RunTargetOperationAsync(
             DeployOrchestrationStatus.Planning,

@@ -29,6 +29,7 @@ public sealed class AdminPageRenderTests : TestContext
         Services.AddMudServices();
         JSInterop.Mode = JSRuntimeMode.Loose;
         Services.AddScoped<IAdminTelemetry, NullAdminTelemetry>();
+        Services.AddTestRealtime();
     }
 
     [Fact]

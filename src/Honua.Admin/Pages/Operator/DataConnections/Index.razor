@@ -6,6 +6,7 @@
 @using Honua.Admin.Services.DataConnections.Providers
 @attribute [Authorize]
 @inject DataConnectionsState State
+@inject IAdminRealtimeEvents RealtimeEvents
 @inject NavigationManager Nav
 @implements IDisposable
 
@@ -99,10 +100,14 @@
     protected override async Task OnInitializedAsync()
     {
         State.OnChanged += HandleChanged;
+        RealtimeEvents.ConnectionHealthChanged += OnConnectionHealthChanged;
         await State.RefreshListAsync();
     }
 
     private void HandleChanged() => InvokeAsync(StateHasChanged);
+
+    private void OnConnectionHealthChanged(DataConnectionHealthChangedEvent health)
+        => State.ApplyConnectionHealth(health);
 
     private void StartCreate(string providerId)
     {
@@ -127,5 +132,6 @@
     public void Dispose()
     {
         State.OnChanged -= HandleChanged;
+        RealtimeEvents.ConnectionHealthChanged -= OnConnectionHealthChanged;
     }
 }

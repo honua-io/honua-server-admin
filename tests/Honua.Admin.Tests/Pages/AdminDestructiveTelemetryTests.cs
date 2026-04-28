@@ -34,6 +34,7 @@ public sealed class AdminDestructiveTelemetryTests : TestContext
     {
         Services.AddMudServices();
         JSInterop.Mode = JSRuntimeMode.Loose;
+        Services.AddTestRealtime();
     }
 
     [Fact]

@@ -36,6 +36,7 @@ public sealed class AdminQualityGateTests : TestContext
         Services.AddScoped<IHonuaAdminClient>(_ => new StubHonuaAdminClient());
         Services.AddScoped<AnnotationWorkspaceState>();
         Services.AddScoped<PublishingWorkspaceState>();
+        Services.AddTestRealtime();
     }
 
     public static IEnumerable<object[]> TopWorkflows()

@@ -119,6 +119,64 @@ public sealed class DataConnectionsState
         Notify();
     }
 
+    public bool ApplyConnectionHealth(Honua.Admin.Models.Admin.DataConnectionHealthChangedEvent health)
+    {
+        if (health.ConnectionId == Guid.Empty || string.IsNullOrWhiteSpace(health.HealthStatus))
+        {
+            return false;
+        }
+
+        var timestamp = health.LastHealthCheck ?? DateTimeOffset.UtcNow;
+        var updated = false;
+
+        var index = _connections.FindIndex(connection => connection.ConnectionId == health.ConnectionId);
+        DataConnectionSummary? summary = null;
+        if (index >= 0)
+        {
+            summary = _connections[index] with
+            {
+                HealthStatus = health.HealthStatus,
+                LastHealthCheck = timestamp
+            };
+            _connections[index] = summary;
+            updated = true;
+        }
+
+        if (SelectedDetail?.ConnectionId == health.ConnectionId)
+        {
+            SelectedDetail = SelectedDetail with
+            {
+                HealthStatus = health.HealthStatus,
+                LastHealthCheck = timestamp
+            };
+            updated = true;
+        }
+
+        if (LatestDiagnostic?.RawOutcome.ConnectionId == health.ConnectionId ||
+            SelectedDetail?.ConnectionId == health.ConnectionId)
+        {
+            LatestDiagnostic = DiagnosticMapper.Map(
+                new ConnectionTestOutcome
+                {
+                    ConnectionId = health.ConnectionId,
+                    ConnectionName = health.Name ?? SelectedDetail?.Name ?? summary?.Name ?? health.ConnectionId.ToString(),
+                    IsHealthy = string.Equals(health.HealthStatus, "healthy", StringComparison.OrdinalIgnoreCase),
+                    TestedAt = timestamp,
+                    Message = health.Message ?? health.HealthStatus
+                },
+                SelectedDetail);
+            updated = true;
+        }
+
+        if (!updated)
+        {
+            return false;
+        }
+
+        Notify();
+        return true;
+    }
+
     public ConnectionDraft BeginCreateDraft(string providerId)
     {
         if (!_registry.TryGet(providerId, out var registration))

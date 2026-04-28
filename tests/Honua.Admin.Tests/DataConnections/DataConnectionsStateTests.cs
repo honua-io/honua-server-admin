@@ -25,6 +25,35 @@ public sealed class DataConnectionsStateTests
     }
 
     [Fact]
+    public async Task ApplyConnectionHealth_updates_loaded_summary_and_selected_detail()
+    {
+        var seed = Sample("primary", isActive: true);
+        var stub = new StubDataConnectionClient(new[] { seed });
+        var (state, _) = BuildState(stub);
+        var checkedAt = DateTimeOffset.Parse("2026-04-28T08:45:00Z");
+
+        await state.RefreshListAsync();
+        await state.LoadDetailAsync(seed.ConnectionId);
+
+        var applied = state.ApplyConnectionHealth(new Honua.Admin.Models.Admin.DataConnectionHealthChangedEvent
+        {
+            ConnectionId = seed.ConnectionId,
+            Name = "primary",
+            HealthStatus = "Healthy",
+            LastHealthCheck = checkedAt,
+            Message = "connection ok"
+        });
+
+        Assert.True(applied);
+        var summary = Assert.Single(state.Connections);
+        Assert.Equal("Healthy", summary.HealthStatus);
+        Assert.Equal(checkedAt, summary.LastHealthCheck);
+        Assert.Equal("Healthy", state.SelectedDetail?.HealthStatus);
+        Assert.NotNull(state.LatestDiagnostic);
+        Assert.True(state.LatestDiagnostic!.RawOutcome.IsHealthy);
+    }
+
+    [Fact]
     public async Task SubmitDraftAsync_creates_connection_and_emits_create_succeeded()
     {
         var stub = new StubDataConnectionClient();

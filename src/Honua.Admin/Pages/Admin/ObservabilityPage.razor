@@ -1,6 +1,9 @@
 @page "/observability"
 @using MudBlazor
 @inherits Honua.Admin.Shared.AdminPageBase
+@implements IDisposable
+@inject IAdminRealtimeConnection Realtime
+@inject IAdminRealtimeEvents RealtimeEvents
 
 <PageTitle>Observability - Honua Server Admin</PageTitle>
 
@@ -36,7 +39,13 @@
             <MudItem xs="12" md="4">
                 <MudCard Elevation="1">
                     <MudCardContent>
-                        <MudText Typo="Typo.overline">Migrations</MudText>
+                        <MudStack Row AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
+                            <MudText Typo="Typo.overline">Migrations</MudText>
+                            @if (Realtime.Status == AdminRealtimeConnectionStatus.Connected)
+                            {
+                                <MudChip T="string" Size="Size.Small" Color="Color.Success" Variant="Variant.Outlined">Live</MudChip>
+                            }
+                        </MudStack>
                         <MudText Typo="Typo.h6">@_migrations?.Status</MudText>
                         <MudText Typo="Typo.caption">@(_migrations?.Message ?? "No message")</MudText>
                     </MudCardContent>
@@ -45,7 +54,13 @@
             <MudItem xs="12" md="4">
                 <MudCard Elevation="1">
                     <MudCardContent>
-                        <MudText Typo="Typo.overline">Recent errors</MudText>
+                        <MudStack Row AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
+                            <MudText Typo="Typo.overline">Recent errors</MudText>
+                            @if (Realtime.Status == AdminRealtimeConnectionStatus.Connected)
+                            {
+                                <MudChip T="string" Size="Size.Small" Color="Color.Success" Variant="Variant.Outlined">Live</MudChip>
+                            }
+                        </MudStack>
                         <MudText Typo="Typo.h6">@(_errors?.Errors.Count ?? 0)</MudText>
                         <MudText Typo="Typo.caption">@_errors?.InstanceId</MudText>
                     </MudCardContent>
@@ -119,6 +134,8 @@
 
     protected override async Task OnInitializedAsync()
     {
+        RealtimeEvents.RecentErrorReceived += OnRecentErrorReceived;
+        RealtimeEvents.MigrationStatusChanged += OnMigrationStatusChanged;
         Telemetry.PageNavigated("/observability", principalId: null);
         await LoadAsync();
     }
@@ -131,5 +148,25 @@
             _telemetry = await AdminClient.GetTelemetryStatusAsync(CancellationToken.None);
             _migrations = await AdminClient.GetMigrationStatusAsync(CancellationToken.None);
         });
+    }
+
+    private void OnRecentErrorReceived(RecentErrorEntry entry)
+        => _ = InvokeAsync(() =>
+        {
+            _errors = AdminRealtimeReducers.AddRecentError(_errors, entry);
+            StateHasChanged();
+        });
+
+    private void OnMigrationStatusChanged(MigrationObservabilityResponse status)
+        => _ = InvokeAsync(() =>
+        {
+            _migrations = status;
+            StateHasChanged();
+        });
+
+    public void Dispose()
+    {
+        RealtimeEvents.RecentErrorReceived -= OnRecentErrorReceived;
+        RealtimeEvents.MigrationStatusChanged -= OnMigrationStatusChanged;
     }
 }

@@ -72,6 +72,45 @@ public sealed class DeployOrchestrationStateTests
     }
 
     [Fact]
+    public async Task ApplyRealtimeOperation_updates_matching_operation_without_polling()
+    {
+        var client = new RecordingDeployClient();
+        var state = new DeployOrchestrationState(client);
+        await state.InitializeAsync();
+        await state.PlanSelectedAsync();
+        await state.CreateOperationsForSelectedAsync("promote candidate", submitImmediately: false);
+        var target = Assert.Single(state.Targets);
+        var operationId = target.Operation!.OperationId;
+
+        var applied = state.ApplyRealtimeOperation(Operation(operationId, "Succeeded", "Rollout complete.", reason: null));
+
+        Assert.True(applied);
+        Assert.Equal("Succeeded", target.Operation.Status);
+        Assert.Equal("Rollout complete.", target.Operation.CurrentPhase);
+        Assert.Equal("Realtime operation update", target.LastAction);
+    }
+
+    [Fact]
+    public void ApplyRealtimeOperation_adds_untracked_operation_target()
+    {
+        var state = new DeployOrchestrationState(new RecordingDeployClient());
+
+        var applied = state.ApplyRealtimeOperation(new DeployOperation
+        {
+            OperationId = "op-prod",
+            Status = "Reconciling",
+            Target = Target("prod-api", "sha256:new", "sha256:old"),
+            UpdatedAt = DateTimeOffset.Parse("2026-04-27T10:05:00Z")
+        });
+
+        Assert.True(applied);
+        var target = Assert.Single(state.Targets);
+        Assert.False(target.Selected);
+        Assert.Equal("prod-api", target.TargetId);
+        Assert.Equal("Reconciling", target.Operation?.Status);
+    }
+
+    [Fact]
     public async Task SubmitSelectedAsync_skips_selected_targets_without_operations()
     {
         var client = new RecordingDeployClient();
@@ -113,6 +152,33 @@ public sealed class DeployOrchestrationStateTests
 
         Assert.Equal(DeployOrchestrationStatus.Idle, state.Status);
     }
+
+    private static DeployOperation Operation(string operationId, string status, string phase, string? reason)
+        => new()
+        {
+            OperationId = operationId,
+            Kind = "Deploy",
+            Status = status,
+            Priority = "Normal",
+            Target = Target("honua-server", "latest", currentRevision: null),
+            CurrentPhase = phase,
+            ObservedState = status,
+            Reason = reason,
+            CreatedAt = DateTimeOffset.Parse("2026-04-27T10:01:00Z"),
+            UpdatedAt = DateTimeOffset.Parse("2026-04-27T10:02:00Z"),
+        };
+
+    private static DeployPlanTarget Target(string targetId, string desiredRevision, string? currentRevision)
+        => new()
+        {
+            TargetId = targetId,
+            TargetName = targetId == "honua-server" ? "Honua Server" : "Production API",
+            TargetKind = "Kubernetes",
+            Backend = "honua-gitops-kubernetes",
+            Environment = targetId == "honua-server" ? "dev" : "prod",
+            CurrentRevision = currentRevision,
+            DesiredRevision = desiredRevision,
+        };
 
     private sealed class RecordingDeployClient : StubHonuaAdminClient
     {
@@ -173,33 +239,6 @@ public sealed class DeployOrchestrationStateTests
             RollbackOperationIds.Add(operationId);
             return Task.FromResult(Operation(operationId, "RollbackRequested", "Rollback requested.", request.Reason));
         }
-
-        private static DeployOperation Operation(string operationId, string status, string phase, string? reason)
-            => new()
-            {
-                OperationId = operationId,
-                Kind = "Deploy",
-                Status = status,
-                Priority = "Normal",
-                Target = Target("honua-server", "latest", currentRevision: null),
-                CurrentPhase = phase,
-                ObservedState = status,
-                Reason = reason,
-                CreatedAt = DateTimeOffset.Parse("2026-04-27T10:01:00Z"),
-                UpdatedAt = DateTimeOffset.Parse("2026-04-27T10:02:00Z"),
-            };
-
-        private static DeployPlanTarget Target(string targetId, string desiredRevision, string? currentRevision)
-            => new()
-            {
-                TargetId = targetId,
-                TargetName = targetId == "honua-server" ? "Honua Server" : "Production API",
-                TargetKind = "Kubernetes",
-                Backend = "honua-gitops-kubernetes",
-                Environment = targetId == "honua-server" ? "dev" : "prod",
-                CurrentRevision = currentRevision,
-                DesiredRevision = desiredRevision,
-            };
     }
 
     private sealed class CancelingDeployClient(bool cancelPreflight = false, bool cancelPlan = false) : StubHonuaAdminClient

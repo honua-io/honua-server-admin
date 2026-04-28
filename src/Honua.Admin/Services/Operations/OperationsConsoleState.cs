@@ -124,6 +124,30 @@ public sealed class OperationsConsoleState
 
     public event Action? OnChanged;
 
+    public void ApplyRecentError(RecentErrorEntry entry)
+    {
+        RecentErrors = AdminRealtimeReducers.AddRecentError(RecentErrors, entry);
+        _sectionErrors.Remove("Recent errors");
+        if (Status == OperationsConsoleStatus.Error)
+        {
+            Status = OperationsConsoleStatus.Partial;
+        }
+
+        Notify();
+    }
+
+    public void ApplyMigrationStatus(MigrationObservabilityResponse status)
+    {
+        MigrationStatus = status;
+        _sectionErrors.Remove("Migrations");
+        if (Status == OperationsConsoleStatus.Error)
+        {
+            Status = OperationsConsoleStatus.Partial;
+        }
+
+        Notify();
+    }
+
     private string? SectionError(string section)
         => _sectionErrors.TryGetValue(section, out var message) ? message : null;
 

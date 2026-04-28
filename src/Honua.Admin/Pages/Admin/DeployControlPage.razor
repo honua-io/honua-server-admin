@@ -3,6 +3,7 @@
 @using MudBlazor
 @inherits Honua.Admin.Shared.AdminPageBase
 @implements IDisposable
+@inject IAdminRealtimeEvents RealtimeEvents
 
 <PageTitle>Deploy control - Honua Server Admin</PageTitle>
 
@@ -251,6 +252,7 @@
     {
         State = Services.GetService<DeployOrchestrationState>() ?? new DeployOrchestrationState(AdminClient);
         State.OnChanged += StateChanged;
+        RealtimeEvents.DeployOperationChanged += OnDeployOperationChanged;
         Telemetry.PageNavigated("/deploy", principalId: null);
         await ExecuteAsync(() => State.InitializeAsync(CancellationToken.None));
     }
@@ -261,6 +263,8 @@
         {
             State.OnChanged -= StateChanged;
         }
+
+        RealtimeEvents.DeployOperationChanged -= OnDeployOperationChanged;
     }
 
     private bool IsBusy => IsLoading || State.Status is DeployOrchestrationStatus.Loading
@@ -406,6 +410,9 @@
     }
 
     private void StateChanged() => InvokeAsync(StateHasChanged);
+
+    private void OnDeployOperationChanged(DeployOperation operation)
+        => State.ApplyRealtimeOperation(operation);
 
     private static string RevisionText(DeployFleetTarget target)
         => string.IsNullOrWhiteSpace(target.CurrentRevision)

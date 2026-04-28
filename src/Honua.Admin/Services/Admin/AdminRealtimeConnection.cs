@@ -6,6 +6,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Honua.Admin.Auth;
 using Honua.Admin.Configuration;
+using Honua.Admin.Models.Admin;
 using Microsoft.AspNetCore.SignalR.Client;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -36,16 +37,19 @@ public sealed class AdminRealtimeConnection : IAdminRealtimeConnection
 {
     private readonly IOptions<HonuaAdminOptions> _options;
     private readonly AdminAuthStateProvider _auth;
+    private readonly IAdminRealtimeEventPublisher _events;
     private readonly ILogger<AdminRealtimeConnection> _logger;
     private HubConnection? _connection;
 
     public AdminRealtimeConnection(
         IOptions<HonuaAdminOptions> options,
         AdminAuthStateProvider auth,
+        IAdminRealtimeEventPublisher events,
         ILogger<AdminRealtimeConnection> logger)
     {
         _options = options;
         _auth = auth;
+        _events = events;
         _logger = logger;
     }
 
@@ -133,6 +137,8 @@ public sealed class AdminRealtimeConnection : IAdminRealtimeConnection
             .WithAutomaticReconnect()
             .Build();
 
+        RegisterEventHandlers(connection);
+
         connection.Reconnecting += ex =>
         {
             LastError = ex?.Message;
@@ -153,6 +159,29 @@ public sealed class AdminRealtimeConnection : IAdminRealtimeConnection
         };
 
         return connection;
+    }
+
+    private void RegisterEventHandlers(HubConnection connection)
+    {
+        foreach (var eventName in AdminRealtimeEventNames.RecentError)
+        {
+            connection.On<RecentErrorEntry>(eventName, _events.PublishRecentError);
+        }
+
+        foreach (var eventName in AdminRealtimeEventNames.DeployOperationChanged)
+        {
+            connection.On<DeployOperation>(eventName, _events.PublishDeployOperationChanged);
+        }
+
+        foreach (var eventName in AdminRealtimeEventNames.MigrationStatusChanged)
+        {
+            connection.On<MigrationObservabilityResponse>(eventName, _events.PublishMigrationStatusChanged);
+        }
+
+        foreach (var eventName in AdminRealtimeEventNames.ConnectionHealthChanged)
+        {
+            connection.On<DataConnectionHealthChangedEvent>(eventName, _events.PublishConnectionHealthChanged);
+        }
     }
 
     private Task<string?> ResolveAccessTokenAsync()
