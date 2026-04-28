@@ -351,9 +351,24 @@ public sealed class StubOpenDataHubClient : IOpenDataHubClient
         {
             Format = format,
             Url = url,
+            ContentType = ContentTypeFor(format),
+            Checksum = $"sha256:{Slug($"{format}-{url}-{sizeBytes}")}",
             SizeBytes = sizeBytes,
-            GeneratedAt = DateTimeOffset.Parse("2026-04-27T18:30:00Z")
+            GeneratedAt = DateTimeOffset.Parse("2026-04-27T18:30:00Z"),
+            Readiness = OpenDataDownloadReadiness.Ready,
+            SupportsBulkExport = true,
+            SupportsDeltaExport = format is OpenDataDownloadFormat.GeoJson or OpenDataDownloadFormat.GeoParquet or OpenDataDownloadFormat.Csv
         };
+
+    private static string ContentTypeFor(OpenDataDownloadFormat format) => format switch
+    {
+        OpenDataDownloadFormat.GeoJson => "application/geo+json",
+        OpenDataDownloadFormat.GeoParquet => "application/vnd.apache.parquet",
+        OpenDataDownloadFormat.Shapefile => "application/zip",
+        OpenDataDownloadFormat.Csv => "text/csv",
+        OpenDataDownloadFormat.Kml => "application/vnd.google-earth.kml+xml",
+        _ => "application/octet-stream"
+    };
 
     private static string Slug(string value)
     {

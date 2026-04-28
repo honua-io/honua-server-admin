@@ -30,6 +30,14 @@ public enum OpenDataDownloadFormat
     Kml
 }
 
+public enum OpenDataDownloadReadiness
+{
+    Ready,
+    Generating,
+    Stale,
+    Failed
+}
+
 public enum OpenDataCodeLanguage
 {
     Curl,
@@ -107,8 +115,13 @@ public sealed record OpenDataDownloadOption
 {
     public OpenDataDownloadFormat Format { get; init; }
     public string Url { get; init; } = string.Empty;
+    public string ContentType { get; init; } = string.Empty;
+    public string Checksum { get; init; } = string.Empty;
     public long SizeBytes { get; init; }
     public DateTimeOffset GeneratedAt { get; init; }
+    public OpenDataDownloadReadiness Readiness { get; init; } = OpenDataDownloadReadiness.Ready;
+    public bool SupportsBulkExport { get; init; }
+    public bool SupportsDeltaExport { get; init; }
 }
 
 public sealed record OpenDataApiEndpoint

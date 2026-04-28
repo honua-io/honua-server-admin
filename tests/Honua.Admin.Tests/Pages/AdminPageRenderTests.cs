@@ -8,6 +8,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Bunit;
 using Honua.Admin.Models.Admin;
+using Honua.Admin.Models.OpenDataHub;
 using Honua.Admin.Models.SpecWorkspace;
 using Honua.Admin.Pages.Admin;
 using Honua.Admin.Services.Admin;
@@ -378,6 +379,9 @@ public sealed class AdminPageRenderTests : TestContext
             cut.Markup.MarkupMatchesContaining("Published datasets");
             cut.Markup.MarkupMatchesContaining("Harbor assets");
             cut.Markup.MarkupMatchesContaining("GeoJSON");
+            cut.Markup.MarkupMatchesContaining("Download export manifest");
+            cut.Markup.MarkupMatchesContaining("sha256:");
+            cut.Markup.MarkupMatchesContaining("Bulk");
             cut.Markup.MarkupMatchesContaining("Civic tech API");
             cut.Markup.MarkupMatchesContaining("Public API key");
             cut.Markup.MarkupMatchesContaining("Code examples");
@@ -390,6 +394,21 @@ public sealed class AdminPageRenderTests : TestContext
             cut.Find("[data-testid='open-data-usage-downloads']");
             cut.Find("[data-testid='open-data-feedback-harbor-assets-quality-1']");
             cut.Markup.MarkupMatchesContaining("Readiness checks");
+        });
+    }
+
+    [Fact]
+    public void OpenDataHub_RendersMissingExportTimestampAsNotRecorded()
+    {
+        Services.AddScoped<IOpenDataHubClient, MissingExportTimestampOpenDataHubClient>();
+
+        var cut = RenderWithMudHost<Honua.Admin.Pages.Operator.OpenDataHub>();
+
+        cut.WaitForAssertion(() =>
+        {
+            cut.Markup.MarkupMatchesContaining("Missing timestamp dataset");
+            cut.Markup.MarkupMatchesContaining("generated not recorded");
+            Assert.DoesNotContain("Jan 1, 0001", cut.Markup);
         });
     }
 
@@ -455,6 +474,51 @@ public sealed class AdminPageRenderTests : TestContext
         public override Task<IReadOnlyList<ConnectionSummary>> ListConnectionsAsync(CancellationToken cancellationToken)
             => Task.FromResult<IReadOnlyList<ConnectionSummary>>(
                 [Connections[0] with { HealthStatus = "Unhealthy" }]);
+    }
+
+    private sealed class MissingExportTimestampOpenDataHubClient : IOpenDataHubClient
+    {
+        public Task<OpenDataHubSnapshot> GetSnapshotAsync(CancellationToken cancellationToken)
+            => Task.FromResult(new OpenDataHubSnapshot
+            {
+                Datasets =
+                [
+                    new OpenDataDataset
+                    {
+                        DatasetId = "missing-timestamp",
+                        Title = "Missing timestamp dataset",
+                        Description = "Dataset with a pending export manifest.",
+                        Category = "Infrastructure",
+                        Geography = "Harbor",
+                        License = "CC BY 4.0",
+                        Contact = "gis@honua.local",
+                        UpdateFrequency = "Daily",
+                        Status = OpenDataDatasetStatus.InReview,
+                        LastUpdated = DateTimeOffset.Parse("2026-04-28T00:00:00Z"),
+                        PublicCatalogEnabled = true,
+                        ApiEnabled = false,
+                        EmbedEnabled = false,
+                        StacCollectionId = "collections/missing-timestamp",
+                        SampleResponse = "{}",
+                        Downloads =
+                        [
+                            new OpenDataDownloadOption
+                            {
+                                Format = OpenDataDownloadFormat.GeoJson,
+                                Url = "/open-data/missing-timestamp.geojson",
+                                ContentType = "application/geo+json",
+                                Checksum = "sha256:missing-timestamp",
+                                SizeBytes = 100,
+                                Readiness = OpenDataDownloadReadiness.Generating,
+                                SupportsBulkExport = false,
+                            },
+                        ],
+                    },
+                ],
+            });
+
+        public Task<OpenDataPublishResult> PublishAsync(string datasetId, CancellationToken cancellationToken)
+            => throw new NotSupportedException();
     }
 
     private sealed class NullAdminTelemetry : IAdminTelemetry

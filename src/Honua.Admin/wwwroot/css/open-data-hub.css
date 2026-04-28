@@ -286,6 +286,28 @@
     white-space: nowrap;
 }
 
+.open-data-download-row {
+    align-items: flex-start;
+}
+
+.open-data-download-main small {
+    margin-left: 0;
+    white-space: normal;
+}
+
+.open-data-delivery-row .open-data-download-tags {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 4px;
+    margin-left: auto;
+}
+
+.open-data-download-row > small {
+    margin-left: 0;
+}
+
 .open-data-api-row {
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto;
@@ -353,6 +375,11 @@
 
     .open-data-delivery-row {
         align-items: flex-start;
+    }
+
+    .open-data-delivery-row .open-data-download-tags {
+        justify-content: flex-start;
+        margin-left: 0;
     }
 
     .open-data-delivery-row small {
