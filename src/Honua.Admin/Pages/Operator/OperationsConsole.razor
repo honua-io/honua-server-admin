@@ -5,6 +5,7 @@
 @inherits Honua.Admin.Shared.AdminPageBase
 @implements IDisposable
 @inject OperationsConsoleState State
+@inject IAdminRealtimeEvents RealtimeEvents
 
 <PageTitle>Operations console - Honua Server Admin</PageTitle>
 
@@ -241,6 +242,8 @@
     protected override async Task OnInitializedAsync()
     {
         State.OnChanged += StateChanged;
+        RealtimeEvents.RecentErrorReceived += OnRecentErrorReceived;
+        RealtimeEvents.MigrationStatusChanged += OnMigrationStatusChanged;
         Telemetry.PageNavigated("/operator/operations", principalId: null);
         await RefreshAsync();
     }
@@ -248,6 +251,8 @@
     public void Dispose()
     {
         State.OnChanged -= StateChanged;
+        RealtimeEvents.RecentErrorReceived -= OnRecentErrorReceived;
+        RealtimeEvents.MigrationStatusChanged -= OnMigrationStatusChanged;
     }
 
     private bool IsBusy => IsLoading || State.Status == OperationsConsoleStatus.Loading;
@@ -255,6 +260,12 @@
     private Task RefreshAsync() => ExecuteAsync(() => State.RefreshAsync(CancellationToken.None));
 
     private void StateChanged() => InvokeAsync(StateHasChanged);
+
+    private void OnRecentErrorReceived(RecentErrorEntry entry)
+        => State.ApplyRecentError(entry);
+
+    private void OnMigrationStatusChanged(MigrationObservabilityResponse status)
+        => State.ApplyMigrationStatus(status);
 
     private string? SectionError(string section)
         => State.SectionErrors.TryGetValue(section, out var message) ? message : null;

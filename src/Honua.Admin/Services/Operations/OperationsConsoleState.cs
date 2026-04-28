@@ -124,8 +124,41 @@ public sealed class OperationsConsoleState
 
     public event Action? OnChanged;
 
+    public void ApplyRecentError(RecentErrorEntry entry)
+    {
+        RecentErrors = AdminRealtimeReducers.AddRecentError(RecentErrors, entry);
+        _sectionErrors.Remove("Recent errors");
+        RecomputeStatusAfterRealtimeSectionUpdate();
+
+        Notify();
+    }
+
+    public void ApplyMigrationStatus(MigrationObservabilityResponse status)
+    {
+        MigrationStatus = status;
+        _sectionErrors.Remove("Migrations");
+        RecomputeStatusAfterRealtimeSectionUpdate();
+
+        Notify();
+    }
+
     private string? SectionError(string section)
         => _sectionErrors.TryGetValue(section, out var message) ? message : null;
+
+    private void RecomputeStatusAfterRealtimeSectionUpdate()
+    {
+        if (Status == OperationsConsoleStatus.Loading)
+        {
+            return;
+        }
+
+        Status = _sectionErrors.Count == 0
+            ? OperationsConsoleStatus.Idle
+            : OperationsConsoleStatus.Partial;
+        LastError = _sectionErrors.Count == 0
+            ? null
+            : "Some operations console data could not be loaded.";
+    }
 
     public async Task RefreshAsync(CancellationToken cancellationToken = default)
     {

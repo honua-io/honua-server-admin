@@ -92,6 +92,52 @@ public sealed class OperationsConsoleStateTests
         Assert.Contains("Recent errors", state.SectionErrors.Keys);
     }
 
+    [Fact]
+    public async Task ApplyRecentError_updates_troubleshooting_state_from_realtime_event()
+    {
+        var state = new OperationsConsoleState(new RecentErrorsUnavailableClient());
+        await state.RefreshAsync();
+
+        state.ApplyRecentError(new RecentErrorEntry
+        {
+            Timestamp = DateTimeOffset.Parse("2026-04-28T08:40:00Z"),
+            CorrelationId = "corr-realtime",
+            Path = "/api/v1/admin/services",
+            StatusCode = 503,
+            Message = "backend unavailable"
+        });
+
+        Assert.DoesNotContain("Recent errors", state.SectionErrors.Keys);
+        Assert.NotNull(state.RecentErrors);
+        Assert.Single(state.RecentErrors!.Errors);
+        Assert.Contains("1 recent error", state.TroubleshootingLabel);
+        Assert.Equal(OperationsConsoleStatus.Idle, state.Status);
+        Assert.Null(state.LastError);
+    }
+
+    [Fact]
+    public async Task ApplyMigrationStatus_updates_release_evidence_from_realtime_event()
+    {
+        var state = new OperationsConsoleState(new MigrationUnavailableClient());
+        await state.RefreshAsync();
+
+        state.ApplyMigrationStatus(new MigrationObservabilityResponse
+        {
+            Status = "Applying",
+            Message = "Running migration 002",
+            UpgradeRequired = true,
+            GeneratedAt = DateTimeOffset.Parse("2026-04-28T08:42:00Z")
+        });
+
+        Assert.Equal("Applying", state.MigrationStatus?.Status);
+        Assert.Equal("Applying - upgrade required", state.MigrationStatus is null
+            ? "missing"
+            : $"{state.MigrationStatus.Status} - {(state.MigrationStatus.UpgradeRequired ? "upgrade required" : "no upgrade")}");
+        Assert.DoesNotContain("Migrations", state.SectionErrors.Keys);
+        Assert.Equal(OperationsConsoleStatus.Idle, state.Status);
+        Assert.Null(state.LastError);
+    }
+
     private sealed class PartialOperationsUnavailableClient : StubHonuaAdminClient
     {
         public override Task<ManifestDriftReport> GetManifestDriftAsync(bool verbose, CancellationToken cancellationToken)
@@ -128,5 +174,11 @@ public sealed class OperationsConsoleStateTests
     {
         public override Task<RecentErrorsResponse> GetRecentErrorsAsync(CancellationToken cancellationToken)
             => throw new InvalidOperationException("recent errors unavailable");
+    }
+
+    private sealed class MigrationUnavailableClient : StubHonuaAdminClient
+    {
+        public override Task<MigrationObservabilityResponse> GetMigrationStatusAsync(CancellationToken cancellationToken)
+            => throw new InvalidOperationException("migrations unavailable");
     }
 }
