@@ -41,6 +41,14 @@
                        data-testid="publishing-preflight">
                 Preflight
             </MudButton>
+            <MudButton StartIcon="@Icons.Material.Filled.Sync"
+                       Variant="Variant.Outlined"
+                       Size="Size.Small"
+                       Disabled="@IsBusy"
+                       OnClick="RefreshReconciliationAsync"
+                       data-testid="publishing-refresh-state">
+                State
+            </MudButton>
             <MudButton StartIcon="@Icons.Material.Filled.Save"
                        Variant="Variant.Outlined"
                        Size="Size.Small"
@@ -207,21 +215,229 @@
         </div>
 
         <div class="publishing-pane publishing-state" aria-label="Environment and service state">
-            <MudText Typo="Typo.h6">Environments</MudText>
+            <MudText Typo="Typo.h6">Environment state</MudText>
             <MudTable Items="State.EnvironmentStates" Dense="true" Hover="true" aria-label="Publishing environment comparison">
                 <HeaderContent>
-                    <MudTh>Env</MudTh>
+                    <MudTh>Scope</MudTh>
                     <MudTh>Desired</MudTh>
-                    <MudTh>Actual</MudTh>
+                    <MudTh>Observed</MudTh>
                     <MudTh>State</MudTh>
+                    <MudTh>Evidence</MudTh>
                 </HeaderContent>
                 <RowTemplate>
                     <MudTd>@context.Name</MudTd>
-                    <MudTd>@context.DesiredProtocols</MudTd>
-                    <MudTd>@context.ActualProtocols</MudTd>
+                    <MudTd>@context.DesiredState</MudTd>
+                    <MudTd>@context.ActualState</MudTd>
                     <MudTd>@context.DriftStatus</MudTd>
+                    <MudTd>@context.Evidence</MudTd>
                 </RowTemplate>
             </MudTable>
+
+            @if (!string.IsNullOrWhiteSpace(State.ManifestError))
+            {
+                <MudAlert Severity="Severity.Warning" Variant="Variant.Text" Dense="true" Class="mt-2" data-testid="publishing-manifest-error">
+                    @State.ManifestError
+                </MudAlert>
+            }
+            @if (!string.IsNullOrWhiteSpace(State.ManifestApprovalError))
+            {
+                <MudAlert Severity="Severity.Info" Variant="Variant.Text" Dense="true" Class="mt-2" data-testid="publishing-approval-error">
+                    @State.ManifestApprovalError
+                </MudAlert>
+            }
+            @if (!string.IsNullOrWhiteSpace(State.GitOpsError))
+            {
+                <MudAlert Severity="Severity.Info" Variant="Variant.Text" Dense="true" Class="mt-2" data-testid="publishing-gitops-error">
+                    @State.GitOpsError
+                </MudAlert>
+            }
+
+            <MudStack Row AlignItems="AlignItems.Center" Class="publishing-section-heading">
+                <MudText Typo="Typo.h6">Drift</MudText>
+                <MudSpacer />
+                <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="@(State.HasManifestDrift ? Color.Warning : Color.Success)" data-testid="publishing-drift-status">
+                    @State.ManifestDriftLabel
+                </MudChip>
+            </MudStack>
+            @if (State.DriftResources.Count == 0)
+            {
+                <MudAlert Severity="Severity.Success" Variant="Variant.Text" Dense="true" data-testid="publishing-no-drift">
+                    No manifest resource drift loaded.
+                </MudAlert>
+            }
+            else
+            {
+                <MudTable Items="State.DriftResources" Dense="true" Hover="true" aria-label="Manifest drift resources">
+                    <HeaderContent>
+                        <MudTh>Resource</MudTh>
+                        <MudTh>Type</MudTh>
+                        <MudTh>Declared</MudTh>
+                        <MudTh>Actual</MudTh>
+                    </HeaderContent>
+                    <RowTemplate>
+                        <MudTd>@context.Identifier.DisplayName</MudTd>
+                        <MudTd>@context.DriftType</MudTd>
+                        <MudTd>@ShortHash(context.DeclaredHash)</MudTd>
+                        <MudTd>@ShortHash(context.ActualHash)</MudTd>
+                    </RowTemplate>
+                </MudTable>
+            }
+
+            <MudStack Row AlignItems="AlignItems.Center" Class="publishing-section-heading">
+                <MudText Typo="Typo.h6">Manifest approvals</MudText>
+                <MudSpacer />
+                <MudTextField T="string"
+                              Value="@_approvalReason"
+                              ValueChanged="@((string value) => _approvalReason = value)"
+                              Placeholder="Reason"
+                              Variant="Variant.Outlined"
+                              Margin="Margin.Dense"
+                              aria-label="Manifest approval reason" />
+            </MudStack>
+            @if (State.PendingManifestChanges.Count == 0)
+            {
+                <MudAlert Severity="Severity.Info" Variant="Variant.Text" Dense="true" data-testid="publishing-no-pending-approvals">
+                    No pending manifest approvals.
+                </MudAlert>
+            }
+            else
+            {
+                <div class="publishing-layer-list" aria-label="Pending manifest approvals">
+                    @foreach (var pending in State.PendingManifestChanges)
+                    {
+                        <div class="publishing-layer-row" data-testid="@($"publishing-pending-{pending.PendingId}")">
+                            <div>
+                                <strong>@pending.ManifestHash</strong>
+                                <span>@($"{pending.ResourceCount} resource(s) - {pending.RequestedBy ?? "unknown"} - {pending.RequestedReason ?? "no reason"}")</span>
+                            </div>
+                            <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="Color.Warning">
+                                @pending.Status
+                            </MudChip>
+                            <MudButton Size="Size.Small" Variant="Variant.Text" Disabled="@IsBusy" OnClick="@(() => ApproveManifestAsync(pending.PendingId))">
+                                Approve
+                            </MudButton>
+                            <MudButton Size="Size.Small" Variant="Variant.Text" Disabled="@IsBusy" OnClick="@(() => RejectManifestAsync(pending.PendingId))">
+                                Reject
+                            </MudButton>
+                        </div>
+                    }
+                </div>
+            }
+
+            @if (State.ManifestApprovalHistory.Count > 0)
+            {
+                <MudTable Items="State.ManifestApprovalHistory" Dense="true" Hover="true" aria-label="Manifest approval history">
+                    <HeaderContent>
+                        <MudTh>Hash</MudTh>
+                        <MudTh>Status</MudTh>
+                        <MudTh>Decision</MudTh>
+                    </HeaderContent>
+                    <RowTemplate>
+                        <MudTd>@ShortHash(context.ManifestHash)</MudTd>
+                        <MudTd>@context.Status</MudTd>
+                        <MudTd>@(context.DecisionReason ?? context.RequestedReason ?? "No reason")</MudTd>
+                    </RowTemplate>
+                </MudTable>
+            }
+
+            <MudStack Row AlignItems="AlignItems.Center" Class="publishing-section-heading">
+                <MudText Typo="Typo.h6">GitOps watch</MudText>
+                <MudSpacer />
+                <MudButton StartIcon="@Icons.Material.Filled.Save"
+                           Variant="Variant.Text"
+                           Size="Size.Small"
+                           Disabled="@IsBusy"
+                           OnClick="ConfigureGitOpsAsync"
+                           data-testid="publishing-gitops-save">
+                    Save
+                </MudButton>
+                <MudButton StartIcon="@Icons.Material.Filled.Delete"
+                           Variant="Variant.Text"
+                           Size="Size.Small"
+                           Color="Color.Error"
+                           Disabled="@(IsBusy || State.GitOpsWatch is null)"
+                           OnClick="DeleteGitOpsAsync"
+                           data-testid="publishing-gitops-delete">
+                    Delete
+                </MudButton>
+            </MudStack>
+            <MudGrid Class="publishing-form-grid">
+                <MudItem xs="12">
+                    <MudTextField T="string"
+                                  Label="Repository URL"
+                                  Value="@State.GitOpsRepositoryUrl"
+                                  ValueChanged="State.SetGitOpsRepositoryUrl"
+                                  Variant="Variant.Outlined"
+                                  Margin="Margin.Dense"
+                                  aria-label="GitOps repository URL" />
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <MudTextField T="string"
+                                  Label="Branch"
+                                  Value="@State.GitOpsBranch"
+                                  ValueChanged="State.SetGitOpsBranch"
+                                  Variant="Variant.Outlined"
+                                  Margin="Margin.Dense"
+                                  aria-label="GitOps branch" />
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <MudTextField T="string"
+                                  Label="Manifest path"
+                                  Value="@State.GitOpsManifestPath"
+                                  ValueChanged="State.SetGitOpsManifestPath"
+                                  Variant="Variant.Outlined"
+                                  Margin="Margin.Dense"
+                                  aria-label="GitOps manifest path" />
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <MudNumericField T="int"
+                                     Label="Poll seconds"
+                                     Value="@State.GitOpsPollIntervalSeconds"
+                                     ValueChanged="State.SetGitOpsPollIntervalSeconds"
+                                     Min="30"
+                                     Variant="Variant.Outlined"
+                                     Margin="Margin.Dense"
+                                     aria-label="GitOps poll interval" />
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <MudStack Spacing="0">
+                        <MudCheckBox T="bool"
+                                     Label="Enabled"
+                                     Value="@State.GitOpsEnabled"
+                                     ValueChanged="State.SetGitOpsEnabled"
+                                     Color="Color.Primary"
+                                     aria-label="Enable GitOps watch" />
+                        <MudCheckBox T="bool"
+                                     Label="Require approval"
+                                     Value="@State.GitOpsApprovalRequired"
+                                     ValueChanged="State.SetGitOpsApprovalRequired"
+                                     Color="Color.Primary"
+                                     aria-label="Require GitOps approval" />
+                        <MudCheckBox T="bool"
+                                     Label="Prune absent resources"
+                                     Value="@State.GitOpsPruneEnabled"
+                                     ValueChanged="State.SetGitOpsPruneEnabled"
+                                     Color="Color.Warning"
+                                     aria-label="Enable GitOps prune" />
+                    </MudStack>
+                </MudItem>
+            </MudGrid>
+
+            @if (State.GitOpsChanges.Count > 0)
+            {
+                <MudTable Items="State.GitOpsChanges" Dense="true" Hover="true" aria-label="GitOps change history">
+                    <HeaderContent>
+                        <MudTh>Commit</MudTh>
+                        <MudTh>Status</MudTh>
+                        <MudTh>Message</MudTh>
+                    </HeaderContent>
+                    <RowTemplate>
+                        <MudTd>@ShortHash(context.CommitSha)</MudTd>
+                        <MudTd>@context.Status</MudTd>
+                        <MudTd>@(context.CommitMessage ?? context.ApplySummary ?? context.ErrorMessage ?? "No summary")</MudTd>
+                    </RowTemplate>
+                </MudTable>
+            }
 
             <MudStack Row AlignItems="AlignItems.Center" Class="publishing-section-heading">
                 <MudText Typo="Typo.h6">Layers</MudText>
@@ -274,6 +490,8 @@
 </div>
 
 @code {
+    private string _approvalReason = "Reviewed in publishing workspace.";
+
     protected override async Task OnInitializedAsync()
     {
         State.OnChanged += StateChanged;
@@ -289,7 +507,8 @@
     private bool IsBusy => State.Status is PublishingWorkspaceStatus.Loading
         or PublishingWorkspaceStatus.Publishing
         or PublishingWorkspaceStatus.Saving
-        or PublishingWorkspaceStatus.Validating;
+        or PublishingWorkspaceStatus.Validating
+        or PublishingWorkspaceStatus.Reconciling;
 
     private Task RefreshAsync() => State.InitializeAsync();
 
@@ -298,6 +517,8 @@
     private Task DiscoverAsync() => State.DiscoverTablesAsync();
 
     private Task RunPreflightAsync() => State.RunPreflightAsync();
+
+    private Task RefreshReconciliationAsync() => State.RefreshReconciliationAsync();
 
     private async Task SaveProtocolsAsync()
     {
@@ -323,6 +544,45 @@
         await State.ToggleLayerAsync(layer);
     }
 
+    private async Task ConfigureGitOpsAsync()
+    {
+        await State.ConfigureGitOpsWatchAsync(configuredBy: null);
+        if (State.LastError is null)
+        {
+            Snackbar.Add("GitOps watch saved.", Severity.Success);
+        }
+    }
+
+    private async Task DeleteGitOpsAsync()
+    {
+        Telemetry.DestructiveAction("publishing-delete-gitops-watch", State.GitOpsWatch?.ConfigId.ToString("D") ?? "gitops-watch", principalId: null);
+        await State.DeleteGitOpsWatchAsync();
+        if (State.LastError is null)
+        {
+            Snackbar.Add("GitOps watch removed.", Severity.Success);
+        }
+    }
+
+    private async Task ApproveManifestAsync(Guid pendingId)
+    {
+        Telemetry.DestructiveAction("publishing-approve-manifest", pendingId.ToString("D"), principalId: null);
+        await State.ApprovePendingManifestAsync(pendingId, _approvalReason, approvedBy: null);
+        if (State.LastError is null)
+        {
+            Snackbar.Add("Manifest change approved.", Severity.Success);
+        }
+    }
+
+    private async Task RejectManifestAsync(Guid pendingId)
+    {
+        Telemetry.DestructiveAction("publishing-reject-manifest", pendingId.ToString("D"), principalId: null);
+        await State.RejectPendingManifestAsync(pendingId, _approvalReason, rejectedBy: null);
+        if (State.LastError is null)
+        {
+            Snackbar.Add("Manifest change rejected.", Severity.Success);
+        }
+    }
+
     private async Task OnServiceNameChanged(string value)
     {
         State.SetServiceName(value);
@@ -331,6 +591,13 @@
     }
 
     private void StateChanged() => InvokeAsync(StateHasChanged);
+
+    private static string ShortHash(string? value)
+        => string.IsNullOrWhiteSpace(value)
+            ? "none"
+            : value.Length <= 12
+                ? value
+                : value[..12];
 
     private string ConnectionClass(ConnectionSummary connection)
     {
@@ -346,6 +613,7 @@
         PublishingWorkspaceStatus.Loading => Color.Info,
         PublishingWorkspaceStatus.Publishing => Color.Info,
         PublishingWorkspaceStatus.Saving => Color.Info,
+        PublishingWorkspaceStatus.Reconciling => Color.Info,
         _ => Color.Default
     };
 }

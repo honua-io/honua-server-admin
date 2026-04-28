@@ -166,19 +166,19 @@ rows:
     follow_up_ticket: ""
     notes: ""
   - key: "Admin/AdminGitOpsWatchEndpoints:DELETE:/api/v{version:apiVersion}/admin/gitops/watch"
-    coverage: missing
-    admin_page: ""
+    coverage: supported
+    admin_page: "/operator/publishing (PublishingWorkspace)"
     priority: P1
     out_of_scope_reason: ""
     follow_up_ticket: ""
-    notes: "GitOps watch console; deferred to follow-up"
+    notes: "Publishing workspace can remove the configured GitOps watch."
   - key: "Admin/AdminGitOpsWatchEndpoints:GET:/api/v{version:apiVersion}/admin/gitops/changes"
-    coverage: missing
-    admin_page: ""
+    coverage: supported
+    admin_page: "/operator/publishing (PublishingWorkspace)"
     priority: P1
     out_of_scope_reason: ""
     follow_up_ticket: ""
-    notes: "GitOps watch console; deferred to follow-up"
+    notes: "Publishing workspace renders recent GitOps change history."
   - key: "Admin/AdminGitOpsWatchEndpoints:GET:/api/v{version:apiVersion}/admin/gitops/changes/{id}"
     coverage: missing
     admin_page: ""
@@ -194,26 +194,26 @@ rows:
     follow_up_ticket: ""
     notes: "GitOps watch console; deferred to follow-up"
   - key: "Admin/AdminGitOpsWatchEndpoints:GET:/api/v{version:apiVersion}/admin/gitops/watch"
-    coverage: missing
-    admin_page: ""
+    coverage: supported
+    admin_page: "/operator/publishing (PublishingWorkspace)"
     priority: P1
     out_of_scope_reason: ""
     follow_up_ticket: ""
-    notes: "GitOps watch console; deferred to follow-up"
+    notes: "Publishing workspace loads current GitOps watch configuration into the environment-state panel."
   - key: "Admin/AdminGitOpsWatchEndpoints:POST:/api/v{version:apiVersion}/admin/gitops/watch"
     coverage: missing
     admin_page: ""
     priority: P1
     out_of_scope_reason: ""
     follow_up_ticket: ""
-    notes: "GitOps watch console; deferred to follow-up"
+    notes: "Create-only GitOps watch flow remains deferred; PublishingWorkspace uses the idempotent PUT endpoint."
   - key: "Admin/AdminGitOpsWatchEndpoints:PUT:/api/v{version:apiVersion}/admin/gitops/watch"
-    coverage: missing
-    admin_page: ""
+    coverage: supported
+    admin_page: "/operator/publishing (PublishingWorkspace)"
     priority: P1
     out_of_scope_reason: ""
     follow_up_ticket: ""
-    notes: "GitOps watch console; deferred to follow-up"
+    notes: "Publishing workspace updates the GitOps watch idempotently through the shared save action."
   - key: "Admin/AdminLayerStyleEndpoints:GET:/api/v{version:apiVersion}/admin/metadata/layers/{layerId:int}/style"
     coverage: supported
     admin_page: "/layers/{layerId}/style (LayerStylePage)"
@@ -229,19 +229,19 @@ rows:
     follow_up_ticket: ""
     notes: "LayerStylePage saves MapLibre and drawingInfo JSON."
   - key: "Admin/AdminManifestApprovalEndpoints:GET:/api/v{version:apiVersion}/admin/manifest/pending/"
-    coverage: missing
-    admin_page: ""
+    coverage: supported
+    admin_page: "/operator/publishing (PublishingWorkspace)"
     priority: P0
     out_of_scope_reason: ""
     follow_up_ticket: ""
-    notes: "Manifest apply with dry-run/prune; planned ManifestPage"
+    notes: "Publishing workspace renders pending manifest approvals in the environment-state panel."
   - key: "Admin/AdminManifestApprovalEndpoints:GET:/api/v{version:apiVersion}/admin/manifest/pending/history"
-    coverage: missing
-    admin_page: ""
+    coverage: supported
+    admin_page: "/operator/publishing (PublishingWorkspace)"
     priority: P0
     out_of_scope_reason: ""
     follow_up_ticket: ""
-    notes: "Manifest apply with dry-run/prune; planned ManifestPage"
+    notes: "Publishing workspace refreshes approval history for environment reconciliation context."
   - key: "Admin/AdminManifestApprovalEndpoints:GET:/api/v{version:apiVersion}/admin/manifest/pending/{id}"
     coverage: missing
     admin_page: ""
@@ -250,33 +250,33 @@ rows:
     follow_up_ticket: ""
     notes: "Manifest apply with dry-run/prune; planned ManifestPage"
   - key: "Admin/AdminManifestApprovalEndpoints:POST:/api/v{version:apiVersion}/admin/manifest/pending/{id}/approve"
-    coverage: missing
-    admin_page: ""
+    coverage: supported
+    admin_page: "/operator/publishing (PublishingWorkspace)"
     priority: P0
     out_of_scope_reason: ""
     follow_up_ticket: ""
-    notes: "Manifest apply with dry-run/prune; planned ManifestPage"
+    notes: "Publishing workspace approves pending manifest changes and reloads drift/GitOps state."
   - key: "Admin/AdminManifestApprovalEndpoints:POST:/api/v{version:apiVersion}/admin/manifest/pending/{id}/reject"
-    coverage: missing
-    admin_page: ""
+    coverage: supported
+    admin_page: "/operator/publishing (PublishingWorkspace)"
     priority: P0
     out_of_scope_reason: ""
     follow_up_ticket: ""
-    notes: "Manifest apply with dry-run/prune; planned ManifestPage"
+    notes: "Publishing workspace rejects pending manifest changes with operator telemetry."
   - key: "Admin/AdminManifestDriftEndpoints:GET:/api/v{version:apiVersion}/admin/manifest/drift"
-    coverage: missing
-    admin_page: ""
+    coverage: supported
+    admin_page: "/operator/publishing (PublishingWorkspace)"
     priority: P0
     out_of_scope_reason: ""
     follow_up_ticket: ""
-    notes: "Manifest drift display; planned ManifestPage"
+    notes: "Publishing workspace shows manifest baseline drift resources alongside service state."
   - key: "Admin/AdminManifestDriftEndpoints:GET:/api/v{version:apiVersion}/admin/manifest/versions"
-    coverage: missing
-    admin_page: ""
+    coverage: supported
+    admin_page: "/operator/publishing (PublishingWorkspace)"
     priority: P0
     out_of_scope_reason: ""
     follow_up_ticket: ""
-    notes: "Manifest drift display; planned ManifestPage"
+    notes: "Publishing workspace loads recent manifest versions for desired-vs-actual environment evidence."
   - key: "Admin/AdminManifestDriftEndpoints:GET:/api/v{version:apiVersion}/admin/manifest/versions/{versionId}"
     coverage: missing
     admin_page: ""

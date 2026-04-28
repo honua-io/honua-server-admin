@@ -1,6 +1,7 @@
 // Copyright (c) Honua. All rights reserved.
 // Licensed under the Elastic License 2.0. See LICENSE in the project root.
 
+using System;
 using System.Collections.Generic;
 using System.Text.Json;
 using System.Threading;
@@ -59,6 +60,22 @@ public interface IHonuaAdminClient
     Task<DeployOperation> GetDeployOperationAsync(string operationId, CancellationToken cancellationToken);
     Task<DeployOperation> SubmitDeployOperationAsync(string operationId, SubmitDeployOperationRequest request, CancellationToken cancellationToken);
     Task<DeployOperation> RollbackDeployOperationAsync(string operationId, RollbackDeployOperationRequest request, CancellationToken cancellationToken);
+
+    Task<ManifestDriftReport> GetManifestDriftAsync(bool verbose, CancellationToken cancellationToken);
+    Task<ManifestVersionListResponse> ListManifestVersionsAsync(int limit, int offset, CancellationToken cancellationToken);
+    Task<ManifestVersionDetailResponse> GetManifestVersionAsync(string versionId, CancellationToken cancellationToken);
+    Task<IReadOnlyList<ManifestPendingChangeResponse>> ListPendingManifestChangesAsync(string? status, CancellationToken cancellationToken);
+    Task<IReadOnlyList<ManifestPendingChangeResponse>> ListManifestApprovalHistoryAsync(CancellationToken cancellationToken);
+    Task<ManifestPendingChangeResponse> GetPendingManifestChangeAsync(Guid pendingId, CancellationToken cancellationToken);
+    Task<ManifestApplyResult> ApprovePendingManifestChangeAsync(Guid pendingId, ManifestApproveRequest request, CancellationToken cancellationToken);
+    Task<ManifestPendingChangeResponse> RejectPendingManifestChangeAsync(Guid pendingId, ManifestRejectRequest request, CancellationToken cancellationToken);
+
+    Task<GitOpsWatchConfigResponse> GetGitOpsWatchAsync(CancellationToken cancellationToken);
+    Task<GitOpsWatchConfigResponse> ConfigureGitOpsWatchAsync(GitOpsWatchConfigRequest request, CancellationToken cancellationToken);
+    Task DeleteGitOpsWatchAsync(CancellationToken cancellationToken);
+    Task<IReadOnlyList<GitOpsChangeRecordResponse>> ListGitOpsChangesAsync(int limit, int offset, CancellationToken cancellationToken);
+    Task<GitOpsChangeRecordResponse> GetGitOpsChangeAsync(Guid changeId, CancellationToken cancellationToken);
+    Task<GitOpsChangeDiffResponse> GetGitOpsChangeDiffAsync(Guid changeId, CancellationToken cancellationToken);
 
     Task<RecentErrorsResponse> GetRecentErrorsAsync(CancellationToken cancellationToken);
     Task<ObservabilityStatusResponse> GetTelemetryStatusAsync(CancellationToken cancellationToken);
