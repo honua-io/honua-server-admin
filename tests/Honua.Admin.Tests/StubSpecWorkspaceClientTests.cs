@@ -85,6 +85,30 @@ public sealed class StubSpecWorkspaceClientTests
     }
 
     [Fact]
+    public async Task PlanAsync_includes_source_revision_in_compute_cache_hash()
+    {
+        var first = await _client.PlanAsync(BuildAppScaffoldDocument("v1"), CancellationToken.None);
+        var second = await _client.PlanAsync(BuildAppScaffoldDocument("v2"), CancellationToken.None);
+
+        var firstAggregate = Assert.Single(first.Nodes, node => node.Op == "aggregate");
+        var secondAggregate = Assert.Single(second.Nodes, node => node.Op == "aggregate");
+
+        Assert.NotEqual(firstAggregate.ContentHash, secondAggregate.ContentHash);
+    }
+
+    [Fact]
+    public async Task PlanAsync_includes_input_hashes_in_output_content_hash()
+    {
+        var first = await _client.PlanAsync(BuildAppScaffoldDocument("v1"), CancellationToken.None);
+        var second = await _client.PlanAsync(BuildAppScaffoldDocument("v2"), CancellationToken.None);
+
+        var firstOutput = Assert.Single(first.Nodes, node => node.Id == "output-appscaffold");
+        var secondOutput = Assert.Single(second.Nodes, node => node.Id == "output-appscaffold");
+
+        Assert.NotEqual(firstOutput.ContentHash, secondOutput.ContentHash);
+    }
+
+    [Fact]
     public async Task PlanAsync_uses_output_kind_for_app_scaffold_inputs_when_map_layers_exist()
     {
         var document = BuildAppScaffoldDocument() with
@@ -229,9 +253,9 @@ public sealed class StubSpecWorkspaceClientTests
         return null;
     }
 
-    private static SpecDocument BuildAppScaffoldDocument() => new()
+    private static SpecDocument BuildAppScaffoldDocument(string sourcePin = "v1") => new()
     {
-        Sources = new[] { new SpecSourceEntry("parcels", "parcels", "v1") },
+        Sources = new[] { new SpecSourceEntry("parcels", "parcels", sourcePin) },
         Compute = new[]
         {
             new SpecComputeStep(

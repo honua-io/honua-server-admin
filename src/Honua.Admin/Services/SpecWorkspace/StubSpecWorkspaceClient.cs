@@ -305,6 +305,7 @@ public sealed partial class StubSpecWorkspaceClient : ISpecWorkspaceClient
 
         var nodes = new List<PlanNode>();
         var warnings = new List<PlanWarning>();
+        var nodeHashes = new Dictionary<string, string>(StringComparer.Ordinal);
         var depth = 0;
         foreach (var source in document.Sources)
         {
@@ -321,6 +322,8 @@ public sealed partial class StubSpecWorkspaceClient : ISpecWorkspaceClient
                 warnings.Add(new PlanWarning(source.Id, PlanWarningSeverity.Yellow, $"source '{source.Id}' is not pinned; results may drift"));
             }
 
+            var sourceHash = BuildContentHash("source", dataset.Id, source.Pin ?? "mutable");
+            nodeHashes[source.Id] = sourceHash;
             nodes.Add(new PlanNode
             {
                 Id = source.Id,
@@ -330,7 +333,7 @@ public sealed partial class StubSpecWorkspaceClient : ISpecWorkspaceClient
                 EstimatedBytes = dataset.EstimatedRows * 128,
                 EstimatedMillis = 50,
                 Warnings = nodeWarnings,
-                ContentHash = BuildContentHash("source", dataset.Id, source.Pin ?? "mutable"),
+                ContentHash = sourceHash,
                 CachePolicy = PlanCachePolicy.MetadataOnly,
                 Materialization = PlanMaterializationKind.Ephemeral
             });
@@ -352,20 +355,27 @@ public sealed partial class StubSpecWorkspaceClient : ISpecWorkspaceClient
                 _ => inputRows
             };
 
+            var nodeId = $"{step.Op}-{depth}";
+            var inputHashes = step.Inputs
+                .OrderBy(input => input, StringComparer.Ordinal)
+                .Select(input => ResolveNodeHash(nodeHashes, input));
+            var computeHash = BuildContentHash(
+                "compute",
+                step.Op,
+                string.Join(",", step.Inputs.OrderBy(input => input, StringComparer.Ordinal)),
+                string.Join(",", inputHashes),
+                string.Join(",", step.Args.OrderBy(kv => kv.Key, StringComparer.Ordinal).Select(kv => $"{kv.Key}={kv.Value}")));
+            nodeHashes[nodeId] = computeHash;
             nodes.Add(new PlanNode
             {
-                Id = $"{step.Op}-{depth}",
+                Id = nodeId,
                 Op = step.Op,
                 Inputs = step.Inputs,
                 Depth = depth,
                 EstimatedRows = outRows,
                 EstimatedBytes = outRows * 128,
                 EstimatedMillis = step.Op == "join" ? 1200 : 300,
-                ContentHash = BuildContentHash(
-                    "compute",
-                    step.Op,
-                    string.Join(",", step.Inputs.OrderBy(input => input, StringComparer.Ordinal)),
-                    string.Join(",", step.Args.OrderBy(kv => kv.Key, StringComparer.Ordinal).Select(kv => $"{kv.Key}={kv.Value}"))),
+                ContentHash = computeHash,
                 CachePolicy = PlanCachePolicy.ContentHash,
                 Materialization = PlanMaterializationKind.Ephemeral
             });
@@ -374,16 +384,19 @@ public sealed partial class StubSpecWorkspaceClient : ISpecWorkspaceClient
 
         foreach (var layer in document.Map.Layers)
         {
+            var mapId = $"map-{layer.Source}";
+            var mapHash = BuildContentHash("map", layer.Source, ResolveNodeHash(nodeHashes, layer.Source), layer.Symbology);
+            nodeHashes[mapId] = mapHash;
             nodes.Add(new PlanNode
             {
-                Id = $"map-{layer.Source}",
+                Id = mapId,
                 Op = "map",
                 Inputs = new[] { layer.Source },
                 Depth = depth,
                 EstimatedRows = 0,
                 EstimatedBytes = 0,
                 EstimatedMillis = 80,
-                ContentHash = BuildContentHash("map", layer.Source, layer.Symbology),
+                ContentHash = mapHash,
                 CachePolicy = PlanCachePolicy.ContentHash,
                 Materialization = PlanMaterializationKind.PreviewOnly
             });
@@ -393,16 +406,22 @@ public sealed partial class StubSpecWorkspaceClient : ISpecWorkspaceClient
         if (effectiveOutputKind != SpecOutputKind.None)
         {
             var outputId = $"output-{effectiveOutputKind.ToString().ToLowerInvariant()}";
+            var outputInputs = ResolveOutputInputs(document, effectiveOutputKind);
+            var outputHash = BuildContentHash(
+                "output",
+                effectiveOutputKind.ToString(),
+                document.Output.Target ?? "preview",
+                string.Join(",", outputInputs.Select(input => ResolveNodeHash(nodeHashes, input))));
             nodes.Add(new PlanNode
             {
                 Id = outputId,
                 Op = "output",
-                Inputs = ResolveOutputInputs(document, effectiveOutputKind),
+                Inputs = outputInputs,
                 Depth = depth + 1,
                 EstimatedRows = 0,
                 EstimatedBytes = 0,
                 EstimatedMillis = effectiveOutputKind == SpecOutputKind.AppScaffold ? 120 : 25,
-                ContentHash = BuildContentHash("output", effectiveOutputKind.ToString(), document.Output.Target ?? "preview"),
+                ContentHash = outputHash,
                 CachePolicy = effectiveOutputKind == SpecOutputKind.AppScaffold ? PlanCachePolicy.None : PlanCachePolicy.ContentHash,
                 Materialization = MaterializationForOutput(effectiveOutputKind)
             });
@@ -1044,6 +1063,9 @@ public sealed partial class StubSpecWorkspaceClient : ISpecWorkspaceClient
         var hash = SHA256.HashData(Encoding.UTF8.GetBytes(input));
         return "sha256:" + Convert.ToHexString(hash)[..12].ToLowerInvariant();
     }
+
+    private static string ResolveNodeHash(IReadOnlyDictionary<string, string> nodeHashes, string nodeId) =>
+        nodeHashes.TryGetValue(nodeId, out var hash) ? hash : nodeId;
 
     private ApplyPayload BuildPayload(SpecDocument document)
     {
