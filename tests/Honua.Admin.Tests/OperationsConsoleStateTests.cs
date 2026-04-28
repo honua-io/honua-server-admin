@@ -49,6 +49,23 @@ public sealed class OperationsConsoleStateTests
         Assert.Contains("GitOps changes", state.SectionErrors.Keys);
     }
 
+    [Fact]
+    public async Task RefreshAsync_clears_stale_section_data_when_later_refresh_fails()
+    {
+        var state = new OperationsConsoleState(new FailingSecondPreflightClient());
+
+        await state.RefreshAsync();
+
+        Assert.NotNull(state.DeployPreflight);
+
+        await state.RefreshAsync();
+
+        Assert.Equal(OperationsConsoleStatus.Partial, state.Status);
+        Assert.Null(state.DeployPreflight);
+        Assert.Equal("Unknown", state.ReleaseHealthLabel);
+        Assert.Contains("Deploy preflight", state.SectionErrors.Keys);
+    }
+
     private sealed class PartialOperationsUnavailableClient : StubHonuaAdminClient
     {
         public override Task<ManifestDriftReport> GetManifestDriftAsync(bool verbose, CancellationToken cancellationToken)
@@ -56,5 +73,19 @@ public sealed class OperationsConsoleStateTests
 
         public override Task<IReadOnlyList<GitOpsChangeRecordResponse>> ListGitOpsChangesAsync(int limit, int offset, CancellationToken cancellationToken)
             => throw new InvalidOperationException("gitops unavailable");
+    }
+
+    private sealed class FailingSecondPreflightClient : StubHonuaAdminClient
+    {
+        private int _preflightRequests;
+
+        public override Task<DeployPreflightResult> GetDeployPreflightAsync(CancellationToken cancellationToken)
+        {
+            _preflightRequests++;
+
+            return _preflightRequests == 1
+                ? base.GetDeployPreflightAsync(cancellationToken)
+                : throw new InvalidOperationException("preflight unavailable");
+        }
     }
 }

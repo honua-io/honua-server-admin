@@ -112,6 +112,7 @@ public sealed class OperationsConsoleState
         Status = OperationsConsoleStatus.Loading;
         LastError = null;
         _sectionErrors.Clear();
+        ClearSectionData();
         Notify();
 
         try
@@ -187,6 +188,18 @@ public sealed class OperationsConsoleState
         {
             _sectionErrors[section] = ex.Message;
         }
+    }
+
+    private void ClearSectionData()
+    {
+        DeployPreflight = null;
+        ManifestDrift = null;
+        ManifestVersions = Array.Empty<ManifestVersionResponse>();
+        PendingApprovals = Array.Empty<ManifestPendingChangeResponse>();
+        GitOpsChanges = Array.Empty<GitOpsChangeRecordResponse>();
+        RecentErrors = null;
+        TelemetryStatus = null;
+        MigrationStatus = null;
     }
 
     private void Notify() => OnChanged?.Invoke();
