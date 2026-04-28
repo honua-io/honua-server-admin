@@ -9,6 +9,7 @@ using Bunit;
 using Honua.Admin.Models.Admin;
 using Honua.Admin.Pages.Admin;
 using Honua.Admin.Services.Admin;
+using Honua.Admin.Services.Annotations;
 using Microsoft.Extensions.DependencyInjection;
 using MudBlazor;
 using MudBlazor.Services;
@@ -102,6 +103,22 @@ public sealed class AdminPageRenderTests : TestContext
         cut.WaitForAssertion(() =>
         {
             cut.Markup.MarkupMatchesContaining("simulated client failure");
+        });
+    }
+
+    [Fact]
+    public void AnnotationWorkspace_RendersDrawingLayersCommentsAndExports()
+    {
+        Services.AddScoped<AnnotationWorkspaceState>();
+
+        var cut = RenderWithMudHost<Honua.Admin.Pages.Operator.Annotations>();
+
+        cut.WaitForAssertion(() =>
+        {
+            cut.Markup.MarkupMatchesContaining("Waikiki field review");
+            cut.Markup.MarkupMatchesContaining("Field review annotations");
+            cut.Markup.MarkupMatchesContaining("Export");
+            cut.Markup.MarkupMatchesContaining("Guest comments");
         });
     }
 

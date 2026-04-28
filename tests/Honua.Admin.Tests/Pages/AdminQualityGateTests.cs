@@ -10,6 +10,7 @@ using Bunit;
 using Honua.Admin.Models.Admin;
 using Honua.Admin.Pages.Admin;
 using Honua.Admin.Services.Admin;
+using Honua.Admin.Services.Annotations;
 using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.DependencyInjection;
 using MudBlazor;
@@ -32,6 +33,7 @@ public sealed class AdminQualityGateTests : TestContext
         JSInterop.Mode = JSRuntimeMode.Loose;
         Services.AddScoped<IAdminTelemetry, NullAdminTelemetry>();
         Services.AddScoped<IHonuaAdminClient>(_ => new StubHonuaAdminClient());
+        Services.AddScoped<AnnotationWorkspaceState>();
     }
 
     public static IEnumerable<object[]> TopWorkflows()
@@ -84,6 +86,13 @@ public sealed class AdminQualityGateTests : TestContext
             typeof(ServerInfoPage),
             "Honua:Database",
             new[] { "[aria-label='Configuration metadata']" },
+        ];
+        yield return
+        [
+            "Annotations",
+            typeof(Honua.Admin.Pages.Operator.Annotations),
+            "Waikiki field review",
+            new[] { "[aria-label='Annotation workspace toolbar']", "[aria-label='Annotation layers']" },
         ];
     }
 
