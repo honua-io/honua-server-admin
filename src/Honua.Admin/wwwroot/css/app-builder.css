@@ -30,7 +30,8 @@
 .app-builder-widget-library,
 .app-builder-validation,
 .app-builder-publishing-readiness,
-.app-builder-interactions {
+.app-builder-interactions,
+.app-builder-data-bindings {
     display: flex;
     flex-direction: column;
     gap: 8px;
@@ -66,7 +67,9 @@
 .app-builder-publish-channel span,
 .app-builder-publish-channel small,
 .app-builder-quota-row span,
-.app-builder-widget-body small {
+.app-builder-widget-body small,
+.app-builder-binding-row small,
+.app-builder-empty {
     color: var(--mud-palette-text-secondary, #607d8b);
 }
 
@@ -74,7 +77,9 @@
 .app-builder-quota-row,
 .app-builder-publish-channel,
 .app-builder-validation-row,
-.app-builder-interaction {
+.app-builder-interaction,
+.app-builder-binding-row,
+.app-builder-empty {
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -87,10 +92,24 @@
 .app-builder-widget-definition div,
 .app-builder-quota-row div,
 .app-builder-publish-channel div,
-.app-builder-validation-row div {
+.app-builder-validation-row div,
+.app-builder-binding-row div {
     display: flex;
     flex-direction: column;
     min-width: 0;
+}
+
+.app-builder-binding-row {
+    align-items: flex-start;
+}
+
+.app-builder-binding-row > .mud-input-control {
+    flex: 1 1 160px;
+    min-width: 0;
+}
+
+.app-builder-empty {
+    justify-content: flex-start;
 }
 
 .app-builder-publish-channel {
@@ -113,7 +132,9 @@
 .app-builder-quota-row span,
 .app-builder-interaction strong,
 .app-builder-interaction span,
-.app-builder-interaction small {
+.app-builder-interaction small,
+.app-builder-binding-row strong,
+.app-builder-binding-row small {
     min-width: 0;
     overflow-wrap: anywhere;
 }
