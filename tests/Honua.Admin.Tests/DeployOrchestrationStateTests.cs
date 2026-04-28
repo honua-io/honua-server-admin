@@ -72,6 +72,28 @@ public sealed class DeployOrchestrationStateTests
     }
 
     [Fact]
+    public async Task SubmitSelectedAsync_skips_selected_targets_without_operations()
+    {
+        var client = new RecordingDeployClient();
+        var state = new DeployOrchestrationState(client);
+        await state.InitializeAsync();
+        await state.PlanSelectedAsync();
+        await state.CreateOperationsForSelectedAsync("promote candidate", submitImmediately: false);
+        state.AddOrUpdateTarget("prod-api", "sha256:abc123", currentRevision: null);
+
+        await state.SubmitSelectedAsync("approval granted");
+
+        Assert.Null(state.LastError);
+        Assert.Equal(DeployOrchestrationStatus.Idle, state.Status);
+        var submittedId = Assert.Single(client.SubmittedOperationIds);
+        Assert.StartsWith("deploy-honua-server-", submittedId, StringComparison.Ordinal);
+        Assert.Contains(state.Targets, target =>
+            target.TargetId == "prod-api" &&
+            target.Operation is null &&
+            target.LastError is null);
+    }
+
+    [Fact]
     public async Task InitializeAsync_when_canceled_restores_idle_status_before_rethrowing()
     {
         var state = new DeployOrchestrationState(new CancelingDeployClient(cancelPreflight: true));

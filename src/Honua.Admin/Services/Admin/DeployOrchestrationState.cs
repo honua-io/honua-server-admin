@@ -125,6 +125,8 @@ public sealed class DeployOrchestrationState
 
     public bool HasSelectedTargets => _targets.Any(target => target.Selected);
 
+    public bool HasCreatableTargets => _targets.Any(target => target.Selected && target.CanCreateOperation);
+
     public bool HasRefreshableOperations => _targets.Any(target => target.Selected && target.CanRefresh);
 
     public bool HasSubmittableOperations => _targets.Any(target => target.Selected && target.CanSubmit);
@@ -244,6 +246,8 @@ public sealed class DeployOrchestrationState
         CancellationToken cancellationToken = default)
         => RunSelectedOperationAsync(
             DeployOrchestrationStatus.Creating,
+            static target => target.CanCreateOperation,
+            "Select at least one deploy target with a ready plan.",
             (target, token) => CreateOperationCoreAsync(target, reason, submitImmediately, token),
             cancellationToken);
 
@@ -260,6 +264,8 @@ public sealed class DeployOrchestrationState
     public Task SubmitSelectedAsync(string? reason, CancellationToken cancellationToken = default)
         => RunSelectedOperationAsync(
             DeployOrchestrationStatus.Submitting,
+            static target => target.CanSubmit,
+            "Select at least one deploy operation to submit.",
             (target, token) => SubmitOperationCoreAsync(target, reason, token),
             cancellationToken);
 
@@ -273,6 +279,8 @@ public sealed class DeployOrchestrationState
     public Task RefreshSelectedAsync(CancellationToken cancellationToken = default)
         => RunSelectedOperationAsync(
             DeployOrchestrationStatus.Refreshing,
+            static target => target.CanRefresh,
+            "Select at least one deploy operation to refresh.",
             (target, token) => RefreshOperationCoreAsync(target, token),
             cancellationToken);
 
@@ -289,6 +297,8 @@ public sealed class DeployOrchestrationState
     public Task RollbackSelectedAsync(string? reason, CancellationToken cancellationToken = default)
         => RunSelectedOperationAsync(
             DeployOrchestrationStatus.RollingBack,
+            static target => target.CanRollback,
+            "Select at least one deploy operation that supports rollback.",
             (target, token) => RollbackOperationCoreAsync(target, reason, token),
             cancellationToken);
 
@@ -296,11 +306,26 @@ public sealed class DeployOrchestrationState
         DeployOrchestrationStatus status,
         Func<DeployFleetTarget, CancellationToken, Task> operation,
         CancellationToken cancellationToken)
+        => await RunSelectedOperationAsync(
+            status,
+            static _ => true,
+            "Select at least one deploy target.",
+            operation,
+            cancellationToken).ConfigureAwait(false);
+
+    private async Task RunSelectedOperationAsync(
+        DeployOrchestrationStatus status,
+        Func<DeployFleetTarget, bool> isEligible,
+        string noEligibleTargetsMessage,
+        Func<DeployFleetTarget, CancellationToken, Task> operation,
+        CancellationToken cancellationToken)
     {
-        var selected = SelectedTargets;
-        if (selected.Count == 0)
+        var selected = SelectedTargets
+            .Where(isEligible)
+            .ToArray();
+        if (selected.Length == 0)
         {
-            LastError = "Select at least one deploy target.";
+            LastError = noEligibleTargetsMessage;
             Notify();
             return;
         }
