@@ -9,6 +9,7 @@ using Honua.Admin.Services.DataConnections.Providers;
 using Honua.Admin.Services.Identity;
 using Honua.Admin.Services.LicenseWorkspace;
 using Honua.Admin.Services.Operations;
+using Honua.Admin.Services.OpenDataHub;
 using Honua.Admin.Services.PrintService;
 using Honua.Admin.Services.Publishing;
 using Honua.Admin.Services.SpatialSql;
@@ -65,6 +66,11 @@ builder.Services.AddScoped<PrintServiceState>();
 // assembly workflow while server-side publish APIs are defined separately.
 builder.Services.AddScoped<IAppBuilderClient, StubAppBuilderClient>();
 builder.Services.AddScoped<AppBuilderState>();
+
+// Open data hub workspace (issue #6) exposes the admin-side catalog,
+// download, API, and embed readiness workflow while server APIs are defined.
+builder.Services.AddScoped<IOpenDataHubClient, StubOpenDataHubClient>();
+builder.Services.AddScoped<OpenDataHubState>();
 
 // Admin client + auth wiring (ticket #28 — restored from PR #17 onto the post-#27 shell).
 builder.Services.AddSingleton<AdminAuthStateProvider>();

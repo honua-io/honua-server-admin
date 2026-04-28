@@ -14,6 +14,7 @@ using Honua.Admin.Services.Admin;
 using Honua.Admin.Services.Annotations;
 using Honua.Admin.Services.AppBuilder;
 using Honua.Admin.Services.Operations;
+using Honua.Admin.Services.OpenDataHub;
 using Honua.Admin.Services.PrintService;
 using Honua.Admin.Services.Publishing;
 using Honua.Admin.Services.SpecWorkspace;
@@ -41,6 +42,8 @@ public sealed class AdminPageRenderTests : TestContext
         Services.AddScoped<PrintServiceState>();
         Services.AddScoped<IAppBuilderClient, StubAppBuilderClient>();
         Services.AddScoped<AppBuilderState>();
+        Services.AddScoped<IOpenDataHubClient, StubOpenDataHubClient>();
+        Services.AddScoped<OpenDataHubState>();
         Services.AddScoped<OperationsConsoleState>();
         Services.AddScoped<CatalogCache>();
         Services.AddScoped<IBrowserStorageService, MemoryBrowserStorageService>();
@@ -328,6 +331,22 @@ public sealed class AdminPageRenderTests : TestContext
             cut.Markup.MarkupMatchesContaining("Harbor operations dashboard");
             cut.Markup.MarkupMatchesContaining("Open incidents");
             cut.Markup.MarkupMatchesContaining("App builder validation checks");
+        });
+    }
+
+    [Fact]
+    public void OpenDataHub_RendersCatalogDeliveryAndValidation()
+    {
+        var cut = RenderWithMudHost<Honua.Admin.Pages.Operator.OpenDataHub>();
+
+        cut.WaitForAssertion(() =>
+        {
+            cut.Markup.MarkupMatchesContaining("Open data hub");
+            cut.Markup.MarkupMatchesContaining("Published datasets");
+            cut.Markup.MarkupMatchesContaining("Harbor assets");
+            cut.Markup.MarkupMatchesContaining("GeoJSON");
+            cut.Markup.MarkupMatchesContaining("Civic tech API");
+            cut.Markup.MarkupMatchesContaining("Readiness checks");
         });
     }
 
