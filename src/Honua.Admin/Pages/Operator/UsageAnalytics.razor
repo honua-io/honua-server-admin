@@ -1,0 +1,441 @@
+@page "/operator/analytics"
+@using System.Globalization
+@using Honua.Admin.Models.UsageAnalytics
+@using Honua.Admin.Services.UsageAnalytics
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.JSInterop
+@attribute [Authorize]
+@inject UsageAnalyticsState State
+@inject IAdminTelemetry Telemetry
+@inject IJSRuntime JS
+@implements IDisposable
+
+<PageTitle>Usage analytics</PageTitle>
+
+<div class="usage-analytics-root" data-testid="usage-analytics-root">
+    <div class="usage-analytics-toolbar" aria-label="Usage analytics toolbar">
+        <MudStack Row AlignItems="AlignItems.Center" Spacing="1" Class="usage-analytics-toolbar-row">
+            <MudText Typo="Typo.h5">
+                <MudIcon Icon="@Icons.Material.Filled.Insights" Class="mr-2" />
+                Usage analytics
+            </MudText>
+            <MudChip T="string" Size="Size.Small" Color="@StatusColor(State.Status)" Variant="Variant.Outlined" data-testid="usage-analytics-status">
+                @State.Status
+            </MudChip>
+            <MudSpacer />
+            <MudSelect T="string"
+                       Label="Range"
+                       Value="@State.RangeKey"
+                       ValueChanged="OnRangeChanged"
+                       Variant="Variant.Outlined"
+                       Margin="Margin.Dense"
+                       Disabled="@State.IsLoading"
+                       aria-label="Analytics time range"
+                       Class="usage-analytics-range">
+                @foreach (var option in UsageAnalyticsRanges.Options)
+                {
+                    <MudSelectItem T="string" Value="@option.Key">@option.Label</MudSelectItem>
+                }
+            </MudSelect>
+            <MudButton StartIcon="@Icons.Material.Filled.Refresh"
+                       Variant="Variant.Outlined"
+                       Size="Size.Small"
+                       Disabled="@State.IsLoading"
+                       OnClick="RefreshAsync"
+                       data-testid="usage-analytics-refresh">
+                Refresh
+            </MudButton>
+            <MudButton StartIcon="@Icons.Material.Filled.GetApp"
+                       Variant="Variant.Outlined"
+                       Size="Size.Small"
+                       Disabled="@(State.Report is null || State.IsLoading)"
+                       OnClick="ExportCsvAsync"
+                       data-testid="usage-analytics-export-csv">
+                CSV
+            </MudButton>
+            <MudButton StartIcon="@Icons.Material.Filled.PictureAsPdf"
+                       Variant="Variant.Outlined"
+                       Size="Size.Small"
+                       Disabled="@(State.Report is null || State.IsLoading)"
+                       OnClick="ExportPdfAsync"
+                       data-testid="usage-analytics-export-pdf">
+                PDF
+            </MudButton>
+        </MudStack>
+        @if (!string.IsNullOrWhiteSpace(State.LastError))
+        {
+            <MudAlert Severity="Severity.Error" Variant="Variant.Filled" Dense="true" Class="mt-2" data-testid="usage-analytics-error">
+                @State.LastError
+            </MudAlert>
+        }
+    </div>
+
+    @if (State.IsLoading && State.Report is null)
+    {
+        <MudGrid Class="mt-2">
+            @for (var i = 0; i < 6; i++)
+            {
+                <MudItem xs="12" sm="6" lg="2">
+                    <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="112px" Animation="Animation.Wave" />
+                </MudItem>
+            }
+        </MudGrid>
+        <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="360px" Animation="Animation.Wave" Class="mt-2" />
+    }
+    else if (State.Report is { } report)
+    {
+        var totals = State.FilteredTotals;
+        <MudGrid Class="mt-2">
+            <MudItem xs="12" sm="6" lg="2">
+                <MudCard Elevation="1" Class="usage-analytics-metric">
+                    <MudCardContent>
+                        <MudText Typo="Typo.overline">Queries</MudText>
+                        <MudText Typo="Typo.h5">@FormatNumber(totals.TotalQueries)</MudText>
+                        <MudText Typo="Typo.caption">@report.RangeLabel</MudText>
+                    </MudCardContent>
+                </MudCard>
+            </MudItem>
+            <MudItem xs="12" sm="6" lg="2">
+                <MudCard Elevation="1" Class="usage-analytics-metric">
+                    <MudCardContent>
+                        <MudText Typo="Typo.overline">Average QPS</MudText>
+                        <MudText Typo="Typo.h5">@FormatDecimal(totals.QueriesPerSecond)</MudText>
+                        <MudText Typo="Typo.caption">@RangeWindow(report)</MudText>
+                    </MudCardContent>
+                </MudCard>
+            </MudItem>
+            <MudItem xs="12" sm="6" lg="2">
+                <MudCard Elevation="1" Class="usage-analytics-metric">
+                    <MudCardContent>
+                        <MudText Typo="Typo.overline">P95 latency</MudText>
+                        <MudText Typo="Typo.h5">@FormatLatency(totals.P95LatencyMs)</MudText>
+                        <MudText Typo="Typo.caption">Filtered peak</MudText>
+                    </MudCardContent>
+                </MudCard>
+            </MudItem>
+            <MudItem xs="12" sm="6" lg="2">
+                <MudCard Elevation="1" Class="usage-analytics-metric">
+                    <MudCardContent>
+                        <MudText Typo="Typo.overline">Slow queries</MudText>
+                        <MudText Typo="Typo.h5">@FormatNumber(totals.SlowQueryCount)</MudText>
+                        <MudText Typo="Typo.caption">P95 over threshold</MudText>
+                    </MudCardContent>
+                </MudCard>
+            </MudItem>
+            <MudItem xs="12" sm="6" lg="2">
+                <MudCard Elevation="1" Class="usage-analytics-metric">
+                    <MudCardContent>
+                        <MudText Typo="Typo.overline">Active users</MudText>
+                        <MudText Typo="Typo.h5">@FormatNumber(totals.UniqueUsers)</MudText>
+                        <MudText Typo="Typo.caption">RBAC principals</MudText>
+                    </MudCardContent>
+                </MudCard>
+            </MudItem>
+            <MudItem xs="12" sm="6" lg="2">
+                <MudCard Elevation="1" Class="usage-analytics-metric">
+                    <MudCardContent>
+                        <MudText Typo="Typo.overline">Storage growth</MudText>
+                        <MudText Typo="Typo.h5">@FormatBytes(totals.StorageDeltaBytes)</MudText>
+                        <MudText Typo="Typo.caption">@FormatBytes(totals.StorageBytes) total</MudText>
+                    </MudCardContent>
+                </MudCard>
+            </MudItem>
+        </MudGrid>
+
+        <MudPaper Elevation="0" Class="usage-analytics-filterbar mt-2" aria-label="Usage analytics filters">
+            <MudSelect T="string"
+                       Label="Service"
+                       Value="@State.ServiceFilter"
+                       ValueChanged="OnServiceFilterChanged"
+                       Variant="Variant.Outlined"
+                       Margin="Margin.Dense"
+                       aria-label="Analytics service filter">
+                @foreach (var option in State.ServiceOptions)
+                {
+                    <MudSelectItem T="string" Value="@option">@OptionLabel(option)</MudSelectItem>
+                }
+            </MudSelect>
+            <MudSelect T="string"
+                       Label="Layer"
+                       Value="@State.LayerFilter"
+                       ValueChanged="OnLayerFilterChanged"
+                       Variant="Variant.Outlined"
+                       Margin="Margin.Dense"
+                       aria-label="Analytics layer filter">
+                @foreach (var option in State.LayerOptions)
+                {
+                    <MudSelectItem T="string" Value="@option">@OptionLabel(option)</MudSelectItem>
+                }
+            </MudSelect>
+            <MudSelect T="string"
+                       Label="Protocol"
+                       Value="@State.ProtocolFilter"
+                       ValueChanged="OnProtocolFilterChanged"
+                       Variant="Variant.Outlined"
+                       Margin="Margin.Dense"
+                       aria-label="Analytics protocol filter">
+                @foreach (var option in State.ProtocolOptions)
+                {
+                    <MudSelectItem T="string" Value="@option">@OptionLabel(option)</MudSelectItem>
+                }
+            </MudSelect>
+            <MudText Typo="Typo.caption" Color="Color.Secondary" Class="usage-analytics-filter-label">
+                @State.FilterLabel
+            </MudText>
+        </MudPaper>
+
+        <MudGrid Class="mt-2">
+            <MudItem xs="12" lg="8">
+                <MudPaper Elevation="0" Class="usage-analytics-panel">
+                    <MudStack Row AlignItems="AlignItems.Center" Spacing="1">
+                        <MudIcon Icon="@Icons.Material.Filled.Speed" />
+                        <MudText Typo="Typo.h6">Queries per second</MudText>
+                        <MudSpacer />
+                        <MudText Typo="Typo.caption">@report.GeneratedAt.ToString("u", CultureInfo.InvariantCulture)</MudText>
+                    </MudStack>
+                    <div class="usage-analytics-bars" role="img" aria-label="Queries per second trend">
+                        @foreach (var bucket in State.ThroughputBuckets)
+                        {
+                            <div class="usage-analytics-bar-slot" title="@BucketTitle(bucket)">
+                                <div class="usage-analytics-bar" style="@BarStyle(bucket.PercentOfPeak)"></div>
+                                <span>@bucket.Timestamp.ToString("HH:mm", CultureInfo.InvariantCulture)</span>
+                            </div>
+                        }
+                    </div>
+                    <MudTable Items="State.ThroughputRows" Dense="true" Hover="true" Class="mt-3" aria-label="Queries per second by service layer protocol">
+                        <HeaderContent>
+                            <MudTh>Service</MudTh>
+                            <MudTh>Layer</MudTh>
+                            <MudTh>Protocol</MudTh>
+                            <MudTh>Queries</MudTh>
+                            <MudTh>QPS</MudTh>
+                            <MudTh>Avg latency</MudTh>
+                            <MudTh>Slow</MudTh>
+                        </HeaderContent>
+                        <RowTemplate>
+                            <MudTd DataLabel="Service">@context.ServiceName</MudTd>
+                            <MudTd DataLabel="Layer">@context.LayerName</MudTd>
+                            <MudTd DataLabel="Protocol">@context.Protocol</MudTd>
+                            <MudTd DataLabel="Queries">@FormatNumber(context.QueryCount)</MudTd>
+                            <MudTd DataLabel="QPS">@FormatDecimal(context.AverageQueriesPerSecond)</MudTd>
+                            <MudTd DataLabel="Avg latency">@FormatLatency(context.AverageLatencyMs)</MudTd>
+                            <MudTd DataLabel="Slow">@FormatNumber(context.SlowQueryCount)</MudTd>
+                        </RowTemplate>
+                    </MudTable>
+                </MudPaper>
+            </MudItem>
+            <MudItem xs="12" lg="4">
+                <MudPaper Elevation="0" Class="usage-analytics-panel">
+                    <MudStack Row AlignItems="AlignItems.Center" Spacing="1">
+                        <MudIcon Icon="@Icons.Material.Filled.Storage" />
+                        <MudText Typo="Typo.h6">Storage growth</MudText>
+                    </MudStack>
+                    <MudTable Items="State.FilteredStorageGrowth" Dense="true" Hover="true" Class="mt-2" aria-label="Storage growth by service tenant">
+                        <HeaderContent>
+                            <MudTh>Service</MudTh>
+                            <MudTh>Current</MudTh>
+                            <MudTh>Delta</MudTh>
+                        </HeaderContent>
+                        <RowTemplate>
+                            <MudTd DataLabel="Service">
+                                <MudText Typo="Typo.body2">@context.ServiceName</MudText>
+                                <MudText Typo="Typo.caption" Color="Color.Secondary">@context.Tenant - @context.LayerCount layers</MudText>
+                            </MudTd>
+                            <MudTd DataLabel="Current">@FormatBytes(context.CurrentBytes)</MudTd>
+                            <MudTd DataLabel="Delta">
+                                <MudText Typo="Typo.body2">@FormatBytes(context.DeltaBytes)</MudText>
+                                <MudText Typo="Typo.caption" Color="Color.Secondary">@FormatPercent(context.GrowthPercent / 100d)</MudText>
+                            </MudTd>
+                        </RowTemplate>
+                    </MudTable>
+                </MudPaper>
+            </MudItem>
+        </MudGrid>
+
+        <MudTabs Class="mt-2" Elevation="0" Rounded="true" PanelClass="usage-analytics-tab-panel">
+            <MudTabPanel Text="Popular layers" Icon="@Icons.Material.Filled.TableChart">
+                <MudTable Items="State.FilteredPopularLayers" Dense="true" Hover="true" aria-label="Popular layers">
+                    <HeaderContent>
+                        <MudTh>Layer</MudTh>
+                        <MudTh>Protocol</MudTh>
+                        <MudTh>Queries</MudTh>
+                        <MudTh>QPS</MudTh>
+                        <MudTh>Users</MudTh>
+                        <MudTh>P95</MudTh>
+                        <MudTh>Error rate</MudTh>
+                    </HeaderContent>
+                    <RowTemplate>
+                        <MudTd DataLabel="Layer">
+                            <MudText Typo="Typo.body2">@context.LayerName</MudText>
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">@context.ServiceName</MudText>
+                        </MudTd>
+                        <MudTd DataLabel="Protocol">@context.Protocol</MudTd>
+                        <MudTd DataLabel="Queries">@FormatNumber(context.QueryCount)</MudTd>
+                        <MudTd DataLabel="QPS">@FormatDecimal(context.QueriesPerSecond)</MudTd>
+                        <MudTd DataLabel="Users">@FormatNumber(context.UniqueUsers)</MudTd>
+                        <MudTd DataLabel="P95">@FormatLatency(context.P95LatencyMs)</MudTd>
+                        <MudTd DataLabel="Error rate">@FormatPercent(context.ErrorRate)</MudTd>
+                    </RowTemplate>
+                </MudTable>
+            </MudTabPanel>
+            <MudTabPanel Text="Endpoints" Icon="@Icons.Material.Filled.CloudQueue">
+                <MudTable Items="State.FilteredPopularEndpoints" Dense="true" Hover="true" aria-label="Popular endpoints">
+                    <HeaderContent>
+                        <MudTh>Endpoint</MudTh>
+                        <MudTh>Protocol</MudTh>
+                        <MudTh>Queries</MudTh>
+                        <MudTh>QPS</MudTh>
+                        <MudTh>P95</MudTh>
+                        <MudTh>Error rate</MudTh>
+                    </HeaderContent>
+                    <RowTemplate>
+                        <MudTd DataLabel="Endpoint">
+                            <MudText Typo="Typo.body2">@context.Path</MudText>
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">@context.ServiceName / @context.LayerName</MudText>
+                        </MudTd>
+                        <MudTd DataLabel="Protocol">@context.Protocol</MudTd>
+                        <MudTd DataLabel="Queries">@FormatNumber(context.QueryCount)</MudTd>
+                        <MudTd DataLabel="QPS">@FormatDecimal(context.QueriesPerSecond)</MudTd>
+                        <MudTd DataLabel="P95">@FormatLatency(context.P95LatencyMs)</MudTd>
+                        <MudTd DataLabel="Error rate">@FormatPercent(context.ErrorRate)</MudTd>
+                    </RowTemplate>
+                </MudTable>
+            </MudTabPanel>
+            <MudTabPanel Text="Slow queries" Icon="@Icons.Material.Filled.ErrorOutline">
+                <MudTable Items="State.FilteredSlowQueries" Dense="true" Hover="true" aria-label="Slow queries">
+                    <HeaderContent>
+                        <MudTh>Query pattern</MudTh>
+                        <MudTh>Layer</MudTh>
+                        <MudTh>Count</MudTh>
+                        <MudTh>P95</MudTh>
+                        <MudTh>Max</MudTh>
+                        <MudTh>Last seen</MudTh>
+                    </HeaderContent>
+                    <RowTemplate>
+                        <MudTd DataLabel="Query pattern">
+                            <MudText Typo="Typo.body2">@context.QueryPattern</MudText>
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">@context.Endpoint</MudText>
+                        </MudTd>
+                        <MudTd DataLabel="Layer">@context.ServiceName / @context.LayerName / @context.Protocol</MudTd>
+                        <MudTd DataLabel="Count">@FormatNumber(context.Count)</MudTd>
+                        <MudTd DataLabel="P95">@FormatLatency(context.P95DurationMs)</MudTd>
+                        <MudTd DataLabel="Max">@FormatLatency(context.MaxDurationMs)</MudTd>
+                        <MudTd DataLabel="Last seen">
+                            <MudText Typo="Typo.body2">@context.LastSeen.ToString("u", CultureInfo.InvariantCulture)</MudText>
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">@context.ExampleCorrelationId</MudText>
+                        </MudTd>
+                    </RowTemplate>
+                </MudTable>
+            </MudTabPanel>
+            <MudTabPanel Text="Users" Icon="@Icons.Material.Filled.People">
+                <MudTable Items="State.FilteredUserActivity" Dense="true" Hover="true" aria-label="User activity">
+                    <HeaderContent>
+                        <MudTh>User</MudTh>
+                        <MudTh>Tenant</MudTh>
+                        <MudTh>Top layer</MudTh>
+                        <MudTh>Queries</MudTh>
+                        <MudTh>Layers</MudTh>
+                        <MudTh>P95</MudTh>
+                        <MudTh>Last seen</MudTh>
+                    </HeaderContent>
+                    <RowTemplate>
+                        <MudTd DataLabel="User">
+                            <MudText Typo="Typo.body2">@context.DisplayName</MudText>
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">@context.PrincipalId</MudText>
+                        </MudTd>
+                        <MudTd DataLabel="Tenant">@context.Tenant</MudTd>
+                        <MudTd DataLabel="Top layer">@context.TopService / @context.TopLayer / @context.MostUsedProtocol</MudTd>
+                        <MudTd DataLabel="Queries">@FormatNumber(context.QueryCount)</MudTd>
+                        <MudTd DataLabel="Layers">@FormatNumber(context.DistinctLayers)</MudTd>
+                        <MudTd DataLabel="P95">@FormatLatency(context.P95LatencyMs)</MudTd>
+                        <MudTd DataLabel="Last seen">@context.LastSeen.ToString("u", CultureInfo.InvariantCulture)</MudTd>
+                    </RowTemplate>
+                </MudTable>
+            </MudTabPanel>
+        </MudTabs>
+    }
+</div>
+
+@code {
+    protected override async Task OnInitializedAsync()
+    {
+        State.OnChanged += OnStateChanged;
+        Telemetry.PageNavigated("/operator/analytics", principalId: null);
+        await State.LoadAsync();
+    }
+
+    public void Dispose()
+    {
+        State.OnChanged -= OnStateChanged;
+    }
+
+    private void OnStateChanged() => _ = InvokeAsync(StateHasChanged);
+
+    private Task RefreshAsync() => State.LoadAsync();
+
+    private async Task OnRangeChanged(string rangeKey)
+    {
+        State.SetRange(rangeKey);
+        await State.LoadAsync();
+    }
+
+    private void OnServiceFilterChanged(string serviceName) => State.SetServiceFilter(serviceName);
+
+    private void OnLayerFilterChanged(string layerName) => State.SetLayerFilter(layerName);
+
+    private void OnProtocolFilterChanged(string protocol) => State.SetProtocolFilter(protocol);
+
+    private async Task ExportCsvAsync() => await DownloadAsync(State.ExportCsv());
+
+    private async Task ExportPdfAsync() => await DownloadAsync(State.ExportPdf());
+
+    private async Task DownloadAsync(UsageAnalyticsExportPayload payload)
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("usageAnalytics.downloadFile", payload.FileName, payload.MimeType, payload.Content);
+        }
+        catch
+        {
+            // Tests and pre-render do not require the browser download helper.
+        }
+    }
+
+    private static Color StatusColor(UsageAnalyticsStatus status) => status switch
+    {
+        UsageAnalyticsStatus.Loading => Color.Info,
+        UsageAnalyticsStatus.Ready => Color.Success,
+        UsageAnalyticsStatus.Error => Color.Error,
+        _ => Color.Default,
+    };
+
+    private static string OptionLabel(string value)
+        => string.Equals(value, UsageAnalyticsState.AllFilter, StringComparison.OrdinalIgnoreCase) ? "All" : value;
+
+    private static string FormatNumber(long value)
+        => value.ToString("N0", CultureInfo.InvariantCulture);
+
+    private static string FormatNumber(int value)
+        => value.ToString("N0", CultureInfo.InvariantCulture);
+
+    private static string FormatDecimal(double value)
+        => value.ToString("0.##", CultureInfo.InvariantCulture);
+
+    private static string FormatLatency(double value)
+        => $"{value.ToString("0.#", CultureInfo.InvariantCulture)} ms";
+
+    private static string FormatBytes(long bytes)
+        => UsageAnalyticsReportExporter.FormatBytes(bytes);
+
+    private static string FormatPercent(double ratio)
+        => UsageAnalyticsReportExporter.FormatPercent(ratio);
+
+    private static string BarStyle(double percent)
+        => $"height:{Math.Clamp(percent, 4d, 100d).ToString("0.#", CultureInfo.InvariantCulture)}%";
+
+    private static string BucketTitle(QueryThroughputBucket bucket)
+        => $"{bucket.Timestamp:u}: {bucket.QueriesPerSecond.ToString("0.##", CultureInfo.InvariantCulture)} QPS";
+
+    private static string RangeWindow(UsageAnalyticsReport report)
+        => $"{report.RangeStart.ToString("MM-dd HH:mm", CultureInfo.InvariantCulture)} to {report.RangeEnd.ToString("MM-dd HH:mm", CultureInfo.InvariantCulture)}";
+}

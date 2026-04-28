@@ -12,6 +12,7 @@ using Honua.Admin.Services.Admin;
 using Honua.Admin.Services.Annotations;
 using Honua.Admin.Services.Operations;
 using Honua.Admin.Services.Publishing;
+using Honua.Admin.Services.UsageAnalytics;
 using Microsoft.Extensions.DependencyInjection;
 using MudBlazor;
 using MudBlazor.Services;
@@ -29,6 +30,8 @@ public sealed class AdminPageRenderTests : TestContext
         Services.AddMudServices();
         JSInterop.Mode = JSRuntimeMode.Loose;
         Services.AddScoped<IAdminTelemetry, NullAdminTelemetry>();
+        Services.AddScoped<IUsageAnalyticsClient, StubUsageAnalyticsClient>();
+        Services.AddScoped<UsageAnalyticsState>();
         Services.AddTestRealtime();
     }
 
@@ -176,6 +179,22 @@ public sealed class AdminPageRenderTests : TestContext
         {
             cut.Markup.MarkupMatchesContaining("Recent errors unavailable");
             Assert.False(cut.Markup.Contains("No recent errors loaded.", StringComparison.OrdinalIgnoreCase), cut.Markup);
+        });
+    }
+
+    [Fact]
+    public void UsageAnalytics_RendersMetricsDrilldownsAndExports()
+    {
+        var cut = RenderWithMudHost<Honua.Admin.Pages.Operator.UsageAnalytics>();
+
+        cut.WaitForAssertion(() =>
+        {
+            cut.Markup.MarkupMatchesContaining("Usage analytics");
+            cut.Markup.MarkupMatchesContaining("Queries per second");
+            cut.Markup.MarkupMatchesContaining("Popular layers");
+            cut.Markup.MarkupMatchesContaining("Parcels");
+            cut.Markup.MarkupMatchesContaining("CSV");
+            cut.Markup.MarkupMatchesContaining("PDF");
         });
     }
 
