@@ -229,7 +229,7 @@
                             <div class="open-data-download-main">
                                 <strong>@FormatDownload(download.Format)</strong>
                                 <span>@download.Url</span>
-                                <small>@download.ContentType | @ShortChecksum(download.Checksum) | generated @FormatApiDate(download.GeneratedAt)</small>
+                                <small>@download.ContentType | @ShortChecksum(download.Checksum) | generated @FormatGeneratedDate(download.GeneratedAt)</small>
                             </div>
                             <div class="open-data-download-tags">
                                 <MudChip T="string" Size="Size.Small" Color="@DownloadReadinessColor(download.Readiness)" Variant="Variant.Outlined">
@@ -442,6 +442,9 @@
 
     private static string FormatApiDate(DateTimeOffset? value)
         => value?.ToLocalTime().ToString("MMM d, yyyy", CultureInfo.CurrentCulture) ?? "not recorded";
+
+    private static string FormatGeneratedDate(DateTimeOffset value)
+        => value == default ? "not recorded" : FormatApiDate(value);
 
     private static string ShortChecksum(string checksum)
     {
