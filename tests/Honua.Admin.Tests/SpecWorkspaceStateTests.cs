@@ -80,6 +80,38 @@ public sealed class SpecWorkspaceStateTests
     }
 
     [Fact]
+    public async Task Parameters_section_parses_required_flag_from_colon_style_lines()
+    {
+        var storage = new MemoryBrowserStorageService();
+        var state = new SpecWorkspaceState(
+            new StubSpecWorkspaceClient(),
+            storage,
+            new NullSpecWorkspaceTelemetry(),
+            new CatalogCache());
+
+        await state.InitializeAsync("operator");
+        await state.UpdateSectionTextAsync(
+            SpecSectionId.Parameters,
+            "$county: string = Honolulu required=true\n$start_date: date required=true");
+
+        Assert.Collection(
+            state.Spec.Parameters,
+            county =>
+            {
+                Assert.Equal("county", county.Name);
+                Assert.Equal("Honolulu", county.Default);
+                Assert.True(county.Required);
+            },
+            startDate =>
+            {
+                Assert.Equal("start_date", startDate.Name);
+                Assert.Null(startDate.Default);
+                Assert.True(startDate.Required);
+            });
+        Assert.DoesNotContain(state.Diagnostics, d => d.Section == SpecSectionId.Parameters && d.Severity == ValidationSeverity.Red);
+    }
+
+    [Fact]
     public async Task ClearDraftAsync_cancels_in_flight_apply_and_leaves_idle_empty_state()
     {
         var storage = new MemoryBrowserStorageService();

@@ -325,10 +325,43 @@ internal static class SpecSectionTextTranslator
             return false;
         }
 
+        var required = false;
+        var requiredMatch = Regex.Match(rest, @"(?:^|\s)required=(?<value>\S+)\s*$", RegexOptions.IgnoreCase);
+        if (requiredMatch.Success)
+        {
+            var value = requiredMatch.Groups["value"].Value;
+            if (bool.TryParse(value, out var parsed))
+            {
+                required = parsed;
+            }
+            else
+            {
+                diagnostics.Add(new ValidationDiagnostic(
+                    SpecSectionId.Parameters,
+                    ValidationSeverity.Red,
+                    "invalid-parameter-required",
+                    $"Parameter `{name}` has invalid required flag `{value}`.",
+                    value));
+            }
+
+            rest = rest[..requiredMatch.Index].Trim();
+        }
+
         var equalsIndex = rest.IndexOf('=');
         var type = equalsIndex >= 0 ? rest[..equalsIndex].Trim() : rest;
         var defaultValue = equalsIndex >= 0 ? UnquoteParameterValue(rest[(equalsIndex + 1)..].Trim()) : null;
-        entry = new SpecParameterEntry(name, NormalizeParameterType(type), defaultValue);
+        if (string.IsNullOrWhiteSpace(type))
+        {
+            diagnostics.Add(new ValidationDiagnostic(
+                SpecSectionId.Parameters,
+                ValidationSeverity.Red,
+                "missing-parameter-type",
+                $"Parameter `{name}` is missing a type.",
+                name));
+            type = "string";
+        }
+
+        entry = new SpecParameterEntry(name, NormalizeParameterType(type), defaultValue, required);
         return true;
     }
 
