@@ -1,0 +1,440 @@
+@page "/operator/print"
+@using System.Globalization
+@using Honua.Admin.Models.PrintService
+@using Honua.Admin.Services.PrintService
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.JSInterop
+@attribute [Authorize]
+@inject PrintServiceState State
+@inject IAdminTelemetry Telemetry
+@inject IJSRuntime JS
+@implements IDisposable
+
+<PageTitle>Print service</PageTitle>
+
+<div class="print-service-root" data-testid="print-service-root">
+    <div class="print-service-toolbar" aria-label="Print service toolbar">
+        <MudStack Row AlignItems="AlignItems.Center" Spacing="1" Class="print-service-toolbar-row">
+            <MudText Typo="Typo.h5">
+                <MudIcon Icon="@Icons.Material.Filled.Print" Class="mr-2" />
+                Print service
+            </MudText>
+            <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="@StatusColor(State.Status)" data-testid="print-service-status">
+                @State.Status
+            </MudChip>
+            <MudSpacer />
+            <MudButton StartIcon="@Icons.Material.Filled.Refresh"
+                       Variant="Variant.Outlined"
+                       Size="Size.Small"
+                       Disabled="@State.IsLoading"
+                       OnClick="RefreshPreviewAsync"
+                       data-testid="print-service-preview">
+                Preview
+            </MudButton>
+            <MudButton StartIcon="@Icons.Material.Filled.Queue"
+                       Variant="Variant.Filled"
+                       Color="Color.Primary"
+                       Size="Size.Small"
+                       Disabled="@State.IsLoading"
+                       OnClick="QueueExportAsync"
+                       data-testid="print-service-queue">
+                Queue export
+            </MudButton>
+            <MudButton StartIcon="@Icons.Material.Filled.GetApp"
+                       Variant="Variant.Outlined"
+                       Size="Size.Small"
+                       Disabled="@(State.Preview is null || State.IsLoading)"
+                       OnClick="DownloadPreviewAsync"
+                       data-testid="print-service-download-preview">
+                Download preview
+            </MudButton>
+        </MudStack>
+        @if (!string.IsNullOrWhiteSpace(State.LastError))
+        {
+            <MudAlert Severity="Severity.Error" Variant="Variant.Filled" Dense="true" Class="mt-2" data-testid="print-service-error">
+                @State.LastError
+            </MudAlert>
+        }
+    </div>
+
+    @if (State.IsLoading && State.Preview is null)
+    {
+        <MudGrid Class="mt-2">
+            @for (var i = 0; i < 4; i++)
+            {
+                <MudItem xs="12" sm="6" lg="3">
+                    <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="112px" Animation="Animation.Wave" />
+                </MudItem>
+            }
+        </MudGrid>
+        <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="480px" Animation="Animation.Wave" Class="mt-2" />
+    }
+    else
+    {
+        <MudGrid Class="mt-2">
+            <MudItem xs="12" sm="6" lg="3">
+                <MudCard Elevation="1" Class="print-service-metric">
+                    <MudCardContent>
+                        <MudText Typo="Typo.overline">Templates</MudText>
+                        <MudText Typo="Typo.h5">@State.Templates.Count.ToString("N0", CultureInfo.InvariantCulture)</MudText>
+                        <MudText Typo="Typo.caption">@State.SelectedTemplate?.RequiredEdition edition ready</MudText>
+                    </MudCardContent>
+                </MudCard>
+            </MudItem>
+            <MudItem xs="12" sm="6" lg="3">
+                <MudCard Elevation="1" Class="print-service-metric">
+                    <MudCardContent>
+                        <MudText Typo="Typo.overline">Visible layers</MudText>
+                        <MudText Typo="Typo.h5">@State.VisibleLayerCount.ToString("N0", CultureInfo.InvariantCulture)</MudText>
+                        <MudText Typo="Typo.caption">Legend inputs</MudText>
+                    </MudCardContent>
+                </MudCard>
+            </MudItem>
+            <MudItem xs="12" sm="6" lg="3">
+                <MudCard Elevation="1" Class="print-service-metric">
+                    <MudCardContent>
+                        <MudText Typo="Typo.overline">Pages</MudText>
+                        <MudText Typo="Typo.h5">@((State.Preview?.PageCount ?? 0).ToString("N0", CultureInfo.InvariantCulture))</MudText>
+                        <MudText Typo="Typo.caption">Single map or atlas</MudText>
+                    </MudCardContent>
+                </MudCard>
+            </MudItem>
+            <MudItem xs="12" sm="6" lg="3">
+                <MudCard Elevation="1" Class="print-service-metric">
+                    <MudCardContent>
+                        <MudText Typo="Typo.overline">Estimate</MudText>
+                        <MudText Typo="Typo.h5">@FormatBytes(State.Preview?.EstimatedFileSizeBytes ?? 0)</MudText>
+                        <MudText Typo="Typo.caption">@State.OutputFormat output</MudText>
+                    </MudCardContent>
+                </MudCard>
+            </MudItem>
+        </MudGrid>
+
+        <MudGrid Class="mt-2">
+            <MudItem xs="12" lg="4">
+                <MudPaper Elevation="0" Class="print-service-panel" aria-label="Print layout options">
+                    <MudText Typo="Typo.h6" Class="mb-2">Layout options</MudText>
+                    <MudSelect T="string"
+                               Label="Template"
+                               Value="@State.TemplateId"
+                               ValueChanged="OnTemplateChanged"
+                               Variant="Variant.Outlined"
+                               Margin="Margin.Dense"
+                               aria-label="Print template">
+                        @foreach (var template in State.Templates)
+                        {
+                            <MudSelectItem T="string" Value="@template.TemplateId">@template.Name</MudSelectItem>
+                        }
+                    </MudSelect>
+                    <MudSelect T="string"
+                               Label="Format"
+                               Value="@State.OutputFormat"
+                               ValueChanged="OnFormatChanged"
+                               Variant="Variant.Outlined"
+                               Margin="Margin.Dense"
+                               Class="mt-2"
+                               aria-label="Print output format">
+                        @foreach (var format in PrintOutputFormats.Options)
+                        {
+                            <MudSelectItem T="string" Value="@format">@format</MudSelectItem>
+                        }
+                    </MudSelect>
+                    <MudTextField T="string"
+                                  Label="Title"
+                                  Value="@State.Title"
+                                  ValueChanged="@((string value) => State.SetTitle(value))"
+                                  Variant="Variant.Outlined"
+                                  Margin="Margin.Dense"
+                                  Class="mt-2"
+                                  aria-label="Print title" />
+                    <MudTextField T="string"
+                                  Label="Subtitle"
+                                  Value="@State.Subtitle"
+                                  ValueChanged="@((string value) => State.SetSubtitle(value))"
+                                  Variant="Variant.Outlined"
+                                  Margin="Margin.Dense"
+                                  Class="mt-2"
+                                  aria-label="Print subtitle" />
+                    <MudTextField T="string"
+                                  Label="Author"
+                                  Value="@State.Author"
+                                  ValueChanged="@((string value) => State.SetAuthor(value))"
+                                  Variant="Variant.Outlined"
+                                  Margin="Margin.Dense"
+                                  Class="mt-2"
+                                  aria-label="Print author" />
+                    <MudNumericField T="int"
+                                     Label="Scale denominator"
+                                     Value="@State.ScaleDenominator"
+                                     ValueChanged="@((int value) => State.SetScaleDenominator(value))"
+                                     Min="100"
+                                     Max="10000000"
+                                     Variant="Variant.Outlined"
+                                     Margin="Margin.Dense"
+                                     Class="mt-2"
+                                     aria-label="Print scale denominator" />
+                    <div class="print-service-option-grid mt-2">
+                        <MudCheckBox T="bool"
+                                     Value="@State.IncludeLegend"
+                                     ValueChanged="@((bool value) => State.SetIncludeLegend(value))"
+                                     Label="Legend"
+                                     Color="Color.Primary"
+                                     aria-label="Include legend" />
+                        <MudCheckBox T="bool"
+                                     Value="@State.IncludeScaleBar"
+                                     ValueChanged="@((bool value) => State.SetIncludeScaleBar(value))"
+                                     Label="Scale bar"
+                                     Color="Color.Primary"
+                                     aria-label="Include scale bar" />
+                        <MudCheckBox T="bool"
+                                     Value="@State.IncludeNorthArrow"
+                                     ValueChanged="@((bool value) => State.SetIncludeNorthArrow(value))"
+                                     Label="North arrow"
+                                     Color="Color.Primary"
+                                     aria-label="Include north arrow" />
+                        <MudCheckBox T="bool"
+                                     Value="@State.IncludeOverviewMap"
+                                     ValueChanged="@((bool value) => State.SetIncludeOverviewMap(value))"
+                                     Label="Overview"
+                                     Color="Color.Primary"
+                                     aria-label="Include overview map" />
+                        <MudCheckBox T="bool"
+                                     Value="@State.BatchAtlas"
+                                     ValueChanged="@((bool value) => State.SetBatchAtlas(value))"
+                                     Label="Batch atlas"
+                                     Disabled="@(State.SelectedTemplate?.SupportsAtlas != true)"
+                                     Color="Color.Primary"
+                                     aria-label="Enable batch atlas" />
+                    </div>
+                </MudPaper>
+
+                <MudPaper Elevation="0" Class="print-service-panel mt-2" aria-label="Print visible layers">
+                    <MudStack Row AlignItems="AlignItems.Center" Spacing="1" Class="mb-2">
+                        <MudIcon Icon="@Icons.Material.Filled.Layers" />
+                        <MudText Typo="Typo.h6">Layers</MudText>
+                    </MudStack>
+                    <MudTable Items="State.Layers" Dense="true" Hover="true" aria-label="Print layer selection">
+                        <HeaderContent>
+                            <MudTh>Visible</MudTh>
+                            <MudTh>Layer</MudTh>
+                            <MudTh>Protocol</MudTh>
+                        </HeaderContent>
+                        <RowTemplate>
+                            <MudTd DataLabel="Visible">
+                                <MudCheckBox T="bool"
+                                             Value="@State.IsLayerVisible(context.LayerId)"
+                                             ValueChanged="@((bool visible) => OnLayerVisibilityChanged(context.LayerId, visible))"
+                                             Color="Color.Primary"
+                                             aria-label="@($"Toggle {context.LayerName}")" />
+                            </MudTd>
+                            <MudTd DataLabel="Layer">
+                                <MudText Typo="Typo.body2">@context.LayerName</MudText>
+                                <MudText Typo="Typo.caption" Color="Color.Secondary">@context.ServiceName - @context.GeometryType</MudText>
+                            </MudTd>
+                            <MudTd DataLabel="Protocol">@context.Protocol</MudTd>
+                        </RowTemplate>
+                    </MudTable>
+                </MudPaper>
+            </MudItem>
+
+            <MudItem xs="12" lg="8">
+                <MudPaper Elevation="0" Class="print-service-panel" aria-label="Print preview">
+                    @if (State.Preview is { } preview)
+                    {
+                        <MudStack Row AlignItems="AlignItems.Center" Spacing="1" Class="mb-2">
+                            <MudIcon Icon="@Icons.Material.Filled.Map" />
+                            <MudText Typo="Typo.h6">Preview</MudText>
+                            <MudSpacer />
+                            <MudText Typo="Typo.caption">@preview.ExportUrl</MudText>
+                        </MudStack>
+                        @if (preview.Warnings.Count > 0)
+                        {
+                            <MudAlert Severity="Severity.Warning" Dense="true" Variant="Variant.Outlined" Class="mb-2" data-testid="print-service-preview-warning">
+                                @string.Join(" ", preview.Warnings)
+                            </MudAlert>
+                        }
+                        <div class="print-service-preview-wrap">
+                            <div class="print-service-sheet" style="@SheetStyle(preview)">
+                                <div class="print-service-title-block">
+                                    <strong>@State.Title</strong>
+                                    <span>@State.Subtitle</span>
+                                </div>
+                                <div class="print-service-map-frame">
+                                    @foreach (var layer in preview.Layers)
+                                    {
+                                        <div class="print-service-map-band" style="@BandStyle(layer.SymbolColor)">
+                                            <span>@layer.DisplayName</span>
+                                        </div>
+                                    }
+                                    @if (preview.Layers.Count == 0)
+                                    {
+                                        <span class="print-service-empty-map">No visible layers</span>
+                                    }
+                                </div>
+                                @if (State.IncludeNorthArrow)
+                                {
+                                    <div class="print-service-north" title="North arrow">N</div>
+                                }
+                                @if (State.IncludeLegend)
+                                {
+                                    <div class="print-service-legend" aria-label="Preview legend">
+                                        @foreach (var layer in preview.Layers)
+                                        {
+                                            <div>
+                                                <span style="@LegendSwatchStyle(layer.SymbolColor)"></span>
+                                                <em>@layer.DisplayName</em>
+                                            </div>
+                                        }
+                                    </div>
+                                }
+                                @if (State.IncludeScaleBar)
+                                {
+                                    <div class="print-service-scale">1:@preview.ScaleDenominator.ToString("N0", CultureInfo.InvariantCulture)</div>
+                                }
+                                @if (State.IncludeOverviewMap)
+                                {
+                                    <div class="print-service-overview">Overview</div>
+                                }
+                                <div class="print-service-attribution">@State.Author</div>
+                            </div>
+                        </div>
+                    }
+                </MudPaper>
+
+                <MudGrid Class="mt-2">
+                    <MudItem xs="12" md="6">
+                        <MudPaper Elevation="0" Class="print-service-panel" aria-label="Print template catalog">
+                            <MudStack Row AlignItems="AlignItems.Center" Spacing="1" Class="mb-2">
+                                <MudIcon Icon="@Icons.Material.Filled.ViewQuilt" />
+                                <MudText Typo="Typo.h6">Templates</MudText>
+                            </MudStack>
+                            <MudTable Items="State.Templates" Dense="true" Hover="true" aria-label="Print layout templates">
+                                <HeaderContent>
+                                    <MudTh>Name</MudTh>
+                                    <MudTh>Page</MudTh>
+                                    <MudTh>Edition</MudTh>
+                                    <MudTh>Atlas</MudTh>
+                                </HeaderContent>
+                                <RowTemplate>
+                                    <MudTd DataLabel="Name">@context.Name</MudTd>
+                                    <MudTd DataLabel="Page">@context.PageSize / @context.Orientation</MudTd>
+                                    <MudTd DataLabel="Edition">@context.RequiredEdition</MudTd>
+                                    <MudTd DataLabel="Atlas">@(context.SupportsAtlas ? "Yes" : "No")</MudTd>
+                                </RowTemplate>
+                            </MudTable>
+                        </MudPaper>
+                    </MudItem>
+                    <MudItem xs="12" md="6">
+                        <MudPaper Elevation="0" Class="print-service-panel" aria-label="Print queue panel">
+                            <MudStack Row AlignItems="AlignItems.Center" Spacing="1" Class="mb-2">
+                                <MudIcon Icon="@Icons.Material.Filled.Queue" />
+                                <MudText Typo="Typo.h6">Queue</MudText>
+                            </MudStack>
+                            <MudTable Items="State.Jobs" Dense="true" Hover="true" aria-label="Print job queue">
+                                <HeaderContent>
+                                    <MudTh>Job</MudTh>
+                                    <MudTh>Template</MudTh>
+                                    <MudTh>Status</MudTh>
+                                    <MudTh>Pages</MudTh>
+                                    <MudTh>File</MudTh>
+                                </HeaderContent>
+                                <RowTemplate>
+                                    <MudTd DataLabel="Job">
+                                        <MudText Typo="Typo.body2">@context.Title</MudText>
+                                        <MudText Typo="Typo.caption" Color="Color.Secondary">@context.JobId</MudText>
+                                    </MudTd>
+                                    <MudTd DataLabel="Template">@context.TemplateName</MudTd>
+                                    <MudTd DataLabel="Status">@context.Status</MudTd>
+                                    <MudTd DataLabel="Pages">@context.PageCount.ToString("N0", CultureInfo.InvariantCulture)</MudTd>
+                                    <MudTd DataLabel="File">@context.FileName</MudTd>
+                                </RowTemplate>
+                            </MudTable>
+                        </MudPaper>
+                    </MudItem>
+                </MudGrid>
+            </MudItem>
+        </MudGrid>
+    }
+</div>
+
+@code {
+    protected override async Task OnInitializedAsync()
+    {
+        State.OnChanged += OnStateChanged;
+        Telemetry.PageNavigated("/operator/print", principalId: null);
+        await State.LoadAsync();
+    }
+
+    public void Dispose()
+    {
+        State.OnChanged -= OnStateChanged;
+    }
+
+    private void OnStateChanged() => _ = InvokeAsync(StateHasChanged);
+
+    private async Task RefreshPreviewAsync() => await State.RefreshPreviewAsync();
+
+    private async Task QueueExportAsync() => await State.QueueExportAsync();
+
+    private async Task OnTemplateChanged(string templateId)
+    {
+        State.SetTemplate(templateId);
+        await State.RefreshPreviewAsync();
+    }
+
+    private async Task OnFormatChanged(string format)
+    {
+        State.SetOutputFormat(format);
+        await State.RefreshPreviewAsync();
+    }
+
+    private void OnLayerVisibilityChanged(string layerId, bool visible) => State.SetLayerVisibility(layerId, visible);
+
+    private async Task DownloadPreviewAsync()
+    {
+        try
+        {
+            var payload = State.ExportPreviewManifest();
+            await JS.InvokeVoidAsync("printService.downloadFile", payload.FileName, payload.MimeType, payload.Content);
+        }
+        catch
+        {
+            // Tests and pre-render do not require the browser download helper.
+        }
+    }
+
+    private static Color StatusColor(PrintServiceStatus status) => status switch
+    {
+        PrintServiceStatus.Loading => Color.Info,
+        PrintServiceStatus.Ready => Color.Success,
+        PrintServiceStatus.Error => Color.Error,
+        _ => Color.Default,
+    };
+
+    private static string FormatBytes(long bytes)
+    {
+        string[] units = ["B", "KB", "MB", "GB"];
+        var size = (double)Math.Max(0, bytes);
+        var unit = 0;
+        while (size >= 1024 && unit < units.Length - 1)
+        {
+            size /= 1024;
+            unit++;
+        }
+
+        return $"{size.ToString(size >= 10 || unit == 0 ? "0" : "0.0", CultureInfo.InvariantCulture)} {units[unit]}";
+    }
+
+    private static string SheetStyle(PrintPreviewDocument preview)
+    {
+        var ratio = preview.WidthInches <= 0 || preview.HeightInches <= 0 ? 0.77 : preview.WidthInches / preview.HeightInches;
+        return $"aspect-ratio:{ratio.ToString("0.###", CultureInfo.InvariantCulture)}";
+    }
+
+    private static string BandStyle(string color) => $"border-left-color:{color};background:{ColorWithAlpha(color)}";
+
+    private static string LegendSwatchStyle(string color) => $"background:{color}";
+
+    private static string ColorWithAlpha(string color)
+        => color.Length == 7 && color[0] == '#' ? $"{color}1f" : "rgba(37,99,235,0.12)";
+}

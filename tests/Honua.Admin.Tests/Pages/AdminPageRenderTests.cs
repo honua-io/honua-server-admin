@@ -11,6 +11,7 @@ using Honua.Admin.Pages.Admin;
 using Honua.Admin.Services.Admin;
 using Honua.Admin.Services.Annotations;
 using Honua.Admin.Services.Operations;
+using Honua.Admin.Services.PrintService;
 using Honua.Admin.Services.Publishing;
 using Honua.Admin.Services.UsageAnalytics;
 using Microsoft.Extensions.DependencyInjection;
@@ -32,6 +33,8 @@ public sealed class AdminPageRenderTests : TestContext
         Services.AddScoped<IAdminTelemetry, NullAdminTelemetry>();
         Services.AddScoped<IUsageAnalyticsClient, StubUsageAnalyticsClient>();
         Services.AddScoped<UsageAnalyticsState>();
+        Services.AddScoped<IPrintServiceClient, StubPrintServiceClient>();
+        Services.AddScoped<PrintServiceState>();
         Services.AddTestRealtime();
     }
 
@@ -195,6 +198,21 @@ public sealed class AdminPageRenderTests : TestContext
             cut.Markup.MarkupMatchesContaining("Parcels");
             cut.Markup.MarkupMatchesContaining("CSV");
             cut.Markup.MarkupMatchesContaining("PDF");
+        });
+    }
+
+    [Fact]
+    public void PrintService_RendersTemplatesPreviewAndQueue()
+    {
+        var cut = RenderWithMudHost<Honua.Admin.Pages.Operator.PrintService>();
+
+        cut.WaitForAssertion(() =>
+        {
+            cut.Markup.MarkupMatchesContaining("Print service");
+            cut.Markup.MarkupMatchesContaining("Letter portrait");
+            cut.Markup.MarkupMatchesContaining("Preview");
+            cut.Markup.MarkupMatchesContaining("Queue export");
+            cut.Markup.MarkupMatchesContaining("Planning commission packet");
         });
     }
 
