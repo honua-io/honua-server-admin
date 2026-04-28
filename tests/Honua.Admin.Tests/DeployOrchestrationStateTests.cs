@@ -111,6 +111,27 @@ public sealed class DeployOrchestrationStateTests
     }
 
     [Fact]
+    public async Task ApplyRealtimeOperation_syncs_existing_target_revision_fields()
+    {
+        var state = new DeployOrchestrationState(new RecordingDeployClient());
+        await state.InitializeAsync();
+
+        var applied = state.ApplyRealtimeOperation(new DeployOperation
+        {
+            OperationId = "op-external",
+            Status = "Reconciling",
+            Target = Target("honua-server", "sha256:new", "sha256:old"),
+            UpdatedAt = DateTimeOffset.Parse("2026-04-27T10:06:00Z")
+        });
+
+        Assert.True(applied);
+        var target = Assert.Single(state.Targets);
+        Assert.Equal("sha256:new", target.DesiredRevision);
+        Assert.Equal("sha256:old", target.CurrentRevision);
+        Assert.Equal("Reconciling", target.Operation?.Status);
+    }
+
+    [Fact]
     public async Task SubmitSelectedAsync_skips_selected_targets_without_operations()
     {
         var client = new RecordingDeployClient();

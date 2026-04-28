@@ -97,6 +97,21 @@ public sealed class DeployFleetTarget
         LastUpdated = null;
     }
 
+    internal void SyncRealtimeTarget(DeployPlanTarget target)
+    {
+        if (!string.IsNullOrWhiteSpace(target.TargetId))
+        {
+            TargetId = target.TargetId;
+        }
+
+        if (!string.IsNullOrWhiteSpace(target.DesiredRevision))
+        {
+            DesiredRevision = target.DesiredRevision;
+        }
+
+        CurrentRevision = target.CurrentRevision;
+    }
+
     private static string EmptyAsUnknown(string? value)
         => string.IsNullOrWhiteSpace(value) ? "unknown" : value;
 }
@@ -248,6 +263,11 @@ public sealed class DeployOrchestrationState
         if (target is null)
         {
             return false;
+        }
+
+        if (operationTarget is not null)
+        {
+            target.SyncRealtimeTarget(operationTarget);
         }
 
         target.Operation = operation;

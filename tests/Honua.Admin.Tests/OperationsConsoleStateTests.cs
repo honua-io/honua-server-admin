@@ -111,12 +111,14 @@ public sealed class OperationsConsoleStateTests
         Assert.NotNull(state.RecentErrors);
         Assert.Single(state.RecentErrors!.Errors);
         Assert.Contains("1 recent error", state.TroubleshootingLabel);
+        Assert.Equal(OperationsConsoleStatus.Idle, state.Status);
+        Assert.Null(state.LastError);
     }
 
     [Fact]
     public async Task ApplyMigrationStatus_updates_release_evidence_from_realtime_event()
     {
-        var state = new OperationsConsoleState(new StubHonuaAdminClient());
+        var state = new OperationsConsoleState(new MigrationUnavailableClient());
         await state.RefreshAsync();
 
         state.ApplyMigrationStatus(new MigrationObservabilityResponse
@@ -131,6 +133,9 @@ public sealed class OperationsConsoleStateTests
         Assert.Equal("Applying - upgrade required", state.MigrationStatus is null
             ? "missing"
             : $"{state.MigrationStatus.Status} - {(state.MigrationStatus.UpgradeRequired ? "upgrade required" : "no upgrade")}");
+        Assert.DoesNotContain("Migrations", state.SectionErrors.Keys);
+        Assert.Equal(OperationsConsoleStatus.Idle, state.Status);
+        Assert.Null(state.LastError);
     }
 
     private sealed class PartialOperationsUnavailableClient : StubHonuaAdminClient
@@ -169,5 +174,11 @@ public sealed class OperationsConsoleStateTests
     {
         public override Task<RecentErrorsResponse> GetRecentErrorsAsync(CancellationToken cancellationToken)
             => throw new InvalidOperationException("recent errors unavailable");
+    }
+
+    private sealed class MigrationUnavailableClient : StubHonuaAdminClient
+    {
+        public override Task<MigrationObservabilityResponse> GetMigrationStatusAsync(CancellationToken cancellationToken)
+            => throw new InvalidOperationException("migrations unavailable");
     }
 }

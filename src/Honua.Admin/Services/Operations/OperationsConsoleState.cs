@@ -128,10 +128,7 @@ public sealed class OperationsConsoleState
     {
         RecentErrors = AdminRealtimeReducers.AddRecentError(RecentErrors, entry);
         _sectionErrors.Remove("Recent errors");
-        if (Status == OperationsConsoleStatus.Error)
-        {
-            Status = OperationsConsoleStatus.Partial;
-        }
+        RecomputeStatusAfterRealtimeSectionUpdate();
 
         Notify();
     }
@@ -140,16 +137,28 @@ public sealed class OperationsConsoleState
     {
         MigrationStatus = status;
         _sectionErrors.Remove("Migrations");
-        if (Status == OperationsConsoleStatus.Error)
-        {
-            Status = OperationsConsoleStatus.Partial;
-        }
+        RecomputeStatusAfterRealtimeSectionUpdate();
 
         Notify();
     }
 
     private string? SectionError(string section)
         => _sectionErrors.TryGetValue(section, out var message) ? message : null;
+
+    private void RecomputeStatusAfterRealtimeSectionUpdate()
+    {
+        if (Status == OperationsConsoleStatus.Loading)
+        {
+            return;
+        }
+
+        Status = _sectionErrors.Count == 0
+            ? OperationsConsoleStatus.Idle
+            : OperationsConsoleStatus.Partial;
+        LastError = _sectionErrors.Count == 0
+            ? null
+            : "Some operations console data could not be loaded.";
+    }
 
     public async Task RefreshAsync(CancellationToken cancellationToken = default)
     {
