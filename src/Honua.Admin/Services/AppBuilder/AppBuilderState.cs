@@ -22,6 +22,10 @@ public sealed class AppBuilderState
 
     public IReadOnlyList<AppWidgetDefinition> WidgetLibrary { get; private set; } = Array.Empty<AppWidgetDefinition>();
 
+    public IReadOnlyList<AppPublishChannel> PublishChannels { get; private set; } = Array.Empty<AppPublishChannel>();
+
+    public AppQuotaState Quota { get; private set; } = new();
+
     public AppDraft Draft { get; private set; } = new();
 
     public AppPublishResult? LastPublish { get; private set; }
@@ -72,7 +76,60 @@ public sealed class AppBuilderState
         }
     }
 
-    public bool HasBlockingValidation => ValidationChecks.Any(check => !check.Passed);
+    public IReadOnlyList<AppValidationCheck> PublishReadinessChecks
+    {
+        get
+        {
+            var standalone = PublishChannels.FirstOrDefault(channel => channel.Kind == AppPublishChannelKind.StandaloneUrl);
+            var embed = PublishChannels.FirstOrDefault(channel => channel.Kind == AppPublishChannelKind.IframeEmbed);
+            var customDomain = PublishChannels.FirstOrDefault(channel => channel.Kind == AppPublishChannelKind.CustomDomain);
+            var quotaLimit = Quota.AppLimit?.ToString() ?? "unlimited";
+            var isEnterprise = string.Equals(Quota.Edition, "Enterprise", StringComparison.OrdinalIgnoreCase);
+            var quotaPassed = Draft.IsPublished || Quota.CanPublishMore;
+            var quotaMessage = quotaPassed
+                ? $"{Quota.PublishedApps} of {quotaLimit} {Quota.Edition} app slots used."
+                : $"{Quota.Edition} app limit reached.";
+
+            if (Draft.IsPublished && !Quota.CanPublishMore)
+            {
+                quotaMessage = $"{Quota.Edition} app limit reached; updates to this published app do not use a new slot.";
+            }
+
+            return
+            [
+                new AppValidationCheck
+                {
+                    Key = "quota",
+                    Label = "Published app quota",
+                    Passed = quotaPassed,
+                    Message = quotaMessage
+                },
+                new AppValidationCheck
+                {
+                    Key = "standalone",
+                    Label = "Standalone URL",
+                    Passed = standalone?.Enabled == true,
+                    Message = standalone?.Message ?? "Standalone URL publishing channel is not configured."
+                },
+                new AppValidationCheck
+                {
+                    Key = "embed",
+                    Label = "Iframe embed",
+                    Passed = embed?.Enabled == true,
+                    Message = embed?.Message ?? "Embed publishing channel is not configured."
+                },
+                new AppValidationCheck
+                {
+                    Key = "custom-domain",
+                    Label = "Custom domain",
+                    Passed = !isEnterprise || customDomain?.Enabled == true,
+                    Message = customDomain?.Message ?? (isEnterprise ? "Custom domain publishing channel is not configured." : "Custom domains can be configured from Enterprise branding.")
+                }
+            ];
+        }
+    }
+
+    public bool HasBlockingValidation => ValidationChecks.Any(check => !check.Passed) || (!Draft.IsPublished && !Quota.CanPublishMore);
 
     public event Action? OnChanged;
 
@@ -93,6 +150,8 @@ public sealed class AppBuilderState
 
             Templates = snapshot.Templates;
             WidgetLibrary = snapshot.WidgetLibrary;
+            PublishChannels = snapshot.PublishChannels;
+            Quota = snapshot.Quota;
             Draft = snapshot.Draft;
             LastPublish = null;
             Status = AppBuilderStatus.Idle;
@@ -247,6 +306,12 @@ public sealed class AppBuilderState
         try
         {
             LastPublish = await _client.PublishAsync(Draft, cancellationToken).ConfigureAwait(false);
+            if (LastPublish.ConsumedQuotaSlot)
+            {
+                Quota = Quota with { PublishedApps = Quota.PublishedApps + 1 };
+            }
+
+            Draft = Draft with { IsPublished = true };
             Status = AppBuilderStatus.Published;
         }
         catch (OperationCanceledException)

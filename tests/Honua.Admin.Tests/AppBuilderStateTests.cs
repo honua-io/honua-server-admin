@@ -22,6 +22,9 @@ public sealed class AppBuilderStateTests
         Assert.Equal(AppBuilderStatus.Idle, state.Status);
         Assert.Contains(state.Templates, template => template.TemplateId == "operations-dashboard");
         Assert.Contains(state.WidgetLibrary, widget => widget.Kind == AppWidgetKind.Map);
+        Assert.Contains(state.PublishChannels, channel => channel.Kind == AppPublishChannelKind.StandaloneUrl);
+        Assert.Equal("Pro", state.Quota.Edition);
+        Assert.True(state.Quota.CanPublishMore);
         Assert.Equal("Harbor operations dashboard", state.Draft.Name);
         Assert.NotEmpty(state.Draft.Widgets);
         Assert.False(state.HasBlockingValidation);
@@ -186,6 +189,143 @@ public sealed class AppBuilderStateTests
     }
 
     [Fact]
+    public async Task PublishAsync_blocks_when_app_quota_is_full()
+    {
+        var snapshot = Snapshot("Quota dashboard");
+        var state = new AppBuilderState(new FixedAppBuilderClient(snapshot with
+        {
+            Quota = new AppQuotaState
+            {
+                Edition = "Pro",
+                PublishedApps = 5,
+                AppLimit = 5,
+            },
+            Draft = snapshot.Draft with { IsPublished = false },
+        }));
+        await state.LoadAsync();
+
+        await state.PublishAsync();
+
+        Assert.Equal(AppBuilderStatus.Error, state.Status);
+        Assert.Equal("Resolve validation checks before publishing.", state.LastError);
+        Assert.Null(state.LastPublish);
+        Assert.Contains(state.PublishReadinessChecks, check => check.Key == "quota" && !check.Passed);
+    }
+
+    [Fact]
+    public async Task PublishAsync_allows_republish_when_app_quota_is_full()
+    {
+        var snapshot = Snapshot("Existing quota dashboard");
+        var state = new AppBuilderState(new FixedAppBuilderClient(snapshot with
+        {
+            Quota = new AppQuotaState
+            {
+                Edition = "Pro",
+                PublishedApps = 5,
+                AppLimit = 5,
+            },
+            Draft = snapshot.Draft with { IsPublished = true },
+        }));
+        await state.LoadAsync();
+
+        await state.PublishAsync();
+
+        Assert.Equal(AppBuilderStatus.Published, state.Status);
+        Assert.Equal(5, state.Quota.PublishedApps);
+        Assert.True(state.Draft.IsPublished);
+        Assert.False(state.HasBlockingValidation);
+        Assert.Contains(state.PublishReadinessChecks, check => check.Key == "quota" && check.Passed);
+    }
+
+    [Fact]
+    public async Task PublishAsync_consumes_quota_slot_after_success()
+    {
+        var state = new AppBuilderState(new FixedAppBuilderClient(
+            Snapshot("Final slot dashboard") with
+            {
+                Quota = new AppQuotaState
+                {
+                    Edition = "Pro",
+                    PublishedApps = 3,
+                    AppLimit = 4,
+                },
+            },
+            consumesQuotaSlot: true));
+        await state.LoadAsync();
+
+        await state.PublishAsync();
+
+        Assert.Equal(AppBuilderStatus.Published, state.Status);
+        Assert.Equal(4, state.Quota.PublishedApps);
+        Assert.True(state.Draft.IsPublished);
+        Assert.False(state.HasBlockingValidation);
+        Assert.Contains(state.PublishReadinessChecks, check => check.Key == "quota" && check.Passed);
+    }
+
+    [Fact]
+    public async Task PublishAsync_preserves_quota_when_republishing_existing_app()
+    {
+        var snapshot = Snapshot("Existing dashboard");
+        var state = new AppBuilderState(new FixedAppBuilderClient(snapshot with
+        {
+            Quota = new AppQuotaState
+            {
+                Edition = "Pro",
+                PublishedApps = 3,
+                AppLimit = 4,
+            },
+            Draft = snapshot.Draft with { IsPublished = true },
+        }));
+        await state.LoadAsync();
+
+        await state.PublishAsync();
+
+        Assert.Equal(AppBuilderStatus.Published, state.Status);
+        Assert.Equal(3, state.Quota.PublishedApps);
+        Assert.True(state.Draft.IsPublished);
+        Assert.False(state.HasBlockingValidation);
+    }
+
+    [Fact]
+    public async Task PublishReadiness_flags_missing_enterprise_custom_domain_channel()
+    {
+        var state = new AppBuilderState(new FixedAppBuilderClient(Snapshot("Enterprise dashboard") with
+        {
+            Quota = new AppQuotaState
+            {
+                Edition = "Enterprise",
+                AppLimit = null,
+                PublishedApps = 12,
+            },
+            PublishChannels =
+            [
+                new AppPublishChannel
+                {
+                    ChannelId = "standalone-url",
+                    Kind = AppPublishChannelKind.StandaloneUrl,
+                    Label = "Standalone URL",
+                    Enabled = true,
+                    Message = "Ready",
+                },
+                new AppPublishChannel
+                {
+                    ChannelId = "iframe-embed",
+                    Kind = AppPublishChannelKind.IframeEmbed,
+                    Label = "Iframe embed",
+                    Enabled = true,
+                    Message = "Ready",
+                },
+            ],
+        }));
+        await state.LoadAsync();
+
+        var customDomain = Assert.Single(state.PublishReadinessChecks, check => check.Key == "custom-domain");
+
+        Assert.False(customDomain.Passed);
+        Assert.Equal("Custom domain publishing channel is not configured.", customDomain.Message);
+    }
+
+    [Fact]
     public async Task PublishAsync_clears_stale_publish_result_when_retry_fails()
     {
         var state = new AppBuilderState(new FailingRetryAppBuilderClient());
@@ -226,13 +366,32 @@ public sealed class AppBuilderStateTests
         Assert.Equal("https://apps.honua.local/embed/ops-2026-launch-1", result.EmbedUrl);
     }
 
+    [Fact]
+    public async Task StubPublishAsync_consumes_quota_only_once_per_draft()
+    {
+        var client = new StubAppBuilderClient();
+        var draft = new AppDraft { DraftId = "draft-existing", Name = "Existing app" };
+
+        var first = await client.PublishAsync(draft, CancellationToken.None);
+        var second = await client.PublishAsync(draft, CancellationToken.None);
+        var third = await client.PublishAsync(draft with { DraftId = "draft-new" }, CancellationToken.None);
+        var existing = await client.PublishAsync(draft with { DraftId = "draft-published", IsPublished = true }, CancellationToken.None);
+
+        Assert.True(first.ConsumedQuotaSlot);
+        Assert.False(second.ConsumedQuotaSlot);
+        Assert.True(third.ConsumedQuotaSlot);
+        Assert.False(existing.ConsumedQuotaSlot);
+    }
+
     private sealed class FixedAppBuilderClient : IAppBuilderClient
     {
         private readonly AppBuilderSnapshot _snapshot;
+        private readonly bool _consumesQuotaSlot;
 
-        public FixedAppBuilderClient(AppBuilderSnapshot snapshot)
+        public FixedAppBuilderClient(AppBuilderSnapshot snapshot, bool consumesQuotaSlot = false)
         {
             _snapshot = snapshot;
+            _consumesQuotaSlot = consumesQuotaSlot;
         }
 
         public Task<AppBuilderSnapshot> GetSnapshotAsync(CancellationToken cancellationToken)
@@ -245,6 +404,7 @@ public sealed class AppBuilderStateTests
                 EmbedUrl = "https://apps.honua.local/embed/test",
                 PublishedAt = DateTimeOffset.Parse("2026-04-28T00:00:00Z"),
                 Message = "Published",
+                ConsumedQuotaSlot = _consumesQuotaSlot,
             });
     }
 
@@ -328,6 +488,7 @@ public sealed class AppBuilderStateTests
                 EmbedUrl = "https://apps.honua.local/embed/published",
                 PublishedAt = DateTimeOffset.Parse("2026-04-28T00:00:00Z"),
                 Message = "Published",
+                ConsumedQuotaSlot = true,
             });
     }
 

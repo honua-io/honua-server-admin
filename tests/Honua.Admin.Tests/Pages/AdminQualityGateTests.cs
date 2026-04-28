@@ -164,7 +164,7 @@ public sealed class AdminQualityGateTests : TestContext
             "App builder",
             typeof(Honua.Admin.Pages.Operator.AppBuilder),
             "Harbor operations dashboard",
-            new[] { "[aria-label='App builder toolbar']", "[aria-label='Widget library']", "[aria-label='App layout canvas']", "[aria-label='App builder validation checks']" },
+            new[] { "[aria-label='App builder toolbar']", "[aria-label='Widget library']", "[aria-label='App layout canvas']", "[aria-label='App builder publishing readiness']", "[aria-label='App builder validation checks']" },
         ];
         yield return
         [

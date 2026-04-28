@@ -28,7 +28,8 @@
 
 .app-builder-template-list,
 .app-builder-widget-library,
-.app-builder-validation {
+.app-builder-validation,
+.app-builder-publishing-readiness {
     display: flex;
     flex-direction: column;
     gap: 8px;
@@ -61,11 +62,16 @@
 
 .app-builder-template small,
 .app-builder-widget-definition span,
+.app-builder-publish-channel span,
+.app-builder-publish-channel small,
+.app-builder-quota-row span,
 .app-builder-widget-body small {
     color: var(--mud-palette-text-secondary, #607d8b);
 }
 
 .app-builder-widget-definition,
+.app-builder-quota-row,
+.app-builder-publish-channel,
 .app-builder-validation-row {
     display: flex;
     align-items: center;
@@ -77,10 +83,25 @@
 }
 
 .app-builder-widget-definition div,
+.app-builder-quota-row div,
+.app-builder-publish-channel div,
 .app-builder-validation-row div {
     display: flex;
     flex-direction: column;
     min-width: 0;
+}
+
+.app-builder-publish-channel {
+    align-items: flex-start;
+}
+
+.app-builder-publish-channel strong,
+.app-builder-publish-channel span,
+.app-builder-publish-channel small,
+.app-builder-quota-row strong,
+.app-builder-quota-row span {
+    min-width: 0;
+    overflow-wrap: anywhere;
 }
 
 .app-builder-canvas-pane {

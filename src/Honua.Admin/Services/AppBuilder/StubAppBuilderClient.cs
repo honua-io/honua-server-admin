@@ -5,6 +5,8 @@ namespace Honua.Admin.Services.AppBuilder;
 
 public sealed class StubAppBuilderClient : IAppBuilderClient
 {
+    private readonly HashSet<string> _publishedDraftIds = new(StringComparer.Ordinal);
+
     public Task<AppBuilderSnapshot> GetSnapshotAsync(CancellationToken cancellationToken)
     {
         var snapshot = new AppBuilderSnapshot
@@ -51,6 +53,39 @@ public sealed class StubAppBuilderClient : IAppBuilderClient
                 Widget(AppWidgetKind.Gauge, "Gauge", "Numeric range visualization.", true, "SLA compliance"),
                 Widget(AppWidgetKind.RichText, "Rich text", "Header, narrative, and branded text block.", false, "Section copy")
             ],
+            PublishChannels =
+            [
+                Channel(
+                    "standalone-url",
+                    AppPublishChannelKind.StandaloneUrl,
+                    "Standalone URL",
+                    "https://apps.honua.local/{slug}",
+                    true,
+                    "Pro",
+                    "Ready for public or internal app launch."),
+                Channel(
+                    "iframe-embed",
+                    AppPublishChannelKind.IframeEmbed,
+                    "Iframe embed",
+                    "https://apps.honua.local/embed/{slug}",
+                    true,
+                    "Pro",
+                    "Embeddable viewer output is available for CMS pages."),
+                Channel(
+                    "custom-domain",
+                    AppPublishChannelKind.CustomDomain,
+                    "Custom domain",
+                    "https://apps.example.gov/{slug}",
+                    false,
+                    "Enterprise",
+                    "Enterprise branding unlocks custom domain publishing.")
+            ],
+            Quota = new AppQuotaState
+            {
+                Edition = "Pro",
+                PublishedApps = 3,
+                AppLimit = 5
+            },
             Draft = new AppDraft
             {
                 DraftId = "draft-operations-dashboard",
@@ -72,13 +107,17 @@ public sealed class StubAppBuilderClient : IAppBuilderClient
     }
 
     public Task<AppPublishResult> PublishAsync(AppDraft draft, CancellationToken cancellationToken)
-        => Task.FromResult(new AppPublishResult
+    {
+        var consumedQuotaSlot = !draft.IsPublished && _publishedDraftIds.Add(draft.DraftId);
+        return Task.FromResult(new AppPublishResult
         {
             PublishedUrl = $"https://apps.honua.local/{Slug(draft.Name)}",
             EmbedUrl = $"https://apps.honua.local/embed/{Slug(draft.Name)}",
             PublishedAt = DateTimeOffset.Parse("2026-04-28T00:00:00Z"),
-            Message = $"{draft.Name} is ready for preview."
+            Message = $"{draft.Name} is ready for preview.",
+            ConsumedQuotaSlot = consumedQuotaSlot
         });
+    }
 
     private static AppWidgetDefinition Widget(
         AppWidgetKind kind,
@@ -92,6 +131,24 @@ public sealed class StubAppBuilderClient : IAppBuilderClient
             Description = description,
             SupportsDataBinding = supportsDataBinding,
             DefaultBinding = defaultBinding
+        };
+
+    private static AppPublishChannel Channel(
+        string channelId,
+        AppPublishChannelKind kind,
+        string label,
+        string target,
+        bool enabled,
+        string requiredEdition,
+        string message) => new()
+        {
+            ChannelId = channelId,
+            Kind = kind,
+            Label = label,
+            Target = target,
+            Enabled = enabled,
+            RequiredEdition = requiredEdition,
+            Message = message
         };
 
     private static AppWidgetInstance Instance(

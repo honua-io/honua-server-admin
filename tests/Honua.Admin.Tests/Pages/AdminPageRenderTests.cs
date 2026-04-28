@@ -330,6 +330,9 @@ public sealed class AdminPageRenderTests : TestContext
             cut.Markup.MarkupMatchesContaining("Widget library");
             cut.Markup.MarkupMatchesContaining("Harbor operations dashboard");
             cut.Markup.MarkupMatchesContaining("Open incidents");
+            cut.Markup.MarkupMatchesContaining("Publishing readiness");
+            cut.Markup.MarkupMatchesContaining("Standalone URL");
+            cut.Markup.MarkupMatchesContaining("Custom domain");
             cut.Markup.MarkupMatchesContaining("App builder validation checks");
         });
     }
