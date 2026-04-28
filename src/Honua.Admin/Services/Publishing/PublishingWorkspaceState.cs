@@ -80,6 +80,10 @@ public sealed class PublishingWorkspaceState
 
     public LayerSummary? LastPublishedLayer { get; private set; }
 
+    public TestConnectionResult? SelectedConnectionTest { get; private set; }
+
+    public TestConnectionResult? CurrentConnectionTest => IsSelectedConnectionTestCurrent() ? SelectedConnectionTest : null;
+
     public string? SelectedConnectionId { get; private set; }
 
     public string ServiceName { get; private set; } = "default";
@@ -135,7 +139,9 @@ public sealed class PublishingWorkspaceState
         get
         {
             var selectedConnection = SelectedConnection;
+            var connectionTest = CurrentConnectionTest;
             var tableSelected = !string.IsNullOrWhiteSpace(DraftTable);
+            var connectionHealthy = IsConnectionHealthy();
             return
             [
                 new PublishingValidationCheck(
@@ -150,10 +156,14 @@ public sealed class PublishingWorkspaceState
                 new PublishingValidationCheck(
                     "health",
                     "Health",
-                    string.Equals(selectedConnection?.HealthStatus, "Healthy", StringComparison.OrdinalIgnoreCase),
+                    connectionHealthy,
                     selectedConnection is null
                         ? "No connection selected."
-                        : $"{selectedConnection.HealthStatus} connection health."),
+                        : connectionTest is not null
+                            ? connectionTest.IsHealthy
+                                ? $"Latest test passed: {connectionTest.Message}"
+                                : $"Latest test failed: {connectionTest.Message}"
+                            : $"{selectedConnection.HealthStatus} connection health."),
                 new PublishingValidationCheck(
                     "table",
                     "Table",
@@ -188,6 +198,10 @@ public sealed class PublishingWorkspaceState
         get
         {
             var states = new List<PublishingEnvironmentState>();
+            var connectionTest = CurrentConnectionTest;
+            var connectionHealth = connectionTest?.IsHealthy == false
+                ? $"Connection test failed: {connectionTest.Message}"
+                : connectionTest?.Message ?? SelectedConnection?.HealthStatus ?? "No connection selected";
             var desiredProtocols = JoinOrPlaceholder(DesiredProtocols, "No desired protocols");
             var actualProtocols = JoinOrPlaceholder(ServiceSettings?.EnabledProtocols ?? Array.Empty<string>(), "No enabled protocols");
             var runtimeName = string.IsNullOrWhiteSpace(DeployPreflight?.Environment)
@@ -208,6 +222,14 @@ public sealed class PublishingWorkspaceState
                 $"{DeployPreflight?.InstanceName ?? "current instance"}; protocols {actualProtocols}",
                 driftState,
                 ManifestDrift is null ? ManifestError ?? "No drift report" : $"Generated {ManifestDrift.GeneratedAt:yyyy-MM-dd HH:mm} UTC"));
+            states.Add(new PublishingEnvironmentState(
+                "connection",
+                SelectedConnection?.Name ?? "No connection selected",
+                connectionHealth,
+                ConnectionDriftStatus(),
+                connectionTest?.TestedAt is null
+                    ? "Using connection summary health"
+                    : $"Tested {connectionTest.TestedAt:yyyy-MM-dd HH:mm} UTC"));
 
             if (GitOpsWatch is not null)
             {
@@ -275,6 +297,7 @@ public sealed class PublishingWorkspaceState
             Connections = await _client.ListConnectionsAsync(cancellationToken).ConfigureAwait(false);
             Services = await _client.ListServicesAsync(cancellationToken).ConfigureAwait(false);
             SelectedConnectionId = Connections.FirstOrDefault()?.Id;
+            ClearStaleConnectionTest();
             ServiceName = Services.FirstOrDefault()?.ServiceName ?? "default";
             await LoadServiceAsync(cancellationToken).ConfigureAwait(false);
             await DiscoverTablesAsync(cancellationToken).ConfigureAwait(false);
@@ -300,11 +323,46 @@ public sealed class PublishingWorkspaceState
     public async Task SelectConnectionAsync(string connectionId, CancellationToken cancellationToken = default)
     {
         SelectedConnectionId = connectionId;
+        SelectedConnectionTest = null;
         LastError = null;
         Tables = Array.Empty<DiscoveredTable>();
         Layers = Array.Empty<LayerSummary>();
         await DiscoverTablesAsync(cancellationToken).ConfigureAwait(false);
         await LoadLayersAsync(cancellationToken).ConfigureAwait(false);
+        Notify();
+    }
+
+    public async Task TestSelectedConnectionAsync(CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(SelectedConnectionId))
+        {
+            LastError = "Select a connection before testing.";
+            Notify();
+            return;
+        }
+
+        Status = PublishingWorkspaceStatus.Validating;
+        LastError = null;
+        Notify();
+
+        try
+        {
+            SelectedConnectionTest = await _client.TestConnectionAsync(SelectedConnectionId, cancellationToken).ConfigureAwait(false);
+            Connections = await _client.ListConnectionsAsync(cancellationToken).ConfigureAwait(false);
+            Status = PublishingWorkspaceStatus.Idle;
+            LastError = SelectedConnectionTest.IsHealthy ? null : SelectedConnectionTest.Message;
+        }
+        catch (OperationCanceledException)
+        {
+            Status = PublishingWorkspaceStatus.Idle;
+            throw;
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            Status = PublishingWorkspaceStatus.Error;
+            LastError = ex.Message;
+        }
+
         Notify();
     }
 
@@ -701,6 +759,38 @@ public sealed class PublishingWorkspaceState
         Notify();
     }
 
+    public async Task SetAllLayersPublishedAsync(bool published, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(SelectedConnectionId))
+        {
+            LastError = "Select a connection before updating layers.";
+            Notify();
+            return;
+        }
+
+        Status = PublishingWorkspaceStatus.Saving;
+        LastError = null;
+        Notify();
+
+        try
+        {
+            Layers = await _client.SetServiceLayersEnabledAsync(SelectedConnectionId, published, ServiceName, cancellationToken).ConfigureAwait(false);
+            Status = PublishingWorkspaceStatus.Idle;
+        }
+        catch (OperationCanceledException)
+        {
+            Status = PublishingWorkspaceStatus.Idle;
+            throw;
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            Status = PublishingWorkspaceStatus.Error;
+            LastError = ex.Message;
+        }
+
+        Notify();
+    }
+
     private async Task LoadReconciliationCoreAsync(CancellationToken cancellationToken)
     {
         await LoadManifestStateAsync(cancellationToken).ConfigureAwait(false);
@@ -819,6 +909,52 @@ public sealed class PublishingWorkspaceState
     private async Task LoadGitOpsChangesAsync(CancellationToken cancellationToken)
     {
         GitOpsChanges = await _client.ListGitOpsChangesAsync(5, 0, cancellationToken).ConfigureAwait(false);
+    }
+
+    private string ConnectionDriftStatus()
+    {
+        if (SelectedConnection is null)
+        {
+            return "Needs attention";
+        }
+
+        return SelectedConnection.IsActive && IsConnectionHealthy()
+            ? "Ready"
+            : "Needs attention";
+    }
+
+    private bool IsConnectionHealthy()
+    {
+        if (CurrentConnectionTest is not null)
+        {
+            return CurrentConnectionTest.IsHealthy;
+        }
+
+        return string.Equals(SelectedConnection?.HealthStatus, "Healthy", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private void ClearStaleConnectionTest()
+    {
+        if (SelectedConnectionTest is not null && !IsSelectedConnectionTestCurrent())
+        {
+            SelectedConnectionTest = null;
+        }
+    }
+
+    private bool IsSelectedConnectionTestCurrent()
+    {
+        if (SelectedConnectionTest is null || SelectedConnection is null)
+        {
+            return false;
+        }
+
+        if (SelectedConnectionTest.ConnectionId != Guid.Empty && SelectedConnection.ConnectionId != Guid.Empty)
+        {
+            return SelectedConnectionTest.ConnectionId == SelectedConnection.ConnectionId;
+        }
+
+        return !string.IsNullOrWhiteSpace(SelectedConnectionTest.ConnectionName) &&
+            string.Equals(SelectedConnectionTest.ConnectionName, SelectedConnection.Name, StringComparison.OrdinalIgnoreCase);
     }
 
     private void HydrateGitOpsDraft(GitOpsWatchConfigResponse watch)

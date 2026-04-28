@@ -135,8 +135,11 @@ public sealed class AdminPageRenderTests : TestContext
         {
             cut.Markup.MarkupMatchesContaining("Publishing workspace");
             cut.Markup.MarkupMatchesContaining("primary-postgis");
+            cut.Markup.MarkupMatchesContaining("New");
+            cut.Markup.MarkupMatchesContaining("Test");
             cut.Markup.MarkupMatchesContaining("Environment");
             cut.Markup.MarkupMatchesContaining("Parcels");
+            cut.Markup.MarkupMatchesContaining("Unpublish all");
         });
     }
 

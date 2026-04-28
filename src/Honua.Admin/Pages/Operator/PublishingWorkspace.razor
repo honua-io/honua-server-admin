@@ -77,7 +77,25 @@
 
     <div class="publishing-grid">
         <div class="publishing-pane publishing-connections" aria-label="Connection and table discovery">
-            <MudText Typo="Typo.h6">Connection</MudText>
+            <MudStack Row AlignItems="AlignItems.Center" Class="publishing-section-heading">
+                <MudText Typo="Typo.h6">Connection</MudText>
+                <MudSpacer />
+                <MudButton Href="/operator/data-connections/new"
+                           Variant="Variant.Text"
+                           Size="Size.Small"
+                           StartIcon="@Icons.Material.Filled.Add"
+                           data-testid="publishing-new-connection">
+                    New
+                </MudButton>
+                <MudButton Variant="Variant.Text"
+                           Size="Size.Small"
+                           StartIcon="@Icons.Material.Filled.HealthAndSafety"
+                           Disabled="@(IsBusy || string.IsNullOrWhiteSpace(State.SelectedConnectionId))"
+                           OnClick="TestConnectionAsync"
+                           data-testid="publishing-test-connection">
+                    Test
+                </MudButton>
+            </MudStack>
             <div class="publishing-list" aria-label="Publishing data connections">
                 @foreach (var connection in State.Connections)
                 {
@@ -91,6 +109,16 @@
                     </button>
                 }
             </div>
+            @if (State.CurrentConnectionTest is { } connectionTest)
+            {
+                <MudAlert Severity="@(connectionTest.IsHealthy ? Severity.Success : Severity.Warning)"
+                          Variant="Variant.Text"
+                          Dense="true"
+                          Class="mt-2"
+                          data-testid="publishing-connection-test-result">
+                    @connectionTest.Message
+                </MudAlert>
+            }
 
             <MudStack Row AlignItems="AlignItems.Center" Class="publishing-section-heading">
                 <MudText Typo="Typo.h6">Discovery</MudText>
@@ -448,6 +476,23 @@
                            StartIcon="@Icons.Material.Filled.Settings">
                     Settings
                 </MudButton>
+                <MudButton Variant="Variant.Text"
+                           Size="Size.Small"
+                           StartIcon="@Icons.Material.Filled.Publish"
+                           Disabled="@(IsBusy || State.Layers.Count == 0)"
+                           OnClick="@(() => SetAllLayersPublishedAsync(true))"
+                           data-testid="publishing-republish-all">
+                    Republish all
+                </MudButton>
+                <MudButton Variant="Variant.Text"
+                           Size="Size.Small"
+                           Color="Color.Warning"
+                           StartIcon="@Icons.Material.Filled.VisibilityOff"
+                           Disabled="@(IsBusy || State.Layers.Count == 0)"
+                           OnClick="@(() => SetAllLayersPublishedAsync(false))"
+                           data-testid="publishing-unpublish-all">
+                    Unpublish all
+                </MudButton>
             </MudStack>
             @if (State.Layers.Count == 0)
             {
@@ -469,7 +514,7 @@
                                 @(layer.Enabled ? "Enabled" : "Disabled")
                             </MudChip>
                             <MudButton Size="Size.Small" Variant="Variant.Text" OnClick="@(() => ToggleLayerAsync(layer))">
-                                @(layer.Enabled ? "Disable" : "Enable")
+                                @(layer.Enabled ? "Unpublish" : "Republish")
                             </MudButton>
                             <MudButton Size="Size.Small" Variant="Variant.Text" Href="@($"/layers/{layer.LayerId}/style")">
                                 Style
@@ -514,6 +559,15 @@
 
     private Task SelectConnectionAsync(string connectionId) => State.SelectConnectionAsync(connectionId);
 
+    private async Task TestConnectionAsync()
+    {
+        await State.TestSelectedConnectionAsync();
+        if (State.LastError is null && State.CurrentConnectionTest is not null)
+        {
+            Snackbar.Add("Connection test passed.", Severity.Success);
+        }
+    }
+
     private Task DiscoverAsync() => State.DiscoverTablesAsync();
 
     private Task RunPreflightAsync() => State.RunPreflightAsync();
@@ -540,8 +594,21 @@
 
     private async Task ToggleLayerAsync(LayerSummary layer)
     {
-        Telemetry.DestructiveAction(layer.Enabled ? "publishing-disable-layer" : "publishing-enable-layer", layer.LayerId.ToString(), principalId: null);
+        Telemetry.DestructiveAction(layer.Enabled ? "publishing-unpublish-layer" : "publishing-republish-layer", layer.LayerId.ToString(), principalId: null);
         await State.ToggleLayerAsync(layer);
+    }
+
+    private async Task SetAllLayersPublishedAsync(bool published)
+    {
+        Telemetry.DestructiveAction(
+            published ? "publishing-republish-all-layers" : "publishing-unpublish-all-layers",
+            State.ServiceName,
+            principalId: null);
+        await State.SetAllLayersPublishedAsync(published);
+        if (State.LastError is null)
+        {
+            Snackbar.Add(published ? "Service layers republished." : "Service layers unpublished.", Severity.Success);
+        }
     }
 
     private async Task ConfigureGitOpsAsync()
