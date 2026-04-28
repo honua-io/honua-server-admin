@@ -26,6 +26,9 @@ public sealed class OpenDataHubStateTests
         Assert.Equal("harbor-assets", state.SelectedDataset?.DatasetId);
         Assert.Equal("harbor-assets-public", state.SelectedDataset?.ApiAccess.PublicKeyLabel);
         Assert.Contains(state.SelectedDataset!.ApiAccess.CodeExamples, example => example.Language == OpenDataCodeLanguage.JavaScript);
+        Assert.True(state.SelectedDataset.Usage.DownloadsLast30Days > 0);
+        Assert.True(state.SelectedDataset.Usage.ApiCallsLast30Days > 0);
+        Assert.Contains(state.SelectedDataset.FeedbackReports, report => report.Status == OpenDataFeedbackStatus.Triaged);
         Assert.False(state.HasBlockingValidation);
     }
 
