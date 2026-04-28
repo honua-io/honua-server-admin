@@ -330,7 +330,7 @@ public sealed partial class StubSpecWorkspaceClient : ISpecWorkspaceClient
                 EstimatedBytes = dataset.EstimatedRows * 128,
                 EstimatedMillis = 50,
                 Warnings = nodeWarnings,
-                ContentHash = BuildContentHash("source", source.Dataset, source.Pin ?? "mutable"),
+                ContentHash = BuildContentHash("source", dataset.Id, source.Pin ?? "mutable"),
                 CachePolicy = PlanCachePolicy.MetadataOnly,
                 Materialization = PlanMaterializationKind.Ephemeral
             });
@@ -396,7 +396,7 @@ public sealed partial class StubSpecWorkspaceClient : ISpecWorkspaceClient
             {
                 Id = outputId,
                 Op = "output",
-                Inputs = ResolveOutputInputs(document),
+                Inputs = ResolveOutputInputs(document, document.Output.Kind),
                 Depth = depth + 1,
                 EstimatedRows = 0,
                 EstimatedBytes = 0,
@@ -958,13 +958,20 @@ public sealed partial class StubSpecWorkspaceClient : ISpecWorkspaceClient
             .ToArray();
     }
 
-    private static IReadOnlyList<string> ResolveOutputInputs(SpecDocument document)
+    private static IReadOnlyList<string> ResolveOutputInputs(SpecDocument document, SpecOutputKind outputKind)
     {
-        if (document.Map.Layers.Count > 0)
+        return outputKind switch
         {
-            return document.Map.Layers.Select(layer => $"map-{layer.Source}").ToArray();
-        }
+            SpecOutputKind.Map when document.Map.Layers.Count > 0 => document.Map.Layers
+                .Select(layer => $"map-{layer.Source}")
+                .ToArray(),
+            SpecOutputKind.AppScaffold => ResolveAppScaffoldInputs(document),
+            _ => ResolveAnalysisInputs(document)
+        };
+    }
 
+    private static IReadOnlyList<string> ResolveAnalysisInputs(SpecDocument document)
+    {
         if (document.Compute.Count > 0)
         {
             var last = document.Compute[^1];
@@ -972,6 +979,24 @@ public sealed partial class StubSpecWorkspaceClient : ISpecWorkspaceClient
         }
 
         return document.Sources.Select(source => source.Id).ToArray();
+    }
+
+    private static IReadOnlyList<string> ResolveAppScaffoldInputs(SpecDocument document)
+    {
+        var inputs = new List<string>();
+        if (document.Compute.Count > 0)
+        {
+            var last = document.Compute[^1];
+            inputs.Add($"{last.Op}-{document.Compute.Count}");
+        }
+
+        inputs.AddRange(document.Map.Layers.Select(layer => $"map-{layer.Source}"));
+        if (inputs.Count == 0)
+        {
+            inputs.AddRange(document.Sources.Select(source => source.Id));
+        }
+
+        return inputs;
     }
 
     private static PlanMaterializationKind MaterializationForOutput(SpecOutputKind kind) => kind switch
@@ -1001,6 +1026,18 @@ public sealed partial class StubSpecWorkspaceClient : ISpecWorkspaceClient
 
     private ApplyPayload BuildPayload(SpecDocument document)
     {
+        if (document.Output.Kind == SpecOutputKind.AppScaffold)
+        {
+            return new ApplyPayload
+            {
+                Kind = SpecOutputKind.AppScaffold,
+                AppScaffold = new AppScaffold(
+                    "Preview App",
+                    new[] { new AppScaffoldParameter("date", "date", DateTime.UtcNow.ToString("O", CultureInfo.InvariantCulture)) },
+                    "single-column")
+            };
+        }
+
         if (document.Map.Layers.Count > 0)
         {
             var features = new List<MapFeature>();
@@ -1072,18 +1109,6 @@ public sealed partial class StubSpecWorkspaceClient : ISpecWorkspaceClient
                 Kind = SpecOutputKind.Analysis,
                 TableColumns = new[] { "id", "status" },
                 TableRows = rows
-            };
-        }
-
-        if (document.Output.Kind == SpecOutputKind.AppScaffold)
-        {
-            return new ApplyPayload
-            {
-                Kind = SpecOutputKind.AppScaffold,
-                AppScaffold = new AppScaffold(
-                    "Preview App",
-                    new[] { new AppScaffoldParameter("date", "date", DateTime.UtcNow.ToString("O", CultureInfo.InvariantCulture)) },
-                    "single-column")
             };
         }
 

@@ -70,6 +70,40 @@ public sealed class StubSpecWorkspaceClientTests
     }
 
     [Fact]
+    public async Task PlanAsync_normalizes_source_dataset_casing_for_cache_hashes()
+    {
+        var lower = await _client.PlanAsync(new SpecDocument
+        {
+            Sources = new[] { new SpecSourceEntry("study", "parcels", "v1") },
+        }, CancellationToken.None);
+        var mixed = await _client.PlanAsync(new SpecDocument
+        {
+            Sources = new[] { new SpecSourceEntry("study", "Parcels", "v1") },
+        }, CancellationToken.None);
+
+        Assert.Equal(lower.Nodes[0].ContentHash, mixed.Nodes[0].ContentHash);
+    }
+
+    [Fact]
+    public async Task PlanAsync_uses_output_kind_for_app_scaffold_inputs_when_map_layers_exist()
+    {
+        var document = BuildAppScaffoldDocument() with
+        {
+            Map = new SpecMap
+            {
+                Layers = new[] { new SpecMapLayer("parcels", "viridis") }
+            }
+        };
+
+        var plan = await _client.PlanAsync(document, CancellationToken.None);
+
+        var output = Assert.Single(plan.Nodes, node => node.Id == "output-appscaffold");
+        Assert.Equal(PlanMaterializationKind.DurableApp, output.Materialization);
+        Assert.Contains("aggregate-1", output.Inputs);
+        Assert.Contains("map-parcels", output.Inputs);
+    }
+
+    [Fact]
     public async Task ApplyAsync_emits_cache_keys_and_materialized_durable_outputs()
     {
         var document = BuildAppScaffoldDocument();
@@ -88,6 +122,24 @@ public sealed class StubSpecWorkspaceClientTests
         var output = Assert.Single(events, evt => evt.NodeId == "output-appscaffold" && evt.MaterializedResource is not null);
         Assert.Equal(PlanMaterializationKind.DurableApp, output.MaterializedResource!.Kind);
         Assert.StartsWith("sha256:", output.MaterializedResource.Version, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task ApplyAsync_returns_app_scaffold_payload_when_app_output_has_map_layers()
+    {
+        var document = BuildAppScaffoldDocument() with
+        {
+            Map = new SpecMap
+            {
+                Layers = new[] { new SpecMapLayer("parcels", "viridis") }
+            }
+        };
+
+        var payload = await CollectCompletedPayloadAsync(document);
+
+        Assert.NotNull(payload);
+        Assert.Equal(SpecOutputKind.AppScaffold, payload!.Kind);
+        Assert.NotNull(payload.AppScaffold);
     }
 
     [Theory]
