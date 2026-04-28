@@ -7,6 +7,7 @@ using Honua.Admin.Services.DataConnections;
 using Honua.Admin.Services.DataConnections.Providers;
 using Honua.Admin.Services.Identity;
 using Honua.Admin.Services.LicenseWorkspace;
+using Honua.Admin.Services.Operations;
 using Honua.Admin.Services.Publishing;
 using Honua.Admin.Services.SpatialSql;
 using Honua.Admin.Services.SpecWorkspace;
@@ -54,6 +55,7 @@ builder.Services.AddTransient<GlobalErrorHandler>();
 builder.Services.AddScoped<IAdminTelemetry, LoggingAdminTelemetry>();
 builder.Services.AddScoped<IAdminRealtimeConnection, AdminRealtimeConnection>();
 builder.Services.AddScoped<DeployOrchestrationState>();
+builder.Services.AddScoped<OperationsConsoleState>();
 
 // While the real honua-server is reachable the typed HttpClient routes through the
 // auth + global-error handlers. Until then (default `appsettings.json` ships no

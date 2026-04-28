@@ -174,11 +174,11 @@ rows:
     notes: "Publishing workspace can remove the configured GitOps watch."
   - key: "Admin/AdminGitOpsWatchEndpoints:GET:/api/v{version:apiVersion}/admin/gitops/changes"
     coverage: supported
-    admin_page: "/operator/publishing (PublishingWorkspace)"
+    admin_page: "/operator/publishing (PublishingWorkspace) and /operator/operations (OperationsConsole)"
     priority: P1
     out_of_scope_reason: ""
     follow_up_ticket: ""
-    notes: "Publishing workspace renders recent GitOps change history."
+    notes: "Publishing workspace and operations console render recent GitOps change history."
   - key: "Admin/AdminGitOpsWatchEndpoints:GET:/api/v{version:apiVersion}/admin/gitops/changes/{id}"
     coverage: missing
     admin_page: ""
@@ -230,11 +230,11 @@ rows:
     notes: "LayerStylePage saves MapLibre and drawingInfo JSON."
   - key: "Admin/AdminManifestApprovalEndpoints:GET:/api/v{version:apiVersion}/admin/manifest/pending/"
     coverage: supported
-    admin_page: "/operator/publishing (PublishingWorkspace)"
+    admin_page: "/operator/publishing (PublishingWorkspace) and /operator/operations (OperationsConsole)"
     priority: P0
     out_of_scope_reason: ""
     follow_up_ticket: ""
-    notes: "Publishing workspace renders pending manifest approvals in the environment-state panel."
+    notes: "Publishing workspace and operations console render pending manifest approvals."
   - key: "Admin/AdminManifestApprovalEndpoints:GET:/api/v{version:apiVersion}/admin/manifest/pending/history"
     coverage: supported
     admin_page: "/operator/publishing (PublishingWorkspace)"
@@ -265,18 +265,18 @@ rows:
     notes: "Publishing workspace rejects pending manifest changes with operator telemetry."
   - key: "Admin/AdminManifestDriftEndpoints:GET:/api/v{version:apiVersion}/admin/manifest/drift"
     coverage: supported
-    admin_page: "/operator/publishing (PublishingWorkspace)"
+    admin_page: "/operator/publishing (PublishingWorkspace) and /operator/operations (OperationsConsole)"
     priority: P0
     out_of_scope_reason: ""
     follow_up_ticket: ""
-    notes: "Publishing workspace shows manifest baseline drift resources alongside service state."
+    notes: "Publishing workspace and operations console show manifest baseline drift resources alongside service state."
   - key: "Admin/AdminManifestDriftEndpoints:GET:/api/v{version:apiVersion}/admin/manifest/versions"
     coverage: supported
-    admin_page: "/operator/publishing (PublishingWorkspace)"
+    admin_page: "/operator/publishing (PublishingWorkspace) and /operator/operations (OperationsConsole)"
     priority: P0
     out_of_scope_reason: ""
     follow_up_ticket: ""
-    notes: "Publishing workspace loads recent manifest versions for desired-vs-actual environment evidence."
+    notes: "Publishing workspace and operations console load recent manifest versions for release evidence."
   - key: "Admin/AdminManifestDriftEndpoints:GET:/api/v{version:apiVersion}/admin/manifest/versions/{versionId}"
     coverage: missing
     admin_page: ""
@@ -454,11 +454,11 @@ rows:
     notes: "Operations tab refreshes durable deploy operation status."
   - key: "Admin/DeployControlEndpoints:GET:/api/v{version:apiVersion}/admin/deploy/preflight"
     coverage: supported
-    admin_page: "/deploy (DeployControlPage)"
+    admin_page: "/deploy (DeployControlPage) and /operator/operations (OperationsConsole)"
     priority: P0
     out_of_scope_reason: ""
     follow_up_ticket: ""
-    notes: "Preflight tab runs diagnostics with includeDiagnostics=true."
+    notes: "Deploy control and operations console run diagnostics with includeDiagnostics=true."
   - key: "Admin/DeployControlEndpoints:POST:/api/v{version:apiVersion}/admin/deploy/operations"
     coverage: supported
     admin_page: "/deploy (DeployControlPage)"
@@ -643,25 +643,25 @@ rows:
     notes: "Metadata resource CRUD; deferred to follow-up"
   - key: "Admin/ObservabilityEndpoints:GET:/api/v{version:apiVersion}/admin/observability/errors"
     coverage: supported
-    admin_page: "/observability (ObservabilityPage)"
+    admin_page: "/observability (ObservabilityPage) and /operator/operations (OperationsConsole)"
     priority: P0
     out_of_scope_reason: ""
     follow_up_ticket: ""
-    notes: "Errors tab renders the recent-error buffer."
+    notes: "Errors tab and operations console render the recent-error buffer."
   - key: "Admin/ObservabilityEndpoints:GET:/api/v{version:apiVersion}/admin/observability/migrations"
     coverage: supported
-    admin_page: "/observability (ObservabilityPage)"
+    admin_page: "/observability (ObservabilityPage) and /operator/operations (OperationsConsole)"
     priority: P0
     out_of_scope_reason: ""
     follow_up_ticket: ""
-    notes: "Migrations tab renders lifecycle and plan status."
+    notes: "Migrations tab and operations console render lifecycle and plan status."
   - key: "Admin/ObservabilityEndpoints:GET:/api/v{version:apiVersion}/admin/observability/telemetry"
     coverage: supported
-    admin_page: "/observability (ObservabilityPage)"
+    admin_page: "/observability (ObservabilityPage) and /operator/operations (OperationsConsole)"
     priority: P0
     out_of_scope_reason: ""
     follow_up_ticket: ""
-    notes: "Telemetry tab renders tracing and OTLP status."
+    notes: "Telemetry tab and operations console render tracing and OTLP status."
   - key: "Admin/OidcProviderEndpoints:DELETE:/api/v{version:apiVersion}/admin/oidc/providers/{id:guid}"
     coverage: out-of-scope
     admin_page: ""

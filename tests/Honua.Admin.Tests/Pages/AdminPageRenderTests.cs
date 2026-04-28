@@ -10,6 +10,7 @@ using Honua.Admin.Models.Admin;
 using Honua.Admin.Pages.Admin;
 using Honua.Admin.Services.Admin;
 using Honua.Admin.Services.Annotations;
+using Honua.Admin.Services.Operations;
 using Honua.Admin.Services.Publishing;
 using Microsoft.Extensions.DependencyInjection;
 using MudBlazor;
@@ -140,6 +141,25 @@ public sealed class AdminPageRenderTests : TestContext
             cut.Markup.MarkupMatchesContaining("Environment");
             cut.Markup.MarkupMatchesContaining("Parcels");
             cut.Markup.MarkupMatchesContaining("Unpublish all");
+        });
+    }
+
+    [Fact]
+    public void OperationsConsole_RendersReleaseDriftAndTroubleshootingState()
+    {
+        Services.AddScoped<IHonuaAdminClient>(_ => new StubHonuaAdminClient());
+        Services.AddScoped<OperationsConsoleState>();
+
+        var cut = RenderWithMudHost<Honua.Admin.Pages.Operator.OperationsConsole>();
+
+        cut.WaitForAssertion(() =>
+        {
+            cut.Markup.MarkupMatchesContaining("Operations console");
+            cut.Markup.MarkupMatchesContaining("Rollout health");
+            cut.Markup.MarkupMatchesContaining("Drift");
+            cut.Markup.MarkupMatchesContaining("Release evidence");
+            cut.Markup.MarkupMatchesContaining("Troubleshooting");
+            cut.Markup.MarkupMatchesContaining("Sample recent error");
         });
     }
 
