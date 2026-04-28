@@ -10,6 +10,7 @@ using Honua.Admin.Models.Admin;
 using Honua.Admin.Pages.Admin;
 using Honua.Admin.Services.Admin;
 using Honua.Admin.Services.Annotations;
+using Honua.Admin.Services.Operations;
 using Honua.Admin.Services.Publishing;
 using Microsoft.Extensions.DependencyInjection;
 using MudBlazor;
@@ -143,6 +144,40 @@ public sealed class AdminPageRenderTests : TestContext
         });
     }
 
+    [Fact]
+    public void OperationsConsole_RendersReleaseDriftAndTroubleshootingState()
+    {
+        Services.AddScoped<IHonuaAdminClient>(_ => new StubHonuaAdminClient());
+        Services.AddScoped<OperationsConsoleState>();
+
+        var cut = RenderWithMudHost<Honua.Admin.Pages.Operator.OperationsConsole>();
+
+        cut.WaitForAssertion(() =>
+        {
+            cut.Markup.MarkupMatchesContaining("Operations console");
+            cut.Markup.MarkupMatchesContaining("Rollout health");
+            cut.Markup.MarkupMatchesContaining("Drift");
+            cut.Markup.MarkupMatchesContaining("Release evidence");
+            cut.Markup.MarkupMatchesContaining("Troubleshooting");
+            cut.Markup.MarkupMatchesContaining("Sample recent error");
+        });
+    }
+
+    [Fact]
+    public void OperationsConsole_RendersRecentErrorsFailureInsteadOfEmptyState()
+    {
+        Services.AddScoped<IHonuaAdminClient>(_ => new RecentErrorsUnavailableClient());
+        Services.AddScoped<OperationsConsoleState>();
+
+        var cut = RenderWithMudHost<Honua.Admin.Pages.Operator.OperationsConsole>();
+
+        cut.WaitForAssertion(() =>
+        {
+            cut.Markup.MarkupMatchesContaining("Recent errors unavailable");
+            Assert.False(cut.Markup.Contains("No recent errors loaded.", StringComparison.OrdinalIgnoreCase), cut.Markup);
+        });
+    }
+
     private IRenderedFragment RenderAdminPage(Type pageType)
     {
         return Render(builder =>
@@ -186,6 +221,12 @@ public sealed class AdminPageRenderTests : TestContext
     {
         public override Task<FeatureOverview> GetFeatureOverviewAsync(CancellationToken cancellationToken)
             => throw new HttpRequestException("simulated client failure");
+    }
+
+    private sealed class RecentErrorsUnavailableClient : StubHonuaAdminClient
+    {
+        public override Task<RecentErrorsResponse> GetRecentErrorsAsync(CancellationToken cancellationToken)
+            => throw new InvalidOperationException("recent errors unavailable");
     }
 
     private sealed class NullAdminTelemetry : IAdminTelemetry
