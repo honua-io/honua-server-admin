@@ -12,6 +12,7 @@ using Honua.Admin.Models.SpecWorkspace;
 using Honua.Admin.Pages.Admin;
 using Honua.Admin.Services.Admin;
 using Honua.Admin.Services.Annotations;
+using Honua.Admin.Services.AppBuilder;
 using Honua.Admin.Services.Operations;
 using Honua.Admin.Services.PrintService;
 using Honua.Admin.Services.Publishing;
@@ -38,6 +39,8 @@ public sealed class AdminPageRenderTests : TestContext
         Services.AddScoped<UsageAnalyticsState>();
         Services.AddScoped<IPrintServiceClient, StubPrintServiceClient>();
         Services.AddScoped<PrintServiceState>();
+        Services.AddScoped<IAppBuilderClient, StubAppBuilderClient>();
+        Services.AddScoped<AppBuilderState>();
         Services.AddScoped<OperationsConsoleState>();
         Services.AddScoped<CatalogCache>();
         Services.AddScoped<IBrowserStorageService, MemoryBrowserStorageService>();
@@ -309,6 +312,22 @@ public sealed class AdminPageRenderTests : TestContext
             cut.Markup.MarkupMatchesContaining("Preview");
             cut.Markup.MarkupMatchesContaining("Queue export");
             cut.Markup.MarkupMatchesContaining("Planning commission packet");
+        });
+    }
+
+    [Fact]
+    public void AppBuilder_RendersTemplatesWidgetsCanvasAndValidation()
+    {
+        var cut = RenderWithMudHost<Honua.Admin.Pages.Operator.AppBuilder>();
+
+        cut.WaitForAssertion(() =>
+        {
+            cut.Markup.MarkupMatchesContaining("App builder");
+            cut.Markup.MarkupMatchesContaining("Operations dashboard");
+            cut.Markup.MarkupMatchesContaining("Widget library");
+            cut.Markup.MarkupMatchesContaining("Harbor operations dashboard");
+            cut.Markup.MarkupMatchesContaining("Open incidents");
+            cut.Markup.MarkupMatchesContaining("App builder validation checks");
         });
     }
 
