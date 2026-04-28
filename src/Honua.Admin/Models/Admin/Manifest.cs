@@ -29,7 +29,7 @@ public sealed record ResourceMetadata
     [JsonPropertyName("labels")] public Dictionary<string, string>? Labels { get; init; }
     [JsonPropertyName("annotations")] public Dictionary<string, string>? Annotations { get; init; }
     [JsonPropertyName("resourceVersion")] public string? ResourceVersion { get; init; }
-    [JsonPropertyName("generation")] public int? Generation { get; init; }
+    [JsonPropertyName("generation")] public long? Generation { get; init; }
     [JsonPropertyName("createdAt")] public DateTimeOffset? CreatedAt { get; init; }
     [JsonPropertyName("updatedAt")] public DateTimeOffset? UpdatedAt { get; init; }
 }

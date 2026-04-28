@@ -249,13 +249,17 @@ public sealed class HonuaAdminClient : IHonuaAdminClient
         MetadataResource resource,
         string ifMatch,
         CancellationToken cancellationToken)
-        => SendMetadataResourceAsync(
+    {
+        EnsureIfMatch(ifMatch, nameof(UpdateMetadataResourceAsync));
+
+        return SendMetadataResourceAsync(
             nameof(UpdateMetadataResourceAsync),
             HttpMethod.Put,
             MetadataResourcePath(kind, resourceNamespace, name),
             resource,
             ifMatch,
             cancellationToken);
+    }
 
     public async Task DeleteMetadataResourceAsync(
         string kind,
@@ -264,6 +268,8 @@ public sealed class HonuaAdminClient : IHonuaAdminClient
         string ifMatch,
         CancellationToken cancellationToken)
     {
+        EnsureIfMatch(ifMatch, nameof(DeleteMetadataResourceAsync));
+
         try
         {
             using var message = new HttpRequestMessage(HttpMethod.Delete, MetadataResourcePath(kind, resourceNamespace, name));
@@ -624,5 +630,13 @@ public sealed class HonuaAdminClient : IHonuaAdminClient
         }
 
         return query.Count == 0 ? path : $"{path}?{string.Join("&", query)}";
+    }
+
+    private static void EnsureIfMatch(string ifMatch, string operation)
+    {
+        if (string.IsNullOrWhiteSpace(ifMatch))
+        {
+            throw new ArgumentException($"{operation} requires a non-empty If-Match ETag.", nameof(ifMatch));
+        }
     }
 }
