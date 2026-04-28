@@ -361,10 +361,15 @@ public sealed class AdminPageRenderTests : TestContext
             cut.Markup.MarkupMatchesContaining("Data bindings");
             cut.Markup.MarkupMatchesContaining("Harbor assets");
             cut.Markup.MarkupMatchesContaining("App builder validation checks");
+            cut.Markup.MarkupMatchesContaining("Branding");
+            cut.Markup.MarkupMatchesContaining("#1b7895");
+            cut.Markup.MarkupMatchesContaining("White-label app");
             cut.Markup.MarkupMatchesContaining("Cross-widget interactions");
             cut.Markup.MarkupMatchesContaining("Map feature click");
             cut.Find("[data-testid='app-builder-binding-widget-map']");
             cut.Find("[data-testid='app-builder-interaction-interaction-map-list']");
+            cut.Find("[data-testid='app-builder-primary-color']");
+            cut.Find("[data-testid='app-builder-white-label']");
         });
     }
 

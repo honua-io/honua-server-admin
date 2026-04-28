@@ -48,6 +48,10 @@ public sealed class AppBuilderState
             var hasWidgets = Draft.Widgets.Count > 0;
             var dataBoundWidgets = Draft.Widgets.Where(widget => WidgetRequiresBinding(widget.Kind)).ToArray();
             var allBindings = dataBoundWidgets.All(widget => !string.IsNullOrWhiteSpace(widget.DataBinding));
+            var hasBranding = IsHexColor(Draft.PrimaryColor) &&
+                IsHexColor(Draft.AccentColor) &&
+                HasText(Draft.FontFamily) &&
+                (!Draft.WhiteLabel || HasText(Draft.LogoUrl));
             var widgetIds = Draft.Widgets.Select(widget => widget.WidgetId).ToHashSet(StringComparer.Ordinal);
             var interactionsReferenceWidgets = Draft.Interactions.All(interaction =>
                 widgetIds.Contains(interaction.SourceWidgetId) && widgetIds.Contains(interaction.TargetWidgetId));
@@ -86,6 +90,13 @@ public sealed class AppBuilderState
                     Label = "Responsive breakpoints",
                     Passed = SelectedTemplate?.Breakpoints.Count > 0,
                     Message = SelectedTemplate is null ? "Select a template." : string.Join(", ", SelectedTemplate.Breakpoints)
+                },
+                new AppValidationCheck
+                {
+                    Key = "branding",
+                    Label = "Branding",
+                    Passed = hasBranding,
+                    Message = hasBranding ? $"{Draft.ThemeName} theme with {Draft.FontFamily} typography is ready." : "Branding needs valid hex colors, a font family, and a logo URL when white-label mode is enabled."
                 },
                 new AppValidationCheck
                 {
@@ -243,6 +254,66 @@ public sealed class AppBuilderState
         Notify();
     }
 
+    public void SetPrimaryColor(string? color)
+    {
+        if (IsDraftLocked)
+        {
+            return;
+        }
+
+        Draft = Draft with { PrimaryColor = color?.Trim() ?? string.Empty };
+        ResetTransientPublishState();
+        Notify();
+    }
+
+    public void SetAccentColor(string? color)
+    {
+        if (IsDraftLocked)
+        {
+            return;
+        }
+
+        Draft = Draft with { AccentColor = color?.Trim() ?? string.Empty };
+        ResetTransientPublishState();
+        Notify();
+    }
+
+    public void SetFontFamily(string? fontFamily)
+    {
+        if (IsDraftLocked)
+        {
+            return;
+        }
+
+        Draft = Draft with { FontFamily = fontFamily?.Trim() ?? string.Empty };
+        ResetTransientPublishState();
+        Notify();
+    }
+
+    public void SetLogoUrl(string? logoUrl)
+    {
+        if (IsDraftLocked)
+        {
+            return;
+        }
+
+        Draft = Draft with { LogoUrl = logoUrl?.Trim() ?? string.Empty };
+        ResetTransientPublishState();
+        Notify();
+    }
+
+    public void SetWhiteLabel(bool whiteLabel)
+    {
+        if (IsDraftLocked)
+        {
+            return;
+        }
+
+        Draft = Draft with { WhiteLabel = whiteLabel };
+        ResetTransientPublishState();
+        Notify();
+    }
+
     public void SetAutoRefreshSeconds(int seconds)
     {
         if (IsDraftLocked)
@@ -390,6 +461,19 @@ public sealed class AppBuilderState
 
     private bool WidgetRequiresBinding(AppWidgetKind kind)
         => WidgetLibrary.FirstOrDefault(widget => widget.Kind == kind)?.SupportsDataBinding == true;
+
+    private static bool HasText(string value)
+        => !string.IsNullOrWhiteSpace(value);
+
+    private static bool IsHexColor(string value)
+    {
+        if (value.Length != 7 || value[0] != '#')
+        {
+            return false;
+        }
+
+        return value[1..].All(Uri.IsHexDigit);
+    }
 
     private bool IsCurrentLoad(int loadVersion) => loadVersion == Volatile.Read(ref _loadRequestVersion);
 

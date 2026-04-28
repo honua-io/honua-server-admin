@@ -26,8 +26,13 @@ public sealed class AppBuilderStateTests
         Assert.Equal("Pro", state.Quota.Edition);
         Assert.True(state.Quota.CanPublishMore);
         Assert.Equal("Harbor operations dashboard", state.Draft.Name);
+        Assert.Equal("#1b7895", state.Draft.PrimaryColor);
+        Assert.Equal("#2f7d55", state.Draft.AccentColor);
+        Assert.Equal("Inter", state.Draft.FontFamily);
+        Assert.True(state.Draft.WhiteLabel);
         Assert.NotEmpty(state.Draft.Widgets);
         Assert.Equal(2, state.Draft.Interactions.Count);
+        Assert.Contains(state.ValidationChecks, check => check.Key == "branding" && check.Passed);
         Assert.Contains(state.ValidationChecks, check => check.Key == "interactions" && check.Passed);
         Assert.False(state.HasBlockingValidation);
     }
@@ -140,6 +145,41 @@ public sealed class AppBuilderStateTests
     }
 
     [Fact]
+    public async Task Branding_validation_requires_hex_colors_font_and_white_label_logo()
+    {
+        var snapshot = Snapshot("Brand dashboard");
+        var state = new AppBuilderState(new FixedAppBuilderClient(snapshot with
+        {
+            Draft = snapshot.Draft with
+            {
+                PrimaryColor = "blue",
+                AccentColor = "#12345",
+                FontFamily = " ",
+                LogoUrl = " ",
+                WhiteLabel = true,
+            },
+        }));
+        await state.LoadAsync();
+
+        var branding = Assert.Single(state.ValidationChecks, check => check.Key == "branding");
+        Assert.False(branding.Passed);
+        Assert.Contains("valid hex colors", branding.Message);
+        Assert.True(state.HasBlockingValidation);
+
+        state.SetPrimaryColor(" #123456 ");
+        state.SetAccentColor("#abcdef");
+        state.SetFontFamily(" Source Sans 3 ");
+        state.SetLogoUrl(" https://assets.example.gov/logo.svg ");
+
+        Assert.Equal("#123456", state.Draft.PrimaryColor);
+        Assert.Equal("#abcdef", state.Draft.AccentColor);
+        Assert.Equal("Source Sans 3", state.Draft.FontFamily);
+        Assert.Equal("https://assets.example.gov/logo.svg", state.Draft.LogoUrl);
+        Assert.Contains(state.ValidationChecks, check => check.Key == "branding" && check.Passed);
+        Assert.False(state.HasBlockingValidation);
+    }
+
+    [Fact]
     public async Task Validation_flags_interactions_that_reference_missing_widgets()
     {
         var snapshot = Snapshot("Interaction dashboard");
@@ -198,6 +238,11 @@ public sealed class AppBuilderStateTests
         await client.PublishStarted.Task.WaitAsync(TimeSpan.FromSeconds(5));
         state.SetName("Edited during publish");
         state.SetTheme("Dark");
+        state.SetPrimaryColor("#000000");
+        state.SetAccentColor("#111111");
+        state.SetFontFamily("Edited font");
+        state.SetLogoUrl("https://assets.example.gov/edited.svg");
+        state.SetWhiteLabel(!originalDraft.WhiteLabel);
         state.SetAutoRefreshSeconds(15);
         state.SelectTemplate("public-viewer");
         state.AddWidget(AppWidgetKind.Search);
@@ -207,6 +252,11 @@ public sealed class AppBuilderStateTests
         Assert.Equal(AppBuilderStatus.Publishing, state.Status);
         Assert.Equal(originalDraft.Name, state.Draft.Name);
         Assert.Equal(originalDraft.ThemeName, state.Draft.ThemeName);
+        Assert.Equal(originalDraft.PrimaryColor, state.Draft.PrimaryColor);
+        Assert.Equal(originalDraft.AccentColor, state.Draft.AccentColor);
+        Assert.Equal(originalDraft.FontFamily, state.Draft.FontFamily);
+        Assert.Equal(originalDraft.LogoUrl, state.Draft.LogoUrl);
+        Assert.Equal(originalDraft.WhiteLabel, state.Draft.WhiteLabel);
         Assert.Equal(originalDraft.AutoRefreshSeconds, state.Draft.AutoRefreshSeconds);
         Assert.Equal(originalDraft.TemplateId, state.Draft.TemplateId);
         Assert.Equal(originalDraft.Widgets.Count, state.Draft.Widgets.Count);

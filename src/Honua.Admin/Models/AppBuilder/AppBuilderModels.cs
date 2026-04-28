@@ -99,6 +99,11 @@ public sealed record AppDraft
     public string Name { get; init; } = "Operations dashboard";
     public string TemplateId { get; init; } = "operations-dashboard";
     public string ThemeName { get; init; } = "Civic light";
+    public string PrimaryColor { get; init; } = "#1b7895";
+    public string AccentColor { get; init; } = "#2f7d55";
+    public string FontFamily { get; init; } = "Inter";
+    public string LogoUrl { get; init; } = "https://assets.honua.local/branding/honua-city.svg";
+    public bool WhiteLabel { get; init; }
     public int AutoRefreshSeconds { get; init; } = 60;
     public bool IsPublished { get; init; }
     public IReadOnlyList<AppWidgetInstance> Widgets { get; init; } = Array.Empty<AppWidgetInstance>();
