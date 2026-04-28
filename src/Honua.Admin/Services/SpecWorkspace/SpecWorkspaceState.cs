@@ -349,6 +349,7 @@ public sealed class SpecWorkspaceState : IAsyncDisposable
             ["node_count"] = result.Nodes.Count,
             ["failed"] = result.Failed
         });
+        await PersistAsync(cancellationToken).ConfigureAwait(false);
         Notify();
     }
 
@@ -736,6 +737,7 @@ public sealed class SpecWorkspaceState : IAsyncDisposable
 
         if (string.IsNullOrWhiteSpace(payload))
         {
+            _planBaselineTexts = null;
             SyncSectionTextsFromSpec();
             return;
         }
@@ -745,6 +747,7 @@ public sealed class SpecWorkspaceState : IAsyncDisposable
             var snapshot = JsonSerializer.Deserialize(payload, SpecWorkspaceJsonContext.Default.WorkspaceSnapshot);
             if (snapshot is null)
             {
+                _planBaselineTexts = null;
                 SyncSectionTextsFromSpec();
                 return;
             }
@@ -773,6 +776,8 @@ public sealed class SpecWorkspaceState : IAsyncDisposable
                 SyncSectionTextsFromSpec();
             }
 
+            _planBaselineTexts = RestoreSectionTextMap(snapshot.PlanBaselineTexts);
+
             _telemetry.Record("spec_draft_rehydrated", new Dictionary<string, object?>
             {
                 ["conversation_turns"] = _conversation.Count
@@ -781,6 +786,7 @@ public sealed class SpecWorkspaceState : IAsyncDisposable
         catch (JsonException)
         {
             await _storage.RemoveAsync(StorageKeyFor(PrincipalId), cancellationToken).ConfigureAwait(false);
+            _planBaselineTexts = null;
             SyncSectionTextsFromSpec();
         }
     }
@@ -795,7 +801,8 @@ public sealed class SpecWorkspaceState : IAsyncDisposable
             Layout = Layout,
             PromptDraft = PromptDraft,
             IsJsonView = IsJsonView,
-            SectionTexts = _sectionTexts.ToDictionary(kv => kv.Key.ToString(), kv => kv.Value, StringComparer.Ordinal)
+            SectionTexts = _sectionTexts.ToDictionary(kv => kv.Key.ToString(), kv => kv.Value, StringComparer.Ordinal),
+            PlanBaselineTexts = _planBaselineTexts?.ToDictionary(kv => kv.Key.ToString(), kv => kv.Value, StringComparer.Ordinal) ?? new Dictionary<string, string>(StringComparer.Ordinal)
         };
 
         var json = JsonSerializer.Serialize(snapshot, SpecWorkspaceJsonContext.Default.WorkspaceSnapshot);
@@ -972,6 +979,25 @@ public sealed class SpecWorkspaceState : IAsyncDisposable
             (text ?? string.Empty)
                 .Replace("\r\n", "\n", StringComparison.Ordinal)
                 .Split('\n', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries));
+
+    private static IReadOnlyDictionary<SpecSectionId, string>? RestoreSectionTextMap(IReadOnlyDictionary<string, string> sectionTexts)
+    {
+        if (sectionTexts.Count == 0)
+        {
+            return null;
+        }
+
+        var restored = new Dictionary<SpecSectionId, string>();
+        foreach (var (key, value) in sectionTexts)
+        {
+            if (Enum.TryParse<SpecSectionId>(key, true, out var section))
+            {
+                restored[section] = NormalizeDiffText(value);
+            }
+        }
+
+        return restored.Count == 0 ? null : restored;
+    }
 
     private static string StorageKeyFor(string principalId) => $"{StorageKeyPrefix}draft:{principalId}";
 

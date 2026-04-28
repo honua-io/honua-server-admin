@@ -502,6 +502,39 @@ public sealed class SpecWorkspaceStateTests
         Assert.Contains("@parcels = parcels", second.GetSectionText(SpecSectionId.Sources), StringComparison.Ordinal);
     }
 
+    [Fact]
+    public async Task InitializeAsync_rehydrates_plan_baseline_for_draft_changes()
+    {
+        var storage = new MemoryBrowserStorageService();
+        var first = new SpecWorkspaceState(
+            new StubSpecWorkspaceClient(),
+            storage,
+            new NullSpecWorkspaceTelemetry(),
+            new CatalogCache());
+
+        await first.InitializeAsync("operator");
+        await first.UpdateSectionTextAsync(SpecSectionId.Sources, "@parcels = parcels");
+        await first.RunPlanAsync();
+
+        Assert.False(first.HasDraftChanges);
+
+        var second = new SpecWorkspaceState(
+            new StubSpecWorkspaceClient(),
+            storage,
+            new NullSpecWorkspaceTelemetry(),
+            new CatalogCache());
+
+        await second.InitializeAsync("operator");
+
+        Assert.Equal(SpecChangeStatus.Unchanged, ChangeFor(second, SpecSectionId.Sources).Status);
+        Assert.False(second.HasDraftChanges);
+
+        await second.UpdateSectionTextAsync(SpecSectionId.Compute, "aggregate inputs=@parcels by=@parcels.county metric=count");
+
+        Assert.Equal(SpecChangeStatus.Added, ChangeFor(second, SpecSectionId.Compute).Status);
+        Assert.True(second.HasDraftChanges);
+    }
+
     private static SpecSectionChange ChangeFor(SpecWorkspaceState state, SpecSectionId section) =>
         state.DraftChanges.Single(change => change.Section == section);
 

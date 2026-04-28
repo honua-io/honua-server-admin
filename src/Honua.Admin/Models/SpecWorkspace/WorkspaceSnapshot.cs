@@ -5,8 +5,8 @@ namespace Honua.Admin.Models.SpecWorkspace;
 
 /// <summary>
 /// What gets serialized to localStorage for "refresh preserves state". Captures the
-/// current spec draft, conversation, layout widths, and principal so different
-/// operators sharing a browser get isolated drafts.
+/// current spec draft, plan baseline, conversation, layout widths, and principal so
+/// different operators sharing a browser get isolated drafts.
 /// </summary>
 public sealed record WorkspaceSnapshot
 {
@@ -30,6 +30,9 @@ public sealed record WorkspaceSnapshot
 
     [JsonPropertyName("sectionTexts")]
     public Dictionary<string, string> SectionTexts { get; init; } = new(StringComparer.Ordinal);
+
+    [JsonPropertyName("planBaselineTexts")]
+    public Dictionary<string, string> PlanBaselineTexts { get; init; } = new(StringComparer.Ordinal);
 }
 
 public sealed record LayoutWidths(
