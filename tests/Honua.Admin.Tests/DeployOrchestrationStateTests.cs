@@ -71,6 +71,27 @@ public sealed class DeployOrchestrationStateTests
         Assert.Contains(target.Operation.OperationId, client.RollbackOperationIds);
     }
 
+    [Fact]
+    public async Task InitializeAsync_when_canceled_restores_idle_status_before_rethrowing()
+    {
+        var state = new DeployOrchestrationState(new CancelingDeployClient(cancelPreflight: true));
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => state.InitializeAsync());
+
+        Assert.Equal(DeployOrchestrationStatus.Idle, state.Status);
+    }
+
+    [Fact]
+    public async Task Target_operation_when_canceled_restores_idle_status_before_rethrowing()
+    {
+        var state = new DeployOrchestrationState(new CancelingDeployClient(cancelPlan: true));
+        await state.InitializeAsync();
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => state.PlanSelectedAsync());
+
+        Assert.Equal(DeployOrchestrationStatus.Idle, state.Status);
+    }
+
     private sealed class RecordingDeployClient : StubHonuaAdminClient
     {
         private int _operationSequence;
@@ -157,5 +178,18 @@ public sealed class DeployOrchestrationStateTests
                 CurrentRevision = currentRevision,
                 DesiredRevision = desiredRevision,
             };
+    }
+
+    private sealed class CancelingDeployClient(bool cancelPreflight = false, bool cancelPlan = false) : StubHonuaAdminClient
+    {
+        public override Task<DeployPreflightResult> GetDeployPreflightAsync(CancellationToken cancellationToken)
+            => cancelPreflight
+                ? Task.FromCanceled<DeployPreflightResult>(new CancellationToken(canceled: true))
+                : base.GetDeployPreflightAsync(cancellationToken);
+
+        public override Task<DeployPlan> PlanDeployAsync(DeployPlanRequest request, CancellationToken cancellationToken)
+            => cancelPlan
+                ? Task.FromCanceled<DeployPlan>(new CancellationToken(canceled: true))
+                : base.PlanDeployAsync(request, cancellationToken);
     }
 }

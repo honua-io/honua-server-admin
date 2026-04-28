@@ -148,6 +148,11 @@ public sealed class DeployOrchestrationState
             LastError = null;
             Status = DeployOrchestrationStatus.Idle;
         }
+        catch (OperationCanceledException)
+        {
+            ResetAfterCancellation();
+            throw;
+        }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
             Status = DeployOrchestrationStatus.Error;
@@ -300,13 +305,21 @@ public sealed class DeployOrchestrationState
             return;
         }
 
-        SetStatus(status);
-        foreach (var target in selected)
+        try
         {
-            await ExecuteTargetOperationAsync(target, operation, cancellationToken).ConfigureAwait(false);
-        }
+            SetStatus(status);
+            foreach (var target in selected)
+            {
+                await ExecuteTargetOperationAsync(target, operation, cancellationToken).ConfigureAwait(false);
+            }
 
-        CompleteBatch();
+            CompleteBatch();
+        }
+        catch (OperationCanceledException)
+        {
+            ResetAfterCancellation();
+            throw;
+        }
     }
 
     private async Task RunTargetOperationAsync(
@@ -315,9 +328,17 @@ public sealed class DeployOrchestrationState
         Func<DeployFleetTarget, CancellationToken, Task> operation,
         CancellationToken cancellationToken)
     {
-        SetStatus(status);
-        await ExecuteTargetOperationAsync(target, operation, cancellationToken).ConfigureAwait(false);
-        CompleteBatch();
+        try
+        {
+            SetStatus(status);
+            await ExecuteTargetOperationAsync(target, operation, cancellationToken).ConfigureAwait(false);
+            CompleteBatch();
+        }
+        catch (OperationCanceledException)
+        {
+            ResetAfterCancellation();
+            throw;
+        }
     }
 
     private async Task ExecuteTargetOperationAsync(
@@ -451,6 +472,13 @@ public sealed class DeployOrchestrationState
             ? "One or more deploy target actions failed."
             : null;
         Status = LastError is null ? DeployOrchestrationStatus.Idle : DeployOrchestrationStatus.Error;
+        Notify();
+    }
+
+    private void ResetAfterCancellation()
+    {
+        LastError = null;
+        Status = DeployOrchestrationStatus.Idle;
         Notify();
     }
 
