@@ -26,6 +26,22 @@
             }
         </MudStack>
 
+        @if (Plan.Parameters.Count > 0)
+        {
+            <MudStack Row Wrap="Wrap.Wrap" Spacing="1" data-testid="plan-parameters">
+                @foreach (var parameter in Plan.Parameters)
+                {
+                    <MudChip T="string"
+                             Size="Size.Small"
+                             Color="Color.Info"
+                             Variant="Variant.Outlined"
+                             data-testid="@($"plan-parameter-{parameter.Name}")">
+                        @($"${parameter.Name}: {parameter.Type} = {parameter.Default ?? "(unset)"}")
+                    </MudChip>
+                }
+            </MudStack>
+        }
+
         <MudExpansionPanels MultiExpansion="true" Dense="true">
             @foreach (var group in Plan.Nodes.GroupBy(n => n.Depth).OrderBy(g => g.Key))
             {

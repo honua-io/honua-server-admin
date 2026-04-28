@@ -4,9 +4,9 @@ using System.Text.Json.Serialization;
 namespace Honua.Admin.Models.SpecWorkspace;
 
 /// <summary>
-/// Canonical in-memory projection of a spec draft. Five named sections mirror the
-/// S1 walking-skeleton resource set (<c>sources</c>, <c>scope</c>, <c>compute</c>,
-/// <c>map</c>, <c>output</c>). JSON is the authoritative form; text projections
+/// Canonical in-memory projection of a spec draft. Named sections mirror the
+/// walking-skeleton resource set (<c>sources</c>, <c>scope</c>, <c>parameters</c>,
+/// <c>compute</c>, <c>map</c>, <c>output</c>). JSON is the authoritative form; text projections
 /// are derived.
 /// </summary>
 public sealed record SpecDocument
@@ -16,6 +16,9 @@ public sealed record SpecDocument
 
     [JsonPropertyName("scope")]
     public SpecScope Scope { get; init; } = new();
+
+    [JsonPropertyName("parameters")]
+    public IReadOnlyList<SpecParameterEntry> Parameters { get; init; } = System.Array.Empty<SpecParameterEntry>();
 
     [JsonPropertyName("compute")]
     public IReadOnlyList<SpecComputeStep> Compute { get; init; } = System.Array.Empty<SpecComputeStep>();
@@ -32,6 +35,7 @@ public sealed record SpecDocument
     {
         SpecSectionId.Sources => this with { Sources = source.Sources },
         SpecSectionId.Scope => this with { Scope = source.Scope },
+        SpecSectionId.Parameters => this with { Parameters = source.Parameters },
         SpecSectionId.Compute => this with { Compute = source.Compute },
         SpecSectionId.Map => this with { Map = source.Map },
         SpecSectionId.Output => this with { Output = source.Output },
@@ -52,6 +56,12 @@ public sealed record SpecScope
     [JsonPropertyName("crs")]
     public string? Crs { get; init; }
 }
+
+public sealed record SpecParameterEntry(
+    [property: JsonPropertyName("name")] string Name,
+    [property: JsonPropertyName("type")] string Type,
+    [property: JsonPropertyName("default")] string? Default = null,
+    [property: JsonPropertyName("required")] bool Required = false);
 
 public sealed record SpecComputeStep(
     [property: JsonPropertyName("op")] string Op,
@@ -89,6 +99,7 @@ public enum SpecSectionId
 {
     Sources,
     Scope,
+    Parameters,
     Compute,
     Map,
     Output

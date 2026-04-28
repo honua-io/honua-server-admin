@@ -27,6 +27,7 @@ internal static class SpecSectionTextTranslator
     {
         SpecSectionId.Sources => SerializeSources(document),
         SpecSectionId.Scope => SerializeScope(document),
+        SpecSectionId.Parameters => SerializeParameters(document),
         SpecSectionId.Compute => SerializeCompute(document),
         SpecSectionId.Map => SerializeMap(document),
         SpecSectionId.Output => SerializeOutput(document),
@@ -45,6 +46,9 @@ internal static class SpecSectionTextTranslator
 
             case SpecSectionId.Scope:
                 return new SectionParseResult(current with { Scope = ParseScope(normalized, diagnostics) }, diagnostics);
+
+            case SpecSectionId.Parameters:
+                return new SectionParseResult(current with { Parameters = ParseParameters(normalized, diagnostics) }, diagnostics);
 
             case SpecSectionId.Compute:
                 return new SectionParseResult(current with { Compute = ParseCompute(normalized, diagnostics) }, diagnostics);
@@ -152,6 +156,180 @@ internal static class SpecSectionTextTranslator
         }
 
         return scope;
+    }
+
+    private static IReadOnlyList<SpecParameterEntry> ParseParameters(string text, List<ValidationDiagnostic> diagnostics)
+    {
+        if (string.IsNullOrWhiteSpace(text))
+        {
+            return Array.Empty<SpecParameterEntry>();
+        }
+
+        var entries = new List<SpecParameterEntry>();
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var line in EnumerateLines(text))
+        {
+            var trimmed = line.Trim();
+            if (!TryParseParameterLine(trimmed, diagnostics, out var entry))
+            {
+                continue;
+            }
+
+            if (!Regex.IsMatch(entry.Name, @"^[a-zA-Z_][\w-]*$"))
+            {
+                diagnostics.Add(new ValidationDiagnostic(
+                    SpecSectionId.Parameters,
+                    ValidationSeverity.Red,
+                    "invalid-parameter-name",
+                    $"Parameter name `{entry.Name}` must start with a letter or underscore.",
+                    entry.Name));
+                continue;
+            }
+
+            if (!seen.Add(entry.Name))
+            {
+                diagnostics.Add(new ValidationDiagnostic(
+                    SpecSectionId.Parameters,
+                    ValidationSeverity.Red,
+                    "duplicate-parameter",
+                    $"Parameter `{entry.Name}` is defined more than once.",
+                    entry.Name));
+                continue;
+            }
+
+            entries.Add(entry);
+        }
+
+        return entries;
+    }
+
+    private static bool TryParseParameterLine(
+        string line,
+        List<ValidationDiagnostic> diagnostics,
+        out SpecParameterEntry entry)
+    {
+        entry = new SpecParameterEntry(string.Empty, "string");
+
+        if (Regex.IsMatch(line, @"^\$?[a-zA-Z_][\w-]*\s*:")
+            && TryParseColonParameterLine(line, diagnostics, out entry))
+        {
+            return true;
+        }
+
+        var tokens = TokenizeComputeLine(line);
+        if (tokens.Count == 0)
+        {
+            return false;
+        }
+
+        var name = tokens[0].TrimStart('$');
+        string? type = null;
+        string? defaultValue = null;
+        var required = false;
+        foreach (var token in tokens.Skip(1))
+        {
+            var equalsIndex = token.IndexOf('=');
+            if (equalsIndex < 0)
+            {
+                if (type is null)
+                {
+                    type = token;
+                    continue;
+                }
+
+                diagnostics.Add(new ValidationDiagnostic(
+                    SpecSectionId.Parameters,
+                    ValidationSeverity.Red,
+                    "invalid-parameter-token",
+                    $"Expected key=value token in `{line}`.",
+                    token));
+                continue;
+            }
+
+            var key = token[..equalsIndex];
+            var value = token[(equalsIndex + 1)..];
+            switch (key.ToLowerInvariant())
+            {
+                case "type":
+                    type = value;
+                    break;
+
+                case "default":
+                    defaultValue = value;
+                    break;
+
+                case "required":
+                    if (bool.TryParse(value, out var parsed))
+                    {
+                        required = parsed;
+                    }
+                    else
+                    {
+                        diagnostics.Add(new ValidationDiagnostic(
+                            SpecSectionId.Parameters,
+                            ValidationSeverity.Red,
+                            "invalid-parameter-required",
+                            $"Parameter `{name}` has invalid required flag `{value}`.",
+                            value));
+                    }
+                    break;
+
+                default:
+                    diagnostics.Add(new ValidationDiagnostic(
+                        SpecSectionId.Parameters,
+                        ValidationSeverity.Yellow,
+                        "unknown-parameter-key",
+                        $"Unknown parameter field `{key}` is ignored.",
+                        key));
+                    break;
+            }
+        }
+
+        if (string.IsNullOrWhiteSpace(type))
+        {
+            diagnostics.Add(new ValidationDiagnostic(
+                SpecSectionId.Parameters,
+                ValidationSeverity.Red,
+                "missing-parameter-type",
+                $"Parameter `{name}` is missing type=.",
+                name));
+            type = "string";
+        }
+
+        entry = new SpecParameterEntry(name, NormalizeParameterType(type), defaultValue, required);
+        return true;
+    }
+
+    private static bool TryParseColonParameterLine(
+        string line,
+        List<ValidationDiagnostic> diagnostics,
+        out SpecParameterEntry entry)
+    {
+        entry = new SpecParameterEntry(string.Empty, "string");
+        var colonIndex = line.IndexOf(':');
+        if (colonIndex < 0)
+        {
+            return false;
+        }
+
+        var name = line[..colonIndex].Trim().TrimStart('$');
+        var rest = line[(colonIndex + 1)..].Trim();
+        if (string.IsNullOrWhiteSpace(name) || string.IsNullOrWhiteSpace(rest))
+        {
+            diagnostics.Add(new ValidationDiagnostic(
+                SpecSectionId.Parameters,
+                ValidationSeverity.Red,
+                "invalid-parameter",
+                $"Could not parse parameter line `{line}`.",
+                line));
+            return false;
+        }
+
+        var equalsIndex = rest.IndexOf('=');
+        var type = equalsIndex >= 0 ? rest[..equalsIndex].Trim() : rest;
+        var defaultValue = equalsIndex >= 0 ? UnquoteParameterValue(rest[(equalsIndex + 1)..].Trim()) : null;
+        entry = new SpecParameterEntry(name, NormalizeParameterType(type), defaultValue);
+        return true;
     }
 
     private static IReadOnlyList<SpecComputeStep> ParseCompute(string text, List<ValidationDiagnostic> diagnostics)
@@ -428,6 +606,32 @@ internal static class SpecSectionTextTranslator
         return string.Join(Environment.NewLine, lines);
     }
 
+    private static string SerializeParameters(SpecDocument document)
+    {
+        if (document.Parameters.Count == 0)
+        {
+            return string.Empty;
+        }
+
+        return string.Join(
+            Environment.NewLine,
+            document.Parameters.Select(parameter =>
+            {
+                var tokens = new List<string> { $"${parameter.Name}", $"type={parameter.Type}" };
+                if (!string.IsNullOrWhiteSpace(parameter.Default))
+                {
+                    tokens.Add($"default={QuoteComputeValue(parameter.Default)}");
+                }
+
+                if (parameter.Required)
+                {
+                    tokens.Add("required=true");
+                }
+
+                return string.Join(" ", tokens);
+            }));
+    }
+
     private static string SerializeCompute(SpecDocument document)
     {
         if (document.Compute.Count == 0)
@@ -509,6 +713,20 @@ internal static class SpecSectionTextTranslator
         text.Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries)
             .Select(line => line.Trim())
             .Where(line => line.Length > 0 && !line.StartsWith('#'));
+
+    private static string NormalizeParameterType(string value) => value.Trim().ToLowerInvariant();
+
+    private static string UnquoteParameterValue(string value)
+    {
+        if (value.Length >= 2 && value[0] == '"' && value[^1] == '"')
+        {
+            return value[1..^1]
+                .Replace("\\\"", "\"", StringComparison.Ordinal)
+                .Replace("\\\\", "\\", StringComparison.Ordinal);
+        }
+
+        return value;
+    }
 
     private static string Normalize(string? text) => text?.Replace("\r\n", "\n", StringComparison.Ordinal) ?? string.Empty;
 }

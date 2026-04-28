@@ -272,7 +272,7 @@ public sealed class AdminPageRenderTests : TestContext
         {
             cut.Markup.MarkupMatchesContaining("Spec workspace S1");
             cut.Markup.MarkupMatchesContaining("grammar v1");
-            cut.Markup.MarkupMatchesContaining("5 sections");
+            cut.Markup.MarkupMatchesContaining("6 sections");
             cut.Markup.MarkupMatchesContaining("plan/apply");
             cut.Markup.MarkupMatchesContaining("map/table/app preview");
             cut.Find("[aria-label='Spec workspace S1 readiness']");
@@ -283,12 +283,15 @@ public sealed class AdminPageRenderTests : TestContext
 
         cut.WaitForAssertion(() =>
         {
-            cut.Markup.MarkupMatchesContaining("1/5 drafted");
+            cut.Markup.MarkupMatchesContaining("1/6 drafted");
             cut.Markup.MarkupMatchesContaining("Draft changes");
             var sourceChange = cut.Find("[data-testid='spec-change-Sources']");
             Assert.Equal("Added", sourceChange.GetAttribute("data-status"));
         });
 
+        await cut.InvokeAsync(() => state.UpdateSectionTextAsync(
+            SpecSectionId.Parameters,
+            "$county type=string default=Honolulu"));
         await cut.InvokeAsync(() => state.UpdateSectionTextAsync(
             SpecSectionId.Compute,
             "aggregate inputs=@parcels by=@parcels.county metric=count"));
@@ -301,8 +304,10 @@ public sealed class AdminPageRenderTests : TestContext
         {
             cut.Markup.MarkupMatchesContaining("content-hash");
             cut.Markup.MarkupMatchesContaining("durable app");
+            cut.Markup.MarkupMatchesContaining("$county: string = Honolulu");
             cut.Find("[data-testid='dag-node-cache-aggregate-1']");
             cut.Find("[data-testid='dag-node-materialization-output-appscaffold']");
+            cut.Find("[data-testid='plan-parameter-county']");
         });
     }
 

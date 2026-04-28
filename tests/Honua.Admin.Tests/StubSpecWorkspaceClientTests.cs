@@ -109,6 +109,46 @@ public sealed class StubSpecWorkspaceClientTests
     }
 
     [Fact]
+    public async Task PlanAsync_includes_parameter_defaults_in_compute_cache_hash()
+    {
+        var first = BuildFilterDocument("Alpha");
+        var second = BuildFilterDocument("Beta");
+
+        var firstPlan = await _client.PlanAsync(first, CancellationToken.None);
+        var secondPlan = await _client.PlanAsync(second, CancellationToken.None);
+
+        var firstFilter = Assert.Single(firstPlan.Nodes, node => node.Op == "filter");
+        var secondFilter = Assert.Single(secondPlan.Nodes, node => node.Op == "filter");
+
+        Assert.NotEqual(firstFilter.ContentHash, secondFilter.ContentHash);
+    }
+
+    [Fact]
+    public async Task PlanAndApply_expose_parameter_bindings_for_app_scaffolds()
+    {
+        var document = BuildAppScaffoldDocument() with
+        {
+            Parameters = new[] { new SpecParameterEntry("county", "string", "Honolulu", Required: true) }
+        };
+
+        var plan = await _client.PlanAsync(document, CancellationToken.None);
+        var binding = Assert.Single(plan.Parameters);
+
+        Assert.Equal("county", binding.Name);
+        Assert.Equal("string", binding.Type);
+        Assert.Equal("Honolulu", binding.Default);
+        Assert.True(binding.Required);
+        Assert.StartsWith("sha256:", binding.ContentHash, StringComparison.Ordinal);
+
+        var payload = await CollectCompletedPayloadAsync(document);
+        var scaffoldParameter = Assert.Single(payload!.AppScaffold!.Parameters);
+
+        Assert.Equal("county", scaffoldParameter.Name);
+        Assert.Equal("Honolulu", scaffoldParameter.Default);
+        Assert.Single(payload.ParameterBindings);
+    }
+
+    [Fact]
     public async Task PlanAsync_uses_output_kind_for_app_scaffold_inputs_when_map_layers_exist()
     {
         var document = BuildAppScaffoldDocument() with
@@ -268,5 +308,22 @@ public sealed class StubSpecWorkspaceClientTests
                 })
         },
         Output = new SpecOutput { Kind = SpecOutputKind.AppScaffold, Target = "preview" }
+    };
+
+    private static SpecDocument BuildFilterDocument(string countyDefault) => new()
+    {
+        Sources = new[] { new SpecSourceEntry("parcels", "parcels", "v1") },
+        Parameters = new[] { new SpecParameterEntry("county", "string", countyDefault) },
+        Compute = new[]
+        {
+            new SpecComputeStep(
+                "filter",
+                new[] { "parcels" },
+                new Dictionary<string, string>(StringComparer.Ordinal)
+                {
+                    ["where"] = "@parcels.county=$county"
+                })
+        },
+        Output = new SpecOutput { Kind = SpecOutputKind.Analysis, Target = "preview" }
     };
 }
