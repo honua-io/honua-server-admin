@@ -378,6 +378,9 @@ public sealed class AdminPageRenderTests : TestContext
             cut.Markup.MarkupMatchesContaining("Published datasets");
             cut.Markup.MarkupMatchesContaining("Harbor assets");
             cut.Markup.MarkupMatchesContaining("GeoJSON");
+            cut.Markup.MarkupMatchesContaining("Download export manifest");
+            cut.Markup.MarkupMatchesContaining("sha256:");
+            cut.Markup.MarkupMatchesContaining("Bulk");
             cut.Markup.MarkupMatchesContaining("Civic tech API");
             cut.Markup.MarkupMatchesContaining("Public API key");
             cut.Markup.MarkupMatchesContaining("Code examples");

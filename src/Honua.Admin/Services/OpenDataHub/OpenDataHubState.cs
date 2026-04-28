@@ -81,7 +81,8 @@ public sealed class OpenDataHubState
                 HasText(dataset.License) &&
                 HasText(dataset.Contact) &&
                 HasText(dataset.UpdateFrequency);
-            var hasDownloads = RequiredDownloadFormats.All(format => dataset.Downloads.Any(download => download.Format == format));
+            var hasDownloads = RequiredDownloadFormats
+                .All(format => dataset.Downloads.FirstOrDefault(download => download.Format == format) is { } download && IsDownloadReady(download));
             var hasApis = dataset.ApiEnabled &&
                 dataset.ApiEndpoints.Any(endpoint => !endpoint.RequiresApiKey) &&
                 HasText(dataset.StacCollectionId) &&
@@ -110,7 +111,7 @@ public sealed class OpenDataHubState
                     Key = "downloads",
                     Label = "Download formats",
                     Passed = hasDownloads,
-                    Message = hasDownloads ? "GeoJSON, GeoParquet, Shapefile, CSV, and KML exports are available." : "All required download formats must be generated."
+                    Message = hasDownloads ? "GeoJSON, GeoParquet, Shapefile, CSV, and KML exports have ready URLs, MIME types, checksums, and bulk manifests." : "All required download formats need ready URLs, MIME types, checksums, positive sizes, and bulk manifests."
                 },
                 new OpenDataValidationCheck
                 {
@@ -373,6 +374,15 @@ public sealed class OpenDataHubState
 
     private static bool HasText(string value)
         => !string.IsNullOrWhiteSpace(value);
+
+    private static bool IsDownloadReady(OpenDataDownloadOption download)
+        => download.Readiness == OpenDataDownloadReadiness.Ready &&
+            download.SupportsBulkExport &&
+            download.SizeBytes > 0 &&
+            download.GeneratedAt != default &&
+            HasText(download.Url) &&
+            HasText(download.ContentType) &&
+            HasText(download.Checksum);
 
     private static bool IsAll(string value)
         => string.Equals(value, "All", StringComparison.OrdinalIgnoreCase);

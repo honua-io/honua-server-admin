@@ -219,14 +219,30 @@
                 <MudText Typo="Typo.h6">Distribution</MudText>
 
                 <div class="open-data-delivery-group" aria-label="Open data downloads">
-                    <MudText Typo="Typo.subtitle2">Downloads</MudText>
+                    <MudText Typo="Typo.subtitle2">Download export manifest</MudText>
                     @foreach (var download in selected.Downloads)
                     {
-                        <div class="open-data-delivery-row" data-testid="@($"open-data-download-{download.Format}")">
-                            <MudIcon Icon="@Icons.Material.Filled.Download" Size="Size.Small" />
-                            <div>
+                        <div class="open-data-delivery-row open-data-download-row" data-testid="@($"open-data-download-{download.Format}")">
+                            <MudIcon Icon="@Icons.Material.Filled.Download"
+                                     Color="@DownloadReadinessColor(download.Readiness)"
+                                     Size="Size.Small" />
+                            <div class="open-data-download-main">
                                 <strong>@FormatDownload(download.Format)</strong>
                                 <span>@download.Url</span>
+                                <small>@download.ContentType | @ShortChecksum(download.Checksum) | generated @FormatApiDate(download.GeneratedAt)</small>
+                            </div>
+                            <div class="open-data-download-tags">
+                                <MudChip T="string" Size="Size.Small" Color="@DownloadReadinessColor(download.Readiness)" Variant="Variant.Outlined">
+                                    @download.Readiness
+                                </MudChip>
+                                @if (download.SupportsBulkExport)
+                                {
+                                    <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined">Bulk</MudChip>
+                                }
+                                @if (download.SupportsDeltaExport)
+                                {
+                                    <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined">Delta</MudChip>
+                                }
                             </div>
                             <small>@FormatBytes(download.SizeBytes)</small>
                         </div>
@@ -427,6 +443,16 @@
     private static string FormatApiDate(DateTimeOffset? value)
         => value?.ToLocalTime().ToString("MMM d, yyyy", CultureInfo.CurrentCulture) ?? "not recorded";
 
+    private static string ShortChecksum(string checksum)
+    {
+        if (string.IsNullOrWhiteSpace(checksum))
+        {
+            return "checksum missing";
+        }
+
+        return checksum.Length <= 18 ? checksum : checksum[..18];
+    }
+
     private static Color StatusColor(OpenDataHubStatus status) => status switch
     {
         OpenDataHubStatus.Error => Color.Error,
@@ -442,6 +468,15 @@
         OpenDataDatasetStatus.Scheduled => Color.Info,
         OpenDataDatasetStatus.InReview => Color.Warning,
         OpenDataDatasetStatus.Blocked => Color.Error,
+        _ => Color.Default
+    };
+
+    private static Color DownloadReadinessColor(OpenDataDownloadReadiness readiness) => readiness switch
+    {
+        OpenDataDownloadReadiness.Ready => Color.Success,
+        OpenDataDownloadReadiness.Generating => Color.Info,
+        OpenDataDownloadReadiness.Stale => Color.Warning,
+        OpenDataDownloadReadiness.Failed => Color.Error,
         _ => Color.Default
     };
 

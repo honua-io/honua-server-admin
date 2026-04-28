@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Honua.Admin.Models.OpenDataHub;
@@ -26,6 +27,8 @@ public sealed class OpenDataHubStateTests
         Assert.Equal("harbor-assets", state.SelectedDataset?.DatasetId);
         Assert.Equal("harbor-assets-public", state.SelectedDataset?.ApiAccess.PublicKeyLabel);
         Assert.Contains(state.SelectedDataset!.ApiAccess.CodeExamples, example => example.Language == OpenDataCodeLanguage.JavaScript);
+        Assert.All(state.SelectedDataset.Downloads, download => Assert.Equal(OpenDataDownloadReadiness.Ready, download.Readiness));
+        Assert.Contains(state.SelectedDataset.Downloads, download => download.Format == OpenDataDownloadFormat.GeoParquet && download.SupportsBulkExport && !string.IsNullOrWhiteSpace(download.Checksum));
         Assert.True(state.SelectedDataset.Usage.DownloadsLast30Days > 0);
         Assert.True(state.SelectedDataset.Usage.ApiCallsLast30Days > 0);
         Assert.Contains(state.SelectedDataset.FeedbackReports, report => report.Status == OpenDataFeedbackStatus.Triaged);
@@ -122,6 +125,29 @@ public sealed class OpenDataHubStateTests
         Assert.False(api.Passed);
         Assert.Contains("public key access", api.Message);
         Assert.Contains("bulk downloads", api.Message);
+        Assert.True(state.HasBlockingValidation);
+    }
+
+    [Fact]
+    public async Task ValidationChecks_require_ready_download_manifests()
+    {
+        var snapshot = Snapshot("download-dataset", "Download dataset");
+        var dataset = snapshot.Datasets[0] with
+        {
+            Downloads = snapshot.Datasets[0].Downloads
+                .Select(download => download.Format == OpenDataDownloadFormat.Csv
+                    ? download with { Checksum = string.Empty, Readiness = OpenDataDownloadReadiness.Stale }
+                    : download)
+                .ToArray(),
+        };
+        var state = new OpenDataHubState(new FixedOpenDataHubClient(snapshot with { Datasets = [dataset] }));
+
+        await state.LoadAsync();
+
+        var downloads = Assert.Single(state.ValidationChecks, check => check.Key == "downloads");
+        Assert.False(downloads.Passed);
+        Assert.Contains("checksums", downloads.Message);
+        Assert.Contains("bulk manifests", downloads.Message);
         Assert.True(state.HasBlockingValidation);
     }
 
@@ -430,8 +456,13 @@ public sealed class OpenDataHubStateTests
         {
             Format = format,
             Url = $"/downloads/{format}",
+            ContentType = format == OpenDataDownloadFormat.Csv ? "text/csv" : "application/octet-stream",
+            Checksum = $"sha256:{format}",
             SizeBytes = 100,
             GeneratedAt = DateTimeOffset.Parse("2026-04-28T00:00:00Z"),
+            Readiness = OpenDataDownloadReadiness.Ready,
+            SupportsBulkExport = true,
+            SupportsDeltaExport = format is OpenDataDownloadFormat.GeoJson or OpenDataDownloadFormat.GeoParquet or OpenDataDownloadFormat.Csv,
         };
 
     private static OpenDataCodeExample CodeExample(OpenDataCodeLanguage language)
