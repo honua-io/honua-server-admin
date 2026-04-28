@@ -97,10 +97,10 @@ public enum SpecOutputKind
 
 public enum SpecSectionId
 {
-    Sources,
-    Scope,
-    Parameters,
-    Compute,
-    Map,
-    Output
+    Sources = 0,
+    Scope = 1,
+    Compute = 2,
+    Map = 3,
+    Output = 4,
+    Parameters = 5
 }

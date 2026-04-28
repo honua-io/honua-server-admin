@@ -7,6 +7,17 @@ namespace Honua.Admin.Tests;
 public sealed class SpecWorkspaceStateTests
 {
     [Fact]
+    public void SpecSectionId_keeps_legacy_serialized_values()
+    {
+        Assert.Equal(0, (int)SpecSectionId.Sources);
+        Assert.Equal(1, (int)SpecSectionId.Scope);
+        Assert.Equal(2, (int)SpecSectionId.Compute);
+        Assert.Equal(3, (int)SpecSectionId.Map);
+        Assert.Equal(4, (int)SpecSectionId.Output);
+        Assert.Equal(5, (int)SpecSectionId.Parameters);
+    }
+
+    [Fact]
     public async Task InsertDslTokenAsync_replaces_the_active_editor_selection()
     {
         var storage = new MemoryBrowserStorageService();
