@@ -161,6 +161,21 @@ public sealed class OpenDataHubStateTests
     }
 
     [Fact]
+    public async Task LoadAsync_clears_stale_publish_result_when_refresh_fails()
+    {
+        var state = new OpenDataHubState(new FailingRefreshAfterPublishOpenDataHubClient());
+        await state.LoadAsync();
+        await state.PublishSelectedAsync();
+        Assert.NotNull(state.LastPublish);
+
+        await state.LoadAsync();
+
+        Assert.Equal(OpenDataHubStatus.Error, state.Status);
+        Assert.Equal("refresh failed", state.LastError);
+        Assert.Null(state.LastPublish);
+    }
+
+    [Fact]
     public async Task PublishSelectedAsync_notifies_when_publish_is_canceled()
     {
         var state = new OpenDataHubState(new CancelingPublishOpenDataHubClient());
@@ -233,6 +248,26 @@ public sealed class OpenDataHubStateTests
 
         public Task<OpenDataPublishResult> PublishAsync(string datasetId, CancellationToken cancellationToken)
             => throw new OperationCanceledException(cancellationToken);
+    }
+
+    private sealed class FailingRefreshAfterPublishOpenDataHubClient : IOpenDataHubClient
+    {
+        private readonly StubOpenDataHubClient _inner = new();
+        private int _loadCount;
+
+        public Task<OpenDataHubSnapshot> GetSnapshotAsync(CancellationToken cancellationToken)
+        {
+            _loadCount++;
+            if (_loadCount == 1)
+            {
+                return _inner.GetSnapshotAsync(cancellationToken);
+            }
+
+            throw new InvalidOperationException("refresh failed");
+        }
+
+        public Task<OpenDataPublishResult> PublishAsync(string datasetId, CancellationToken cancellationToken)
+            => _inner.PublishAsync(datasetId, cancellationToken);
     }
 
     private sealed class BlockingPublishOpenDataHubClient : IOpenDataHubClient

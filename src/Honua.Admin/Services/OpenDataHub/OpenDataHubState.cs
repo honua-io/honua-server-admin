@@ -143,6 +143,7 @@ public sealed class OpenDataHubState
         var loadVersion = Interlocked.Increment(ref _loadRequestVersion);
         Status = OpenDataHubStatus.Loading;
         LastError = null;
+        LastPublish = null;
         Notify();
 
         try
