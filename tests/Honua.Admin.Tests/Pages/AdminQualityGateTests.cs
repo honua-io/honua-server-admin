@@ -11,6 +11,7 @@ using Honua.Admin.Models.Admin;
 using Honua.Admin.Pages.Admin;
 using Honua.Admin.Services.Admin;
 using Honua.Admin.Services.Annotations;
+using Honua.Admin.Services.AppBuilder;
 using Honua.Admin.Services.Operations;
 using Honua.Admin.Services.PrintService;
 using Honua.Admin.Services.Publishing;
@@ -45,6 +46,8 @@ public sealed class AdminQualityGateTests : TestContext
         Services.AddScoped<UsageAnalyticsState>();
         Services.AddScoped<IPrintServiceClient, StubPrintServiceClient>();
         Services.AddScoped<PrintServiceState>();
+        Services.AddScoped<IAppBuilderClient, StubAppBuilderClient>();
+        Services.AddScoped<AppBuilderState>();
         Services.AddScoped<CatalogCache>();
         Services.AddScoped<IBrowserStorageService, BrowserStorageService>();
         Services.AddScoped<ISpecWorkspaceTelemetry, NullSpecWorkspaceTelemetry>();
@@ -152,6 +155,13 @@ public sealed class AdminQualityGateTests : TestContext
             typeof(Honua.Admin.Pages.Operator.PrintService),
             "Letter portrait",
             new[] { "[aria-label='Print service toolbar']", "[aria-label='Print preview']", "[aria-label='Print job queue']" },
+        ];
+        yield return
+        [
+            "App builder",
+            typeof(Honua.Admin.Pages.Operator.AppBuilder),
+            "Harbor operations dashboard",
+            new[] { "[aria-label='App builder toolbar']", "[aria-label='Widget library']", "[aria-label='App layout canvas']", "[aria-label='App builder validation checks']" },
         ];
     }
 

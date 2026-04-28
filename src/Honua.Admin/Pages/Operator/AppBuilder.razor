@@ -1,0 +1,242 @@
+@page "/operator/app-builder"
+@using Microsoft.AspNetCore.Authorization
+@using Honua.Admin.Models.AppBuilder
+@using Honua.Admin.Services.AppBuilder
+@attribute [Authorize]
+@inject AppBuilderState State
+@inject IAdminTelemetry Telemetry
+@implements IDisposable
+
+<PageTitle>App builder</PageTitle>
+
+<div class="app-builder-root" data-testid="app-builder-root">
+    <div class="app-builder-toolbar" aria-label="App builder toolbar">
+        <MudStack Row AlignItems="AlignItems.Center" Spacing="1" Class="app-builder-toolbar-row">
+            <MudText Typo="Typo.h5">App builder</MudText>
+            <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="@StatusColor(State.Status)" data-testid="app-builder-status">
+                @State.Status
+            </MudChip>
+            <MudSpacer />
+            <MudButton StartIcon="@Icons.Material.Filled.Refresh"
+                       Variant="Variant.Outlined"
+                       Size="Size.Small"
+                       Disabled="@IsBusy"
+                       OnClick="RefreshAsync"
+                       data-testid="app-builder-refresh">
+                Refresh
+            </MudButton>
+            <MudButton StartIcon="@Icons.Material.Filled.Publish"
+                       Variant="Variant.Filled"
+                       Color="Color.Primary"
+                       Size="Size.Small"
+                       Disabled="@(IsBusy || State.HasBlockingValidation)"
+                       OnClick="PublishAsync"
+                       data-testid="app-builder-publish">
+                Publish
+            </MudButton>
+        </MudStack>
+        @if (!string.IsNullOrWhiteSpace(State.LastError))
+        {
+            <MudAlert Severity="Severity.Error" Dense="true" Variant="Variant.Filled" Class="mt-2" data-testid="app-builder-error">
+                @State.LastError
+            </MudAlert>
+        }
+    </div>
+
+    <div class="app-builder-grid">
+        <section class="app-builder-pane" aria-label="App templates">
+            <MudText Typo="Typo.h6">Templates</MudText>
+            <div class="app-builder-template-list">
+                @foreach (var template in State.Templates)
+                {
+                    var item = template;
+                    <button type="button"
+                            class="@TemplateClass(item)"
+                            disabled="@IsBusy"
+                            @onclick="@(() => State.SelectTemplate(item.TemplateId))"
+                            data-testid="@($"app-template-{item.TemplateId}")">
+                        <span>@item.Name</span>
+                        <small>@item.PublishMode</small>
+                    </button>
+                }
+            </div>
+
+            <MudText Typo="Typo.h6" Class="mt-4">Widget library</MudText>
+            <div class="app-builder-widget-library" aria-label="Widget library">
+                @foreach (var widget in State.WidgetLibrary)
+                {
+                    var definition = widget;
+                    <div class="app-builder-widget-definition" data-testid="@($"widget-definition-{definition.Kind}")">
+                        <div>
+                            <strong>@definition.Name</strong>
+                            <span>@definition.Description</span>
+                        </div>
+                        <MudIconButton Icon="@Icons.Material.Filled.Add"
+                                       aria-label="@($"Add {definition.Name}")"
+                                       Size="Size.Small"
+                                       Disabled="@IsBusy"
+                                       OnClick="@(() => State.AddWidget(definition.Kind))" />
+                    </div>
+                }
+            </div>
+        </section>
+
+        <section class="app-builder-pane app-builder-canvas-pane" aria-label="Dashboard layout preview">
+            <MudStack Row AlignItems="AlignItems.Center" Class="mb-2">
+                <MudText Typo="Typo.h6">@State.Draft.Name</MudText>
+                <MudSpacer />
+                <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined">
+                    @State.SelectedTemplate?.Name
+                </MudChip>
+                <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined">
+                    @($"{State.Draft.AutoRefreshSeconds}s refresh")
+                </MudChip>
+            </MudStack>
+            <div class="app-builder-canvas" aria-label="App layout canvas">
+                @foreach (var widget in State.Draft.Widgets)
+                {
+                    var item = widget;
+                    <article class="@WidgetClass(item)"
+                             style="@WidgetStyle(item)"
+                             data-testid="@($"app-widget-{item.Kind}-{item.WidgetId}")">
+                        <div class="app-builder-widget-header">
+                            <MudIcon Icon="@WidgetIcon(item.Kind)" Size="Size.Small" />
+                            <strong>@item.Title</strong>
+                            <MudSpacer />
+                            <MudIconButton Icon="@Icons.Material.Filled.Close"
+                                           aria-label="@($"Remove {item.Title}")"
+                                           Size="Size.Small"
+                                           Disabled="@IsBusy"
+                                           OnClick="@(() => State.RemoveWidget(item.WidgetId))" />
+                        </div>
+                        <div class="app-builder-widget-body">
+                            <span>@item.DataBinding</span>
+                            <small>@($"{item.Width} x {item.Height}")</small>
+                        </div>
+                    </article>
+                }
+            </div>
+        </section>
+
+        <section class="app-builder-pane" aria-label="App builder configuration">
+            <MudText Typo="Typo.h6">Configuration</MudText>
+            <MudTextField T="string"
+                          Label="App name"
+                          Value="@State.Draft.Name"
+                          ValueChanged="State.SetName"
+                          Disabled="@IsBusy"
+                          Variant="Variant.Outlined"
+                          Margin="Margin.Dense"
+                          aria-label="App name" />
+            <MudTextField T="string"
+                          Label="Theme"
+                          Value="@State.Draft.ThemeName"
+                          ValueChanged="State.SetTheme"
+                          Disabled="@IsBusy"
+                          Variant="Variant.Outlined"
+                          Margin="Margin.Dense"
+                          aria-label="App theme" />
+            <MudNumericField T="int"
+                             Label="Auto refresh seconds"
+                             Value="@State.Draft.AutoRefreshSeconds"
+                             ValueChanged="State.SetAutoRefreshSeconds"
+                             Disabled="@IsBusy"
+                             Min="15"
+                             Max="3600"
+                             Step="15"
+                             Variant="Variant.Outlined"
+                             Margin="Margin.Dense"
+                             aria-label="Auto refresh seconds" />
+
+            <MudText Typo="Typo.h6" Class="mt-4">Validation</MudText>
+            <div class="app-builder-validation" aria-label="App builder validation checks">
+                @foreach (var check in State.ValidationChecks)
+                {
+                    <div class="app-builder-validation-row" data-testid="@($"app-builder-check-{check.Key}")">
+                        <MudIcon Icon="@(check.Passed ? Icons.Material.Filled.CheckCircle : Icons.Material.Filled.Error)"
+                                 Color="@(check.Passed ? Color.Success : Color.Warning)"
+                                 Size="Size.Small" />
+                        <div>
+                            <strong>@check.Label</strong>
+                            <span>@check.Message</span>
+                        </div>
+                    </div>
+                }
+            </div>
+
+            @if (State.LastPublish is not null)
+            {
+                <MudAlert Severity="Severity.Success" Dense="true" Variant="Variant.Outlined" Class="mt-4" data-testid="app-builder-publish-result">
+                    @State.LastPublish.Message
+                    <br />
+                    <MudLink Href="@State.LastPublish.PublishedUrl">@State.LastPublish.PublishedUrl</MudLink>
+                    <br />
+                    <MudLink Href="@State.LastPublish.EmbedUrl">@State.LastPublish.EmbedUrl</MudLink>
+                </MudAlert>
+            }
+        </section>
+    </div>
+</div>
+
+@code {
+    protected override async Task OnInitializedAsync()
+    {
+        State.OnChanged += StateChanged;
+        Telemetry.PageNavigated("/operator/app-builder", principalId: null);
+        await State.LoadAsync(CancellationToken.None);
+    }
+
+    public void Dispose()
+    {
+        State.OnChanged -= StateChanged;
+    }
+
+    private bool IsBusy => State.Status is AppBuilderStatus.Loading or AppBuilderStatus.Publishing;
+
+    private Task RefreshAsync() => State.LoadAsync(CancellationToken.None);
+
+    private Task PublishAsync() => State.PublishAsync(CancellationToken.None);
+
+    private void StateChanged() => InvokeAsync(StateHasChanged);
+
+    private string TemplateClass(AppTemplate template)
+        => string.Equals(template.TemplateId, State.Draft.TemplateId, StringComparison.OrdinalIgnoreCase)
+            ? "app-builder-template selected"
+            : "app-builder-template";
+
+    private static string WidgetClass(AppWidgetInstance widget)
+        => $"app-builder-widget app-builder-widget-{widget.Kind.ToString().ToLowerInvariant()}";
+
+    private static string WidgetStyle(AppWidgetInstance widget)
+    {
+        var column = Math.Clamp(widget.Column, 1, 9);
+        var width = Math.Clamp(widget.Width, 1, 10 - column);
+        var row = Math.Max(1, widget.Row);
+        var height = Math.Clamp(widget.Height, 1, 6);
+
+        return $"grid-column: {column} / span {width}; grid-row: {row} / span {height};";
+    }
+
+    private static string WidgetIcon(AppWidgetKind kind) => kind switch
+    {
+        AppWidgetKind.Map => Icons.Material.Filled.Map,
+        AppWidgetKind.Chart => Icons.Material.Filled.BarChart,
+        AppWidgetKind.Indicator => Icons.Material.Filled.Speed,
+        AppWidgetKind.List => Icons.Material.Filled.FormatListBulleted,
+        AppWidgetKind.Filter => Icons.Material.Filled.FilterAlt,
+        AppWidgetKind.Legend => Icons.Material.Filled.Label,
+        AppWidgetKind.Search => Icons.Material.Filled.Search,
+        AppWidgetKind.Gauge => Icons.Material.Filled.Speed,
+        AppWidgetKind.RichText => Icons.Material.Filled.Article,
+        _ => Icons.Material.Filled.Widgets
+    };
+
+    private static Color StatusColor(AppBuilderStatus status) => status switch
+    {
+        AppBuilderStatus.Error => Color.Error,
+        AppBuilderStatus.Loading => Color.Info,
+        AppBuilderStatus.Publishing => Color.Warning,
+        AppBuilderStatus.Published => Color.Success,
+        _ => Color.Default
+    };
+}

@@ -3,6 +3,7 @@ using Honua.Admin.Auth;
 using Honua.Admin.Configuration;
 using Honua.Admin.Services.Admin;
 using Honua.Admin.Services.Annotations;
+using Honua.Admin.Services.AppBuilder;
 using Honua.Admin.Services.DataConnections;
 using Honua.Admin.Services.DataConnections.Providers;
 using Honua.Admin.Services.Identity;
@@ -59,6 +60,11 @@ builder.Services.AddScoped<UsageAnalyticsState>();
 // and queue workflow while server-side render endpoints are wired separately.
 builder.Services.AddScoped<IPrintServiceClient, StubPrintServiceClient>();
 builder.Services.AddScoped<PrintServiceState>();
+
+// App builder workspace (issue #5) exposes the admin-side low-code dashboard
+// assembly workflow while server-side publish APIs are defined separately.
+builder.Services.AddScoped<IAppBuilderClient, StubAppBuilderClient>();
+builder.Services.AddScoped<AppBuilderState>();
 
 // Admin client + auth wiring (ticket #28 — restored from PR #17 onto the post-#27 shell).
 builder.Services.AddSingleton<AdminAuthStateProvider>();

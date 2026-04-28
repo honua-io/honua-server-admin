@@ -82,6 +82,16 @@ public sealed class NavMenuTests
     }
 
     [Fact]
+    public void NavMenu_registers_app_builder_under_operator_route()
+    {
+        var path = Path.Combine(System.AppContext.BaseDirectory, NavMenuPath);
+        var contents = File.ReadAllText(path);
+
+        Assert.Contains("/operator/app-builder", contents, System.StringComparison.Ordinal);
+        Assert.Contains("App builder", contents, System.StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void NavMenu_uses_a_single_MudNavMenu_so_sql_page_lives_in_the_shared_shell()
     {
         var path = Path.Combine(System.AppContext.BaseDirectory, NavMenuPath);
@@ -100,6 +110,7 @@ public sealed class NavMenuTests
         var operatorAnnotations = contents.IndexOf("/operator/annotations", System.StringComparison.Ordinal);
         var operatorPublishing = contents.IndexOf("/operator/publishing", System.StringComparison.Ordinal);
         var operatorAnalytics = contents.IndexOf("/operator/analytics", System.StringComparison.Ordinal);
+        var operatorAppBuilder = contents.IndexOf("/operator/app-builder", System.StringComparison.Ordinal);
         var operatorPrint = contents.IndexOf("/operator/print", System.StringComparison.Ordinal);
         var menuClose = contents.IndexOf("</MudNavMenu>", System.StringComparison.Ordinal);
 
@@ -110,6 +121,7 @@ public sealed class NavMenuTests
         Assert.True(operatorAnnotations > 0);
         Assert.True(operatorPublishing > 0);
         Assert.True(operatorAnalytics > 0);
+        Assert.True(operatorAppBuilder > 0);
         Assert.True(operatorPrint > 0);
         Assert.True(operatorControlCenter < menuClose);
         Assert.True(operatorAdminReadiness < menuClose);
@@ -117,6 +129,7 @@ public sealed class NavMenuTests
         Assert.True(operatorAnnotations < menuClose);
         Assert.True(operatorPublishing < menuClose);
         Assert.True(operatorAnalytics < menuClose);
+        Assert.True(operatorAppBuilder < menuClose);
         Assert.True(operatorPrint < menuClose);
     }
 }
