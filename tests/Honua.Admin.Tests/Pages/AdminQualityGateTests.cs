@@ -12,6 +12,7 @@ using Honua.Admin.Pages.Admin;
 using Honua.Admin.Services.Admin;
 using Honua.Admin.Services.Annotations;
 using Honua.Admin.Services.Publishing;
+using Honua.Admin.Services.UsageAnalytics;
 using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.DependencyInjection;
 using MudBlazor;
@@ -36,6 +37,8 @@ public sealed class AdminQualityGateTests : TestContext
         Services.AddScoped<IHonuaAdminClient>(_ => new StubHonuaAdminClient());
         Services.AddScoped<AnnotationWorkspaceState>();
         Services.AddScoped<PublishingWorkspaceState>();
+        Services.AddScoped<IUsageAnalyticsClient, StubUsageAnalyticsClient>();
+        Services.AddScoped<UsageAnalyticsState>();
         Services.AddTestRealtime();
     }
 
@@ -103,6 +106,13 @@ public sealed class AdminQualityGateTests : TestContext
             typeof(Honua.Admin.Pages.Operator.PublishingWorkspace),
             "primary-postgis",
             new[] { "[aria-label='Publishing workspace toolbar']", "[aria-label='Publishing validation checks']" },
+        ];
+        yield return
+        [
+            "Usage analytics",
+            typeof(Honua.Admin.Pages.Operator.UsageAnalytics),
+            "Queries per second",
+            new[] { "[aria-label='Usage analytics toolbar']", "[aria-label='Popular layers']" },
         ];
     }
 

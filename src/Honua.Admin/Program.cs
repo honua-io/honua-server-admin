@@ -11,6 +11,7 @@ using Honua.Admin.Services.Operations;
 using Honua.Admin.Services.Publishing;
 using Honua.Admin.Services.SpatialSql;
 using Honua.Admin.Services.SpecWorkspace;
+using Honua.Admin.Services.UsageAnalytics;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
@@ -47,6 +48,11 @@ builder.Services.AddScoped<AnnotationWorkspaceState>();
 // plane APIs across connection discovery, publish intent, protocol state, and
 // deployment preflight.
 builder.Services.AddScoped<PublishingWorkspaceState>();
+
+// Usage analytics dashboard (issue #2) starts with an in-memory product
+// analytics read model while durable server-side aggregation is defined.
+builder.Services.AddScoped<IUsageAnalyticsClient, StubUsageAnalyticsClient>();
+builder.Services.AddScoped<UsageAnalyticsState>();
 
 // Admin client + auth wiring (ticket #28 — restored from PR #17 onto the post-#27 shell).
 builder.Services.AddSingleton<AdminAuthStateProvider>();

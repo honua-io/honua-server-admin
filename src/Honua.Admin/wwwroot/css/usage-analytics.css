@@ -1,0 +1,108 @@
+.usage-analytics-root {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 16px;
+}
+
+.usage-analytics-toolbar,
+.usage-analytics-filterbar,
+.usage-analytics-panel {
+    border: 1px solid var(--mud-palette-divider, #d9dee3);
+    border-radius: 6px;
+    background: var(--mud-palette-surface, #ffffff);
+}
+
+.usage-analytics-toolbar {
+    padding: 12px;
+}
+
+.usage-analytics-toolbar-row {
+    flex-wrap: wrap;
+}
+
+.usage-analytics-range {
+    width: 160px;
+}
+
+.usage-analytics-filterbar {
+    display: grid;
+    grid-template-columns: minmax(180px, 220px) minmax(180px, 260px) minmax(180px, 220px) minmax(160px, 1fr);
+    gap: 8px;
+    align-items: center;
+    padding: 10px 12px;
+}
+
+.usage-analytics-filter-label {
+    overflow-wrap: anywhere;
+}
+
+.usage-analytics-metric {
+    min-height: 112px;
+}
+
+.usage-analytics-panel {
+    padding: 12px;
+    min-height: 100%;
+    overflow: auto;
+}
+
+.usage-analytics-bars {
+    display: grid;
+    grid-template-columns: repeat(12, minmax(28px, 1fr));
+    gap: 6px;
+    height: 168px;
+    align-items: end;
+    padding: 12px 4px 0;
+}
+
+.usage-analytics-bar-slot {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: flex-end;
+    gap: 4px;
+    min-width: 0;
+    height: 100%;
+}
+
+.usage-analytics-bar {
+    min-height: 6px;
+    border-radius: 4px 4px 0 0;
+    background: linear-gradient(180deg, #0f766e 0%, #2563eb 100%);
+}
+
+.usage-analytics-bar-slot span {
+    color: #64748b;
+    font-size: 11px;
+    text-align: center;
+    overflow: hidden;
+    text-overflow: clip;
+    white-space: nowrap;
+}
+
+.usage-analytics-tab-panel {
+    padding: 12px;
+}
+
+@media (max-width: 980px) {
+    .usage-analytics-filterbar {
+        grid-template-columns: 1fr;
+    }
+
+    .usage-analytics-range {
+        width: 100%;
+        max-width: 220px;
+    }
+}
+
+@media (max-width: 720px) {
+    .usage-analytics-root {
+        padding: 8px;
+    }
+
+    .usage-analytics-bars {
+        grid-template-columns: repeat(6, minmax(28px, 1fr));
+        height: 150px;
+    }
+}
