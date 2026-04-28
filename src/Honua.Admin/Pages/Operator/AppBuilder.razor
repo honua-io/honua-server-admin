@@ -116,6 +116,24 @@
                     </article>
                 }
             </div>
+            <MudText Typo="Typo.h6" Class="mt-4">Cross-widget interactions</MudText>
+            <div class="app-builder-interactions" aria-label="Cross-widget interactions" data-testid="app-builder-interactions">
+                @foreach (var interaction in State.Draft.Interactions)
+                {
+                    var link = interaction;
+                    <div class="@InteractionClass(link)" data-testid="@($"app-builder-interaction-{link.InteractionId}")">
+                        <MudIcon Icon="@InteractionIcon(link.Event)" Size="Size.Small" Color="@(link.Enabled ? Color.Primary : Color.Default)" />
+                        <div>
+                            <strong>@link.SourceTitle</strong>
+                            <span>@($"{EventLabel(link.Event)} -> {ActionLabel(link.Action)}")</span>
+                            <small>@($"{link.TargetTitle} via {link.Binding}")</small>
+                        </div>
+                        <MudChip T="string" Size="Size.Small" Color="@(link.Enabled ? Color.Success : Color.Default)" Variant="Variant.Outlined">
+                            @(link.Enabled ? "Enabled" : "Paused")
+                        </MudChip>
+                    </div>
+                }
+            </div>
         </section>
 
         <section class="app-builder-pane" aria-label="App builder configuration">
@@ -280,6 +298,33 @@
         AppPublishChannelKind.IframeEmbed => Icons.Material.Filled.Code,
         AppPublishChannelKind.CustomDomain => Icons.Material.Filled.Language,
         _ => Icons.Material.Filled.Publish
+    };
+
+    private static string InteractionClass(AppWidgetInteraction interaction)
+        => interaction.Enabled ? "app-builder-interaction enabled" : "app-builder-interaction";
+
+    private static string InteractionIcon(AppInteractionEventKind kind) => kind switch
+    {
+        AppInteractionEventKind.MapFeatureClick => Icons.Material.Filled.TouchApp,
+        AppInteractionEventKind.FilterChanged => Icons.Material.Filled.FilterAlt,
+        AppInteractionEventKind.ListRowSelect => Icons.Material.Filled.TableRows,
+        _ => Icons.Material.Filled.SyncAlt
+    };
+
+    private static string EventLabel(AppInteractionEventKind kind) => kind switch
+    {
+        AppInteractionEventKind.MapFeatureClick => "Map feature click",
+        AppInteractionEventKind.FilterChanged => "Filter changed",
+        AppInteractionEventKind.ListRowSelect => "List row select",
+        _ => kind.ToString()
+    };
+
+    private static string ActionLabel(AppInteractionActionKind kind) => kind switch
+    {
+        AppInteractionActionKind.FilterWidget => "filter target",
+        AppInteractionActionKind.HighlightFeature => "highlight feature",
+        AppInteractionActionKind.ZoomToFeature => "zoom to feature",
+        _ => kind.ToString()
     };
 
     private static Color ChannelColor(AppPublishChannel channel)

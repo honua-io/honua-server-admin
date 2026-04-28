@@ -41,6 +41,14 @@ public sealed class AppBuilderState
             var hasWidgets = Draft.Widgets.Count > 0;
             var dataBoundWidgets = Draft.Widgets.Where(widget => WidgetRequiresBinding(widget.Kind)).ToArray();
             var allBindings = dataBoundWidgets.All(widget => !string.IsNullOrWhiteSpace(widget.DataBinding));
+            var widgetIds = Draft.Widgets.Select(widget => widget.WidgetId).ToHashSet(StringComparer.Ordinal);
+            var interactionsReferenceWidgets = Draft.Interactions.All(interaction =>
+                widgetIds.Contains(interaction.SourceWidgetId) && widgetIds.Contains(interaction.TargetWidgetId));
+            var interactionMessage = Draft.Interactions.Count == 0
+                ? "No cross-widget interactions configured."
+                : interactionsReferenceWidgets
+                    ? $"{Draft.Interactions.Count} cross-widget interaction(s) configured."
+                    : "Interaction source and target widgets must remain on the canvas.";
 
             return
             [
@@ -71,6 +79,13 @@ public sealed class AppBuilderState
                     Label = "Responsive breakpoints",
                     Passed = SelectedTemplate?.Breakpoints.Count > 0,
                     Message = SelectedTemplate is null ? "Select a template." : string.Join(", ", SelectedTemplate.Breakpoints)
+                },
+                new AppValidationCheck
+                {
+                    Key = "interactions",
+                    Label = "Cross-widget interactions",
+                    Passed = interactionsReferenceWidgets,
+                    Message = interactionMessage
                 }
             ];
         }
@@ -272,10 +287,16 @@ public sealed class AppBuilderState
             return;
         }
 
+        var widgets = Draft.Widgets
+            .Where(widget => !string.Equals(widget.WidgetId, widgetId, StringComparison.Ordinal))
+            .ToArray();
+        var widgetIds = widgets.Select(widget => widget.WidgetId).ToHashSet(StringComparer.Ordinal);
+
         Draft = Draft with
         {
-            Widgets = Draft.Widgets
-                .Where(widget => !string.Equals(widget.WidgetId, widgetId, StringComparison.Ordinal))
+            Widgets = widgets,
+            Interactions = Draft.Interactions
+                .Where(interaction => widgetIds.Contains(interaction.SourceWidgetId) && widgetIds.Contains(interaction.TargetWidgetId))
                 .ToArray()
         };
         ResetTransientPublishState();

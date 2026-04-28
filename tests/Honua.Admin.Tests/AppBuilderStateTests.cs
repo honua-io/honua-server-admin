@@ -27,6 +27,8 @@ public sealed class AppBuilderStateTests
         Assert.True(state.Quota.CanPublishMore);
         Assert.Equal("Harbor operations dashboard", state.Draft.Name);
         Assert.NotEmpty(state.Draft.Widgets);
+        Assert.Equal(2, state.Draft.Interactions.Count);
+        Assert.Contains(state.ValidationChecks, check => check.Key == "interactions" && check.Passed);
         Assert.False(state.HasBlockingValidation);
     }
 
@@ -101,6 +103,51 @@ public sealed class AppBuilderStateTests
 
         var added = Assert.Single(state.Draft.Widgets, widget => existing.All(item => item.WidgetId != widget.WidgetId));
         Assert.DoesNotContain(existing, widget => Overlaps(widget, added));
+    }
+
+    [Fact]
+    public async Task RemoveWidget_removes_related_interactions()
+    {
+        var state = new AppBuilderState(new StubAppBuilderClient());
+        await state.LoadAsync();
+
+        state.RemoveWidget("widget-map");
+
+        Assert.DoesNotContain(state.Draft.Widgets, widget => widget.WidgetId == "widget-map");
+        Assert.Empty(state.Draft.Interactions);
+        Assert.Contains(state.ValidationChecks, check => check.Key == "interactions" && check.Passed);
+    }
+
+    [Fact]
+    public async Task Validation_flags_interactions_that_reference_missing_widgets()
+    {
+        var snapshot = Snapshot("Interaction dashboard");
+        var state = new AppBuilderState(new FixedAppBuilderClient(snapshot with
+        {
+            Draft = snapshot.Draft with
+            {
+                Interactions =
+                [
+                    new AppWidgetInteraction
+                    {
+                        InteractionId = "orphan-link",
+                        SourceWidgetId = "missing-widget",
+                        SourceTitle = "Missing map",
+                        Event = AppInteractionEventKind.MapFeatureClick,
+                        TargetWidgetId = "widget-map",
+                        TargetTitle = "Map",
+                        Action = AppInteractionActionKind.FilterWidget,
+                        Binding = "asset_id",
+                    },
+                ],
+            },
+        }));
+        await state.LoadAsync();
+
+        var interactions = Assert.Single(state.ValidationChecks, check => check.Key == "interactions");
+
+        Assert.False(interactions.Passed);
+        Assert.True(state.HasBlockingValidation);
     }
 
     [Fact]
@@ -522,6 +569,7 @@ public sealed class AppBuilderStateTests
                 [
                     new AppWidgetInstance
                     {
+                        WidgetId = "widget-map",
                         Kind = AppWidgetKind.Map,
                         Title = "Map",
                         DataBinding = "Assets",

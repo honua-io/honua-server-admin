@@ -32,6 +32,20 @@ public enum AppWidgetKind
     RichText
 }
 
+public enum AppInteractionEventKind
+{
+    MapFeatureClick,
+    FilterChanged,
+    ListRowSelect
+}
+
+public enum AppInteractionActionKind
+{
+    FilterWidget,
+    HighlightFeature,
+    ZoomToFeature
+}
+
 public sealed record AppBuilderSnapshot
 {
     public IReadOnlyList<AppTemplate> Templates { get; init; } = Array.Empty<AppTemplate>();
@@ -88,6 +102,7 @@ public sealed record AppDraft
     public int AutoRefreshSeconds { get; init; } = 60;
     public bool IsPublished { get; init; }
     public IReadOnlyList<AppWidgetInstance> Widgets { get; init; } = Array.Empty<AppWidgetInstance>();
+    public IReadOnlyList<AppWidgetInteraction> Interactions { get; init; } = Array.Empty<AppWidgetInteraction>();
 }
 
 public sealed record AppWidgetInstance
@@ -100,6 +115,19 @@ public sealed record AppWidgetInstance
     public int Row { get; init; }
     public int Width { get; init; } = 4;
     public int Height { get; init; } = 2;
+}
+
+public sealed record AppWidgetInteraction
+{
+    public string InteractionId { get; init; } = Guid.NewGuid().ToString("n");
+    public string SourceWidgetId { get; init; } = string.Empty;
+    public string SourceTitle { get; init; } = string.Empty;
+    public AppInteractionEventKind Event { get; init; }
+    public string TargetWidgetId { get; init; } = string.Empty;
+    public string TargetTitle { get; init; } = string.Empty;
+    public AppInteractionActionKind Action { get; init; }
+    public string Binding { get; init; } = string.Empty;
+    public bool Enabled { get; init; } = true;
 }
 
 public sealed record AppValidationCheck
