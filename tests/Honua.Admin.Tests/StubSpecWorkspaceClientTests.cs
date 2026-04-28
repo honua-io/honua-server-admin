@@ -124,6 +124,22 @@ public sealed class StubSpecWorkspaceClientTests
     }
 
     [Fact]
+    public async Task PlanAsync_treats_subtraction_after_parameter_reference_as_expression_text()
+    {
+        var first = BuildFilterDocument("10", "@parcels.acreage>$limit-5", "limit");
+        var second = BuildFilterDocument("20", "@parcels.acreage>$limit-5", "limit");
+
+        var diagnostics = _client.Validate(first);
+        var firstPlan = await _client.PlanAsync(first, CancellationToken.None);
+        var secondPlan = await _client.PlanAsync(second, CancellationToken.None);
+
+        Assert.DoesNotContain(diagnostics, diagnostic => diagnostic.Code == "unknown-parameter");
+        Assert.NotEqual(
+            Assert.Single(firstPlan.Nodes, node => node.Op == "filter").ContentHash,
+            Assert.Single(secondPlan.Nodes, node => node.Op == "filter").ContentHash);
+    }
+
+    [Fact]
     public async Task PlanAndApply_expose_parameter_bindings_for_app_scaffolds()
     {
         var document = BuildAppScaffoldDocument() with
@@ -310,20 +326,24 @@ public sealed class StubSpecWorkspaceClientTests
         Output = new SpecOutput { Kind = SpecOutputKind.AppScaffold, Target = "preview" }
     };
 
-    private static SpecDocument BuildFilterDocument(string countyDefault) => new()
-    {
-        Sources = new[] { new SpecSourceEntry("parcels", "parcels", "v1") },
-        Parameters = new[] { new SpecParameterEntry("county", "string", countyDefault) },
-        Compute = new[]
+    private static SpecDocument BuildFilterDocument(
+        string defaultValue,
+        string where = "@parcels.county=$county",
+        string parameterName = "county")
+        => new()
         {
-            new SpecComputeStep(
-                "filter",
-                new[] { "parcels" },
-                new Dictionary<string, string>(StringComparer.Ordinal)
-                {
-                    ["where"] = "@parcels.county=$county"
-                })
-        },
-        Output = new SpecOutput { Kind = SpecOutputKind.Analysis, Target = "preview" }
-    };
+            Sources = new[] { new SpecSourceEntry("parcels", "parcels", "v1") },
+            Parameters = new[] { new SpecParameterEntry(parameterName, "string", defaultValue) },
+            Compute = new[]
+            {
+                new SpecComputeStep(
+                    "filter",
+                    new[] { "parcels" },
+                    new Dictionary<string, string>(StringComparer.Ordinal)
+                    {
+                        ["where"] = where
+                    })
+            },
+            Output = new SpecOutput { Kind = SpecOutputKind.Analysis, Target = "preview" }
+        };
 }

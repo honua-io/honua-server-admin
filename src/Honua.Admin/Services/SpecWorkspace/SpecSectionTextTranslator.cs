@@ -175,13 +175,13 @@ internal static class SpecSectionTextTranslator
                 continue;
             }
 
-            if (!Regex.IsMatch(entry.Name, @"^[a-zA-Z_][\w-]*$"))
+            if (!Regex.IsMatch(entry.Name, @"^[a-zA-Z_]\w*$"))
             {
                 diagnostics.Add(new ValidationDiagnostic(
                     SpecSectionId.Parameters,
                     ValidationSeverity.Red,
                     "invalid-parameter-name",
-                    $"Parameter name `{entry.Name}` must start with a letter or underscore.",
+                    $"Parameter name `{entry.Name}` must use letters, numbers, or underscores and start with a letter or underscore.",
                     entry.Name));
                 continue;
             }
@@ -210,7 +210,7 @@ internal static class SpecSectionTextTranslator
     {
         entry = new SpecParameterEntry(string.Empty, "string");
 
-        if (Regex.IsMatch(line, @"^\$?[a-zA-Z_][\w-]*\s*:")
+        if (Regex.IsMatch(line, @"^\$?[a-zA-Z_]\w*\s*:")
             && TryParseColonParameterLine(line, diagnostics, out entry))
         {
             return true;

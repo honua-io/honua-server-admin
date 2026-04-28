@@ -1141,7 +1141,7 @@ public sealed partial class StubSpecWorkspaceClient : ISpecWorkspaceClient
     private static string ResolveParameterReferences(
         string value,
         IReadOnlyDictionary<string, SpecParameterEntry> parameters) =>
-        Regex.Replace(value, @"\$([a-zA-Z_][\w-]*)", match =>
+        Regex.Replace(value, @"\$([a-zA-Z_]\w*)", match =>
         {
             var name = match.Groups[1].Value;
             if (!parameters.TryGetValue(name, out var parameter))
@@ -1154,7 +1154,7 @@ public sealed partial class StubSpecWorkspaceClient : ISpecWorkspaceClient
 
     private static IReadOnlyList<string> ExtractParameterReferences(IEnumerable<string> values) =>
         values
-            .SelectMany(value => Regex.Matches(value, @"\$([a-zA-Z_][\w-]*)").Select(match => match.Groups[1].Value))
+            .SelectMany(value => Regex.Matches(value, @"\$([a-zA-Z_]\w*)").Select(match => match.Groups[1].Value))
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToArray();
 
