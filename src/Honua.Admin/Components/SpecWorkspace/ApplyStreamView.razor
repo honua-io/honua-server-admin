@@ -21,9 +21,21 @@
                         <MudText Typo="Typo.caption" Color="Color.Secondary">@entry.Latest.Status</MudText>
                     </MudStack>
                     <MudSpacer />
+                    @if (!string.IsNullOrWhiteSpace(entry.Latest.CacheKey))
+                    {
+                        <MudChip T="string" Size="Size.Small" Color="Color.Info" Variant="Variant.Outlined" data-testid="apply-cache-key">
+                            @entry.Latest.CacheKey
+                        </MudChip>
+                    }
                     @if (entry.Latest.Status == ApplyNodeStatus.CacheHit)
                     {
                         <MudChip T="string" Size="Size.Small" Color="Color.Secondary" Variant="Variant.Outlined" data-testid="apply-cache-chip">cache hit</MudChip>
+                    }
+                    @if (entry.Latest.MaterializedResource is not null)
+                    {
+                        <MudChip T="string" Size="Size.Small" Color="Color.Success" Variant="Variant.Outlined" data-testid="apply-materialized-resource">
+                            @MaterializationLabel(entry.Latest.MaterializedResource)
+                        </MudChip>
                     }
                 </MudStack>
             </MudPaper>
@@ -86,5 +98,16 @@
         ApplyNodeStatus.Cancelled => Color.Warning,
         ApplyNodeStatus.Failed => Color.Error,
         _ => Color.Default
+    };
+
+    private static string MaterializationLabel(MaterializedResource resource) =>
+        $"{ResourceKindLabel(resource.Kind)} {resource.Version}";
+
+    private static string ResourceKindLabel(PlanMaterializationKind kind) => kind switch
+    {
+        PlanMaterializationKind.DurableDataset => "durable dataset",
+        PlanMaterializationKind.DurableService => "durable service",
+        PlanMaterializationKind.DurableApp => "durable app",
+        _ => "resource"
     };
 }

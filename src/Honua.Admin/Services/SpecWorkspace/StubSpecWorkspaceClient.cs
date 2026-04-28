@@ -5,6 +5,8 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.CompilerServices;
+using System.Security.Cryptography;
+using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using System.Threading;
@@ -303,6 +305,7 @@ public sealed partial class StubSpecWorkspaceClient : ISpecWorkspaceClient
 
         var nodes = new List<PlanNode>();
         var warnings = new List<PlanWarning>();
+        var nodeHashes = new Dictionary<string, string>(StringComparer.Ordinal);
         var depth = 0;
         foreach (var source in document.Sources)
         {
@@ -319,6 +322,8 @@ public sealed partial class StubSpecWorkspaceClient : ISpecWorkspaceClient
                 warnings.Add(new PlanWarning(source.Id, PlanWarningSeverity.Yellow, $"source '{source.Id}' is not pinned; results may drift"));
             }
 
+            var sourceHash = BuildContentHash("source", dataset.Id, source.Pin ?? "mutable");
+            nodeHashes[source.Id] = sourceHash;
             nodes.Add(new PlanNode
             {
                 Id = source.Id,
@@ -327,7 +332,10 @@ public sealed partial class StubSpecWorkspaceClient : ISpecWorkspaceClient
                 EstimatedRows = dataset.EstimatedRows,
                 EstimatedBytes = dataset.EstimatedRows * 128,
                 EstimatedMillis = 50,
-                Warnings = nodeWarnings
+                Warnings = nodeWarnings,
+                ContentHash = sourceHash,
+                CachePolicy = PlanCachePolicy.MetadataOnly,
+                Materialization = PlanMaterializationKind.Ephemeral
             });
         }
 
@@ -347,30 +355,75 @@ public sealed partial class StubSpecWorkspaceClient : ISpecWorkspaceClient
                 _ => inputRows
             };
 
+            var nodeId = $"{step.Op}-{depth}";
+            var inputHashes = step.Inputs
+                .OrderBy(input => input, StringComparer.Ordinal)
+                .Select(input => ResolveNodeHash(nodeHashes, input));
+            var computeHash = BuildContentHash(
+                "compute",
+                step.Op,
+                string.Join(",", step.Inputs.OrderBy(input => input, StringComparer.Ordinal)),
+                string.Join(",", inputHashes),
+                string.Join(",", step.Args.OrderBy(kv => kv.Key, StringComparer.Ordinal).Select(kv => $"{kv.Key}={kv.Value}")));
+            nodeHashes[nodeId] = computeHash;
             nodes.Add(new PlanNode
             {
-                Id = $"{step.Op}-{depth}",
+                Id = nodeId,
                 Op = step.Op,
                 Inputs = step.Inputs,
                 Depth = depth,
                 EstimatedRows = outRows,
                 EstimatedBytes = outRows * 128,
-                EstimatedMillis = step.Op == "join" ? 1200 : 300
+                EstimatedMillis = step.Op == "join" ? 1200 : 300,
+                ContentHash = computeHash,
+                CachePolicy = PlanCachePolicy.ContentHash,
+                Materialization = PlanMaterializationKind.Ephemeral
             });
             depth++;
         }
 
         foreach (var layer in document.Map.Layers)
         {
+            var mapId = $"map-{layer.Source}";
+            var mapHash = BuildContentHash("map", layer.Source, ResolveNodeHash(nodeHashes, layer.Source), layer.Symbology);
+            nodeHashes[mapId] = mapHash;
             nodes.Add(new PlanNode
             {
-                Id = $"map-{layer.Source}",
+                Id = mapId,
                 Op = "map",
                 Inputs = new[] { layer.Source },
                 Depth = depth,
                 EstimatedRows = 0,
                 EstimatedBytes = 0,
-                EstimatedMillis = 80
+                EstimatedMillis = 80,
+                ContentHash = mapHash,
+                CachePolicy = PlanCachePolicy.ContentHash,
+                Materialization = PlanMaterializationKind.PreviewOnly
+            });
+        }
+
+        var effectiveOutputKind = ResolveEffectiveOutputKind(document);
+        if (effectiveOutputKind != SpecOutputKind.None)
+        {
+            var outputId = $"output-{effectiveOutputKind.ToString().ToLowerInvariant()}";
+            var outputInputs = ResolveOutputInputs(document, effectiveOutputKind);
+            var outputHash = BuildContentHash(
+                "output",
+                effectiveOutputKind.ToString(),
+                document.Output.Target ?? "preview",
+                string.Join(",", outputInputs.Select(input => ResolveNodeHash(nodeHashes, input))));
+            nodes.Add(new PlanNode
+            {
+                Id = outputId,
+                Op = "output",
+                Inputs = outputInputs,
+                Depth = depth + 1,
+                EstimatedRows = 0,
+                EstimatedBytes = 0,
+                EstimatedMillis = effectiveOutputKind == SpecOutputKind.AppScaffold ? 120 : 25,
+                ContentHash = outputHash,
+                CachePolicy = effectiveOutputKind == SpecOutputKind.AppScaffold ? PlanCachePolicy.None : PlanCachePolicy.ContentHash,
+                Materialization = MaterializationForOutput(effectiveOutputKind)
             });
         }
 
@@ -402,7 +455,7 @@ public sealed partial class StubSpecWorkspaceClient : ISpecWorkspaceClient
 
         yield return new ApplyEvent { Kind = ApplyEventKind.Started, JobId = jobId };
 
-        var cacheIndex = 0;
+        var contentHashIndex = 0;
         foreach (var node in plan.Nodes)
         {
             if (IsCancelled(jobId) || cancellationToken.IsCancellationRequested)
@@ -416,14 +469,15 @@ public sealed partial class StubSpecWorkspaceClient : ISpecWorkspaceClient
                 yield break;
             }
 
-            var status = cacheIndex == 0 ? ApplyNodeStatus.Running : ApplyNodeStatus.Running;
+            var cacheKey = node.CachePolicy == PlanCachePolicy.ContentHash ? node.ContentHash : null;
             yield return new ApplyEvent
             {
                 Kind = ApplyEventKind.NodeUpdate,
                 JobId = jobId,
                 NodeId = node.Id,
                 NodeOp = node.Op,
-                Status = status
+                Status = ApplyNodeStatus.Running,
+                CacheKey = cacheKey
             };
 
             var delayCancelled = false;
@@ -447,16 +501,24 @@ public sealed partial class StubSpecWorkspaceClient : ISpecWorkspaceClient
                 yield break;
             }
 
-            var finalStatus = cacheIndex % 3 == 2 ? ApplyNodeStatus.CacheHit : ApplyNodeStatus.Completed;
+            var finalStatus = node.CachePolicy == PlanCachePolicy.ContentHash && contentHashIndex % 3 == 2
+                ? ApplyNodeStatus.CacheHit
+                : ApplyNodeStatus.Completed;
             yield return new ApplyEvent
             {
                 Kind = ApplyEventKind.NodeUpdate,
                 JobId = jobId,
                 NodeId = node.Id,
                 NodeOp = node.Op,
-                Status = finalStatus
+                Status = finalStatus,
+                CacheKey = cacheKey,
+                MaterializedResource = BuildMaterializedResource(node)
             };
-            cacheIndex++;
+
+            if (node.CachePolicy == PlanCachePolicy.ContentHash)
+            {
+                contentHashIndex++;
+            }
         }
 
         yield return new ApplyEvent
@@ -916,9 +978,111 @@ public sealed partial class StubSpecWorkspaceClient : ISpecWorkspaceClient
             .ToArray();
     }
 
+    private static IReadOnlyList<string> ResolveOutputInputs(SpecDocument document, SpecOutputKind outputKind)
+    {
+        return outputKind switch
+        {
+            SpecOutputKind.Map when document.Map.Layers.Count > 0 => document.Map.Layers
+                .Select(layer => $"map-{layer.Source}")
+                .ToArray(),
+            SpecOutputKind.AppScaffold => ResolveAppScaffoldInputs(document),
+            _ => ResolveAnalysisInputs(document)
+        };
+    }
+
+    private static IReadOnlyList<string> ResolveAnalysisInputs(SpecDocument document)
+    {
+        if (document.Compute.Count > 0)
+        {
+            var last = document.Compute[^1];
+            return new[] { $"{last.Op}-{document.Compute.Count}" };
+        }
+
+        return document.Sources.Select(source => source.Id).ToArray();
+    }
+
+    private static IReadOnlyList<string> ResolveAppScaffoldInputs(SpecDocument document)
+    {
+        var inputs = new List<string>();
+        if (document.Compute.Count > 0)
+        {
+            var last = document.Compute[^1];
+            inputs.Add($"{last.Op}-{document.Compute.Count}");
+        }
+
+        inputs.AddRange(document.Map.Layers.Select(layer => $"map-{layer.Source}"));
+        if (inputs.Count == 0)
+        {
+            inputs.AddRange(document.Sources.Select(source => source.Id));
+        }
+
+        return inputs;
+    }
+
+    private static SpecOutputKind ResolveEffectiveOutputKind(SpecDocument document)
+    {
+        if (document.Output.Kind == SpecOutputKind.AppScaffold)
+        {
+            return SpecOutputKind.AppScaffold;
+        }
+
+        if (document.Map.Layers.Count > 0)
+        {
+            return SpecOutputKind.Map;
+        }
+
+        if (document.Compute.Any(step => step.Op == "aggregate") || document.Output.Kind == SpecOutputKind.Analysis)
+        {
+            return SpecOutputKind.Analysis;
+        }
+
+        return SpecOutputKind.None;
+    }
+
+    private static PlanMaterializationKind MaterializationForOutput(SpecOutputKind kind) => kind switch
+    {
+        SpecOutputKind.Map => PlanMaterializationKind.PreviewOnly,
+        SpecOutputKind.AppScaffold => PlanMaterializationKind.DurableApp,
+        _ => PlanMaterializationKind.Ephemeral
+    };
+
+    private static MaterializedResource? BuildMaterializedResource(PlanNode node)
+    {
+        if (node.Materialization is not (PlanMaterializationKind.DurableApp or PlanMaterializationKind.DurableDataset or PlanMaterializationKind.DurableService))
+        {
+            return null;
+        }
+
+        var version = node.ContentHash ?? BuildContentHash(node.Id, node.Op);
+        return new MaterializedResource(node.Id, node.Materialization, version);
+    }
+
+    private static string BuildContentHash(params string?[] parts)
+    {
+        var input = string.Join("|", parts.Select(part => part ?? string.Empty));
+        var hash = SHA256.HashData(Encoding.UTF8.GetBytes(input));
+        return "sha256:" + Convert.ToHexString(hash)[..12].ToLowerInvariant();
+    }
+
+    private static string ResolveNodeHash(IReadOnlyDictionary<string, string> nodeHashes, string nodeId) =>
+        nodeHashes.TryGetValue(nodeId, out var hash) ? hash : nodeId;
+
     private ApplyPayload BuildPayload(SpecDocument document)
     {
-        if (document.Map.Layers.Count > 0)
+        var effectiveOutputKind = ResolveEffectiveOutputKind(document);
+        if (effectiveOutputKind == SpecOutputKind.AppScaffold)
+        {
+            return new ApplyPayload
+            {
+                Kind = SpecOutputKind.AppScaffold,
+                AppScaffold = new AppScaffold(
+                    "Preview App",
+                    new[] { new AppScaffoldParameter("date", "date", DateTime.UtcNow.ToString("O", CultureInfo.InvariantCulture)) },
+                    "single-column")
+            };
+        }
+
+        if (effectiveOutputKind == SpecOutputKind.Map)
         {
             var features = new List<MapFeature>();
             foreach (var layer in document.Map.Layers)
@@ -937,7 +1101,7 @@ public sealed partial class StubSpecWorkspaceClient : ISpecWorkspaceClient
             };
         }
 
-        if (document.Compute.Any(c => c.Op == "aggregate"))
+        if (effectiveOutputKind == SpecOutputKind.Analysis && document.Compute.Any(c => c.Op == "aggregate"))
         {
             var step = document.Compute.First(c => c.Op == "aggregate");
             var groupBy = step.Args.TryGetValue("by", out var by) ? by : "group";
@@ -968,7 +1132,7 @@ public sealed partial class StubSpecWorkspaceClient : ISpecWorkspaceClient
             };
         }
 
-        if (document.Output.Kind == SpecOutputKind.Analysis)
+        if (effectiveOutputKind == SpecOutputKind.Analysis)
         {
             IReadOnlyList<IReadOnlyDictionary<string, string>> rows = new[]
             {
@@ -989,18 +1153,6 @@ public sealed partial class StubSpecWorkspaceClient : ISpecWorkspaceClient
                 Kind = SpecOutputKind.Analysis,
                 TableColumns = new[] { "id", "status" },
                 TableRows = rows
-            };
-        }
-
-        if (document.Output.Kind == SpecOutputKind.AppScaffold)
-        {
-            return new ApplyPayload
-            {
-                Kind = SpecOutputKind.AppScaffold,
-                AppScaffold = new AppScaffold(
-                    "Preview App",
-                    new[] { new AppScaffoldParameter("date", "date", DateTime.UtcNow.ToString("O", CultureInfo.InvariantCulture)) },
-                    "single-column")
             };
         }
 
