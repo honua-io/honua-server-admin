@@ -44,6 +44,7 @@ public sealed class SpecWorkspaceState : IAsyncDisposable
     private string? _activeJobId;
     private Task? _applyTask;
     private Task? _planTask;
+    private IReadOnlyDictionary<SpecSectionId, string>? _planBaselineTexts;
     private int _specRevision;
     private bool _disposed;
     private bool _rehydrated;
@@ -88,6 +89,10 @@ public sealed class SpecWorkspaceState : IAsyncDisposable
     public SpecSectionId ActiveDslSection { get; private set; } = SpecSectionId.Compute;
 
     public IReadOnlyList<ValidationDiagnostic> Diagnostics => _diagnostics;
+
+    public IReadOnlyList<SpecSectionChange> DraftChanges => BuildDraftChanges();
+
+    public bool HasDraftChanges => DraftChanges.Any(change => change.Status is SpecChangeStatus.Added or SpecChangeStatus.Modified or SpecChangeStatus.Removed);
 
     public event Action? OnChanged;
 
@@ -331,6 +336,12 @@ public sealed class SpecWorkspaceState : IAsyncDisposable
         }
 
         PlanResult = result;
+        if (!result.Failed)
+        {
+            _planBaselineTexts = Enum.GetValues<SpecSectionId>()
+                .ToDictionary(section => section, section => NormalizeDiffText(GetSectionText(section)));
+        }
+
         Status = result.Failed ? WorkspaceStatus.Error : WorkspaceStatus.Idle;
         _applyEvents.Clear();
         _telemetry.RecordLatency("spec_plan_completed", watch.ElapsedMilliseconds, new Dictionary<string, object?>
@@ -621,6 +632,7 @@ public sealed class SpecWorkspaceState : IAsyncDisposable
             _sectionSummaries.Clear();
             _editorDiagnosticsBySection.Clear();
             PlanResult = null;
+            _planBaselineTexts = null;
             Status = WorkspaceStatus.Idle;
             PromptDraft = string.Empty;
             IsJsonView = false;
@@ -890,6 +902,76 @@ public sealed class SpecWorkspaceState : IAsyncDisposable
         PlanResult = null;
         _applyEvents.Clear();
     }
+
+    private IReadOnlyList<SpecSectionChange> BuildDraftChanges()
+    {
+        return Enum.GetValues<SpecSectionId>()
+            .Select(section =>
+            {
+                var current = NormalizeDiffText(GetSectionText(section));
+                var planned = _planBaselineTexts is not null && _planBaselineTexts.TryGetValue(section, out var text)
+                    ? text
+                    : string.Empty;
+                return new SpecSectionChange
+                {
+                    Section = section,
+                    Status = ResolveChangeStatus(planned, current),
+                    CurrentSummary = DescribeSection(section, current),
+                    BaselineSummary = DescribeSection(section, planned)
+                };
+            })
+            .ToArray();
+    }
+
+    private static SpecChangeStatus ResolveChangeStatus(string baseline, string current)
+    {
+        if (baseline.Length == 0 && current.Length == 0)
+        {
+            return SpecChangeStatus.Empty;
+        }
+
+        if (baseline.Length == 0)
+        {
+            return SpecChangeStatus.Added;
+        }
+
+        if (current.Length == 0)
+        {
+            return SpecChangeStatus.Removed;
+        }
+
+        return string.Equals(baseline, current, StringComparison.Ordinal)
+            ? SpecChangeStatus.Unchanged
+            : SpecChangeStatus.Modified;
+    }
+
+    private static string DescribeSection(SpecSectionId section, string text)
+    {
+        if (text.Length == 0)
+        {
+            return "empty";
+        }
+
+        var lineCount = text.Split('\n', StringSplitOptions.RemoveEmptyEntries).Length;
+        var noun = section switch
+        {
+            SpecSectionId.Sources => "source",
+            SpecSectionId.Scope => "scope field",
+            SpecSectionId.Compute => "compute step",
+            SpecSectionId.Map => "map layer",
+            SpecSectionId.Output => "output field",
+            _ => "line"
+        };
+
+        return $"{lineCount} {noun}{(lineCount == 1 ? string.Empty : "s")}";
+    }
+
+    private static string NormalizeDiffText(string? text)
+        => string.Join(
+            "\n",
+            (text ?? string.Empty)
+                .Replace("\r\n", "\n", StringComparison.Ordinal)
+                .Split('\n', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries));
 
     private static string StorageKeyFor(string principalId) => $"{StorageKeyPrefix}draft:{principalId}";
 

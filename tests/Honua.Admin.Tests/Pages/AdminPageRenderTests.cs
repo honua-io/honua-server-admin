@@ -284,6 +284,9 @@ public sealed class AdminPageRenderTests : TestContext
         cut.WaitForAssertion(() =>
         {
             cut.Markup.MarkupMatchesContaining("1/5 drafted");
+            cut.Markup.MarkupMatchesContaining("Draft changes");
+            var sourceChange = cut.Find("[data-testid='spec-change-Sources']");
+            Assert.Equal("Added", sourceChange.GetAttribute("data-status"));
         });
     }
 

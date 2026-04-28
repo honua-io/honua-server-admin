@@ -1,0 +1,60 @@
+@using Honua.Admin.Models.SpecWorkspace
+
+<div class="spec-change-set" data-testid="spec-change-set">
+    <MudStack Spacing="1">
+        <MudStack Row AlignItems="AlignItems.Center" Spacing="2">
+            <MudText Typo="Typo.subtitle2">Draft changes</MudText>
+            <MudSpacer />
+            <MudChip T="string" Size="Size.Small" Color="@SummaryColor" Variant="Variant.Outlined" data-testid="spec-change-count">
+                @($"{ChangedCount} changed")
+            </MudChip>
+        </MudStack>
+        <MudStack Row Wrap="Wrap.Wrap" Spacing="1">
+            @foreach (var change in Changes)
+            {
+                <MudChip T="string"
+                         Size="Size.Small"
+                         Color="@ColorFor(change.Status)"
+                         Variant="@VariantFor(change.Status)"
+                         data-testid="@($"spec-change-{change.Section}")"
+                         data-status="@change.Status">
+                    @($"{change.Section.ToString().ToLowerInvariant()}: {LabelFor(change)}")
+                </MudChip>
+            }
+        </MudStack>
+    </MudStack>
+</div>
+
+@code {
+    [Parameter] public IReadOnlyList<SpecSectionChange> Changes { get; set; } = Array.Empty<SpecSectionChange>();
+
+    private int ChangedCount => Changes.Count(change => change.Status is SpecChangeStatus.Added or SpecChangeStatus.Modified or SpecChangeStatus.Removed);
+
+    private Color SummaryColor => ChangedCount == 0 ? Color.Default : Color.Warning;
+
+    private static Color ColorFor(SpecChangeStatus status) => status switch
+    {
+        SpecChangeStatus.Added => Color.Success,
+        SpecChangeStatus.Modified => Color.Warning,
+        SpecChangeStatus.Removed => Color.Error,
+        SpecChangeStatus.Unchanged => Color.Default,
+        SpecChangeStatus.Empty => Color.Default,
+        _ => Color.Default
+    };
+
+    private static Variant VariantFor(SpecChangeStatus status) => status switch
+    {
+        SpecChangeStatus.Empty => Variant.Text,
+        _ => Variant.Outlined
+    };
+
+    private static string LabelFor(SpecSectionChange change) => change.Status switch
+    {
+        SpecChangeStatus.Empty => "empty",
+        SpecChangeStatus.Unchanged => "unchanged",
+        SpecChangeStatus.Added => $"added ({change.CurrentSummary})",
+        SpecChangeStatus.Modified => $"modified ({change.BaselineSummary} -> {change.CurrentSummary})",
+        SpecChangeStatus.Removed => $"removed ({change.BaselineSummary})",
+        _ => change.Status.ToString().ToLowerInvariant()
+    };
+}

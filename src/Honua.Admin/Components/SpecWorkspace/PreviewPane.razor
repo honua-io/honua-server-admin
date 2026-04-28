@@ -13,6 +13,8 @@
             <MudChip T="string" Color="@StatusColor(State.Status)" Variant="Variant.Outlined" Size="Size.Small" data-testid="preview-status">@State.Status</MudChip>
         </MudStack>
 
+        <SpecChangeSetView Changes="State.DraftChanges" />
+
         @if (_payload is { Kind: SpecOutputKind.Map } mapPayload)
         {
             <MapPreview Features="mapPayload.MapFeatures" />
