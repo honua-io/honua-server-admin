@@ -44,6 +44,7 @@ public sealed class SpecWorkspaceState : IAsyncDisposable
     private string? _activeJobId;
     private Task? _applyTask;
     private Task? _planTask;
+    private IReadOnlyDictionary<SpecSectionId, string>? _planBaselineTexts;
     private int _specRevision;
     private bool _disposed;
     private bool _rehydrated;
@@ -88,6 +89,10 @@ public sealed class SpecWorkspaceState : IAsyncDisposable
     public SpecSectionId ActiveDslSection { get; private set; } = SpecSectionId.Compute;
 
     public IReadOnlyList<ValidationDiagnostic> Diagnostics => _diagnostics;
+
+    public IReadOnlyList<SpecSectionChange> DraftChanges => BuildDraftChanges();
+
+    public bool HasDraftChanges => DraftChanges.Any(change => change.Status is SpecChangeStatus.Added or SpecChangeStatus.Modified or SpecChangeStatus.Removed);
 
     public event Action? OnChanged;
 
@@ -331,6 +336,12 @@ public sealed class SpecWorkspaceState : IAsyncDisposable
         }
 
         PlanResult = result;
+        if (!result.Failed)
+        {
+            _planBaselineTexts = Enum.GetValues<SpecSectionId>()
+                .ToDictionary(section => section, section => NormalizeDiffText(GetSectionText(section)));
+        }
+
         Status = result.Failed ? WorkspaceStatus.Error : WorkspaceStatus.Idle;
         _applyEvents.Clear();
         _telemetry.RecordLatency("spec_plan_completed", watch.ElapsedMilliseconds, new Dictionary<string, object?>
@@ -338,6 +349,7 @@ public sealed class SpecWorkspaceState : IAsyncDisposable
             ["node_count"] = result.Nodes.Count,
             ["failed"] = result.Failed
         });
+        await PersistAsync(cancellationToken).ConfigureAwait(false);
         Notify();
     }
 
@@ -621,6 +633,7 @@ public sealed class SpecWorkspaceState : IAsyncDisposable
             _sectionSummaries.Clear();
             _editorDiagnosticsBySection.Clear();
             PlanResult = null;
+            _planBaselineTexts = null;
             Status = WorkspaceStatus.Idle;
             PromptDraft = string.Empty;
             IsJsonView = false;
@@ -724,6 +737,7 @@ public sealed class SpecWorkspaceState : IAsyncDisposable
 
         if (string.IsNullOrWhiteSpace(payload))
         {
+            _planBaselineTexts = null;
             SyncSectionTextsFromSpec();
             return;
         }
@@ -733,6 +747,7 @@ public sealed class SpecWorkspaceState : IAsyncDisposable
             var snapshot = JsonSerializer.Deserialize(payload, SpecWorkspaceJsonContext.Default.WorkspaceSnapshot);
             if (snapshot is null)
             {
+                _planBaselineTexts = null;
                 SyncSectionTextsFromSpec();
                 return;
             }
@@ -761,6 +776,8 @@ public sealed class SpecWorkspaceState : IAsyncDisposable
                 SyncSectionTextsFromSpec();
             }
 
+            _planBaselineTexts = RestoreSectionTextMap(snapshot.PlanBaselineTexts);
+
             _telemetry.Record("spec_draft_rehydrated", new Dictionary<string, object?>
             {
                 ["conversation_turns"] = _conversation.Count
@@ -769,6 +786,7 @@ public sealed class SpecWorkspaceState : IAsyncDisposable
         catch (JsonException)
         {
             await _storage.RemoveAsync(StorageKeyFor(PrincipalId), cancellationToken).ConfigureAwait(false);
+            _planBaselineTexts = null;
             SyncSectionTextsFromSpec();
         }
     }
@@ -783,7 +801,8 @@ public sealed class SpecWorkspaceState : IAsyncDisposable
             Layout = Layout,
             PromptDraft = PromptDraft,
             IsJsonView = IsJsonView,
-            SectionTexts = _sectionTexts.ToDictionary(kv => kv.Key.ToString(), kv => kv.Value, StringComparer.Ordinal)
+            SectionTexts = _sectionTexts.ToDictionary(kv => kv.Key.ToString(), kv => kv.Value, StringComparer.Ordinal),
+            PlanBaselineTexts = _planBaselineTexts?.ToDictionary(kv => kv.Key.ToString(), kv => kv.Value, StringComparer.Ordinal) ?? new Dictionary<string, string>(StringComparer.Ordinal)
         };
 
         var json = JsonSerializer.Serialize(snapshot, SpecWorkspaceJsonContext.Default.WorkspaceSnapshot);
@@ -889,6 +908,95 @@ public sealed class SpecWorkspaceState : IAsyncDisposable
         _specRevision++;
         PlanResult = null;
         _applyEvents.Clear();
+    }
+
+    private IReadOnlyList<SpecSectionChange> BuildDraftChanges()
+    {
+        return Enum.GetValues<SpecSectionId>()
+            .Select(section =>
+            {
+                var current = NormalizeDiffText(GetSectionText(section));
+                var planned = _planBaselineTexts is not null && _planBaselineTexts.TryGetValue(section, out var text)
+                    ? text
+                    : string.Empty;
+                return new SpecSectionChange
+                {
+                    Section = section,
+                    Status = ResolveChangeStatus(planned, current),
+                    CurrentSummary = DescribeSection(section, current),
+                    BaselineSummary = DescribeSection(section, planned)
+                };
+            })
+            .ToArray();
+    }
+
+    private static SpecChangeStatus ResolveChangeStatus(string baseline, string current)
+    {
+        if (baseline.Length == 0 && current.Length == 0)
+        {
+            return SpecChangeStatus.Empty;
+        }
+
+        if (baseline.Length == 0)
+        {
+            return SpecChangeStatus.Added;
+        }
+
+        if (current.Length == 0)
+        {
+            return SpecChangeStatus.Removed;
+        }
+
+        return string.Equals(baseline, current, StringComparison.Ordinal)
+            ? SpecChangeStatus.Unchanged
+            : SpecChangeStatus.Modified;
+    }
+
+    private static string DescribeSection(SpecSectionId section, string text)
+    {
+        if (text.Length == 0)
+        {
+            return "empty";
+        }
+
+        var lineCount = text.Split('\n', StringSplitOptions.RemoveEmptyEntries).Length;
+        var noun = section switch
+        {
+            SpecSectionId.Sources => "source",
+            SpecSectionId.Scope => "scope field",
+            SpecSectionId.Compute => "compute step",
+            SpecSectionId.Map => "map layer",
+            SpecSectionId.Output => "output field",
+            _ => "line"
+        };
+
+        return $"{lineCount} {noun}{(lineCount == 1 ? string.Empty : "s")}";
+    }
+
+    private static string NormalizeDiffText(string? text)
+        => string.Join(
+            "\n",
+            (text ?? string.Empty)
+                .Replace("\r\n", "\n", StringComparison.Ordinal)
+                .Split('\n', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries));
+
+    private static IReadOnlyDictionary<SpecSectionId, string>? RestoreSectionTextMap(IReadOnlyDictionary<string, string> sectionTexts)
+    {
+        if (sectionTexts.Count == 0)
+        {
+            return null;
+        }
+
+        var restored = new Dictionary<SpecSectionId, string>();
+        foreach (var (key, value) in sectionTexts)
+        {
+            if (Enum.TryParse<SpecSectionId>(key, true, out var section))
+            {
+                restored[section] = NormalizeDiffText(value);
+            }
+        }
+
+        return restored.Count == 0 ? null : restored;
     }
 
     private static string StorageKeyFor(string principalId) => $"{StorageKeyPrefix}draft:{principalId}";

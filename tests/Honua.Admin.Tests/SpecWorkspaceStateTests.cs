@@ -396,6 +396,35 @@ public sealed class SpecWorkspaceStateTests
     }
 
     [Fact]
+    public async Task DraftChanges_track_edits_against_the_last_successful_plan()
+    {
+        var storage = new MemoryBrowserStorageService();
+        var state = new SpecWorkspaceState(
+            new StubSpecWorkspaceClient(),
+            storage,
+            new NullSpecWorkspaceTelemetry(),
+            new CatalogCache());
+
+        await state.InitializeAsync("operator");
+        await state.UpdateSectionTextAsync(SpecSectionId.Sources, "@parcels = parcels");
+
+        Assert.Equal(SpecChangeStatus.Added, ChangeFor(state, SpecSectionId.Sources).Status);
+        Assert.True(state.HasDraftChanges);
+
+        await state.RunPlanAsync();
+
+        Assert.Equal(SpecChangeStatus.Unchanged, ChangeFor(state, SpecSectionId.Sources).Status);
+        Assert.False(state.HasDraftChanges);
+
+        await state.UpdateSectionTextAsync(SpecSectionId.Compute, "aggregate inputs=@parcels by=@parcels.county metric=count");
+        await state.UpdateSectionTextAsync(SpecSectionId.Sources, string.Empty);
+
+        Assert.Equal(SpecChangeStatus.Added, ChangeFor(state, SpecSectionId.Compute).Status);
+        Assert.Equal(SpecChangeStatus.Removed, ChangeFor(state, SpecSectionId.Sources).Status);
+        Assert.True(state.HasDraftChanges);
+    }
+
+    [Fact]
     public async Task RunApplyAsync_replans_after_spec_edit_invalidates_prior_plan()
     {
         var storage = new MemoryBrowserStorageService();
@@ -472,6 +501,42 @@ public sealed class SpecWorkspaceStateTests
         Assert.Single(second.Conversation);
         Assert.Contains("@parcels = parcels", second.GetSectionText(SpecSectionId.Sources), StringComparison.Ordinal);
     }
+
+    [Fact]
+    public async Task InitializeAsync_rehydrates_plan_baseline_for_draft_changes()
+    {
+        var storage = new MemoryBrowserStorageService();
+        var first = new SpecWorkspaceState(
+            new StubSpecWorkspaceClient(),
+            storage,
+            new NullSpecWorkspaceTelemetry(),
+            new CatalogCache());
+
+        await first.InitializeAsync("operator");
+        await first.UpdateSectionTextAsync(SpecSectionId.Sources, "@parcels = parcels");
+        await first.RunPlanAsync();
+
+        Assert.False(first.HasDraftChanges);
+
+        var second = new SpecWorkspaceState(
+            new StubSpecWorkspaceClient(),
+            storage,
+            new NullSpecWorkspaceTelemetry(),
+            new CatalogCache());
+
+        await second.InitializeAsync("operator");
+
+        Assert.Equal(SpecChangeStatus.Unchanged, ChangeFor(second, SpecSectionId.Sources).Status);
+        Assert.False(second.HasDraftChanges);
+
+        await second.UpdateSectionTextAsync(SpecSectionId.Compute, "aggregate inputs=@parcels by=@parcels.county metric=count");
+
+        Assert.Equal(SpecChangeStatus.Added, ChangeFor(second, SpecSectionId.Compute).Status);
+        Assert.True(second.HasDraftChanges);
+    }
+
+    private static SpecSectionChange ChangeFor(SpecWorkspaceState state, SpecSectionId section) =>
+        state.DraftChanges.Single(change => change.Section == section);
 
     private sealed class BlockingApplyClient : ISpecWorkspaceClient
     {
