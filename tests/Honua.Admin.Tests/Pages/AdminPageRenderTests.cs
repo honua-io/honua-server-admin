@@ -2,6 +2,7 @@
 // Licensed under the Elastic License 2.0. See LICENSE in the project root.
 
 using System;
+using System.Collections.Generic;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
@@ -203,6 +204,53 @@ public sealed class AdminPageRenderTests : TestContext
     }
 
     [Fact]
+    public void AdminReadiness_RendersIdentityLicenseAndConnectionOverview()
+    {
+        Services.AddScoped<IHonuaAdminClient>(_ => new StubHonuaAdminClient());
+
+        var cut = RenderWithMudHost<Honua.Admin.Pages.Operator.AdminReadiness>();
+
+        cut.WaitForAssertion(() =>
+        {
+            cut.Markup.MarkupMatchesContaining("Administration readiness");
+            cut.Markup.MarkupMatchesContaining("Identity and access");
+            cut.Markup.MarkupMatchesContaining("Enterprise");
+            cut.Markup.MarkupMatchesContaining("primary-postgis");
+            cut.Markup.MarkupMatchesContaining("Encryption service is working correctly");
+            cut.Markup.MarkupMatchesContaining("Advanced Observability");
+        });
+    }
+
+    [Fact]
+    public void AdminReadiness_RendersEditionFailureAsUnavailableDiagnostics()
+    {
+        Services.AddScoped<IHonuaAdminClient>(_ => new EditionUnavailableClient());
+
+        var cut = RenderWithMudHost<Honua.Admin.Pages.Operator.AdminReadiness>();
+
+        cut.WaitForAssertion(() =>
+        {
+            cut.Markup.MarkupMatchesContaining("edition unavailable");
+            Assert.DoesNotContain("No gated features reported", cut.Markup, StringComparison.OrdinalIgnoreCase);
+        });
+    }
+
+    [Fact]
+    public void AdminReadiness_MarksConnectionReadinessFromHealth()
+    {
+        Services.AddScoped<IHonuaAdminClient>(_ => new UnhealthyConnectionClient());
+
+        var cut = RenderWithMudHost<Honua.Admin.Pages.Operator.AdminReadiness>();
+
+        cut.WaitForAssertion(() =>
+        {
+            cut.Markup.MarkupMatchesContaining("0 healthy connection(s)");
+            var readiness = cut.Find("[data-testid='connection-readiness-state']");
+            Assert.Equal("error", readiness.GetAttribute("data-readiness"));
+        });
+    }
+
+    [Fact]
     public void UsageAnalytics_RendersMetricsDrilldownsAndExports()
     {
         var cut = RenderWithMudHost<Honua.Admin.Pages.Operator.UsageAnalytics>();
@@ -282,6 +330,19 @@ public sealed class AdminPageRenderTests : TestContext
     {
         public override Task<RecentErrorsResponse> GetRecentErrorsAsync(CancellationToken cancellationToken)
             => throw new InvalidOperationException("recent errors unavailable");
+    }
+
+    private sealed class EditionUnavailableClient : StubHonuaAdminClient
+    {
+        public override Task<FeatureOverview> GetFeatureOverviewAsync(CancellationToken cancellationToken)
+            => throw new InvalidOperationException("edition unavailable");
+    }
+
+    private sealed class UnhealthyConnectionClient : StubHonuaAdminClient
+    {
+        public override Task<IReadOnlyList<ConnectionSummary>> ListConnectionsAsync(CancellationToken cancellationToken)
+            => Task.FromResult<IReadOnlyList<ConnectionSummary>>(
+                [Connections[0] with { HealthStatus = "Unhealthy" }]);
     }
 
     private sealed class NullAdminTelemetry : IAdminTelemetry

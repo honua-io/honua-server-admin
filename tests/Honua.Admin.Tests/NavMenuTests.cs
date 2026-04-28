@@ -32,6 +32,16 @@ public sealed class NavMenuTests
     }
 
     [Fact]
+    public void NavMenu_registers_admin_readiness_under_operator_route()
+    {
+        var path = Path.Combine(System.AppContext.BaseDirectory, NavMenuPath);
+        var contents = File.ReadAllText(path);
+
+        Assert.Contains("/operator/admin-readiness", contents, System.StringComparison.Ordinal);
+        Assert.Contains("Admin readiness", contents, System.StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void NavMenu_registers_annotation_workspace_under_operator_route()
     {
         var path = Path.Combine(System.AppContext.BaseDirectory, NavMenuPath);
@@ -84,6 +94,7 @@ public sealed class NavMenuTests
         Assert.Equal(1, open);
 
         var operatorControlCenter = contents.IndexOf("/operator/control-center", System.StringComparison.Ordinal);
+        var operatorAdminReadiness = contents.IndexOf("/operator/admin-readiness", System.StringComparison.Ordinal);
         var operatorSpec = contents.IndexOf("/operator/spec", System.StringComparison.Ordinal);
         var operatorSql = contents.IndexOf("/operator/sql", System.StringComparison.Ordinal);
         var operatorAnnotations = contents.IndexOf("/operator/annotations", System.StringComparison.Ordinal);
@@ -93,6 +104,7 @@ public sealed class NavMenuTests
         var menuClose = contents.IndexOf("</MudNavMenu>", System.StringComparison.Ordinal);
 
         Assert.True(operatorControlCenter > 0);
+        Assert.True(operatorAdminReadiness > 0);
         Assert.True(operatorSpec > 0);
         Assert.True(operatorSql > 0);
         Assert.True(operatorAnnotations > 0);
@@ -100,6 +112,7 @@ public sealed class NavMenuTests
         Assert.True(operatorAnalytics > 0);
         Assert.True(operatorPrint > 0);
         Assert.True(operatorControlCenter < menuClose);
+        Assert.True(operatorAdminReadiness < menuClose);
         Assert.True(operatorSql < menuClose);
         Assert.True(operatorAnnotations < menuClose);
         Assert.True(operatorPublishing < menuClose);
