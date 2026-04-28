@@ -211,6 +211,28 @@ public sealed class AppBuilderStateTests
     }
 
     [Fact]
+    public async Task PublishAsync_consumes_quota_slot_after_success()
+    {
+        var state = new AppBuilderState(new FixedAppBuilderClient(Snapshot("Final slot dashboard") with
+        {
+            Quota = new AppQuotaState
+            {
+                Edition = "Pro",
+                PublishedApps = 3,
+                AppLimit = 4,
+            },
+        }));
+        await state.LoadAsync();
+
+        await state.PublishAsync();
+
+        Assert.Equal(AppBuilderStatus.Published, state.Status);
+        Assert.Equal(4, state.Quota.PublishedApps);
+        Assert.True(state.HasBlockingValidation);
+        Assert.Contains(state.PublishReadinessChecks, check => check.Key == "quota" && !check.Passed);
+    }
+
+    [Fact]
     public async Task PublishReadiness_flags_missing_enterprise_custom_domain_channel()
     {
         var state = new AppBuilderState(new FixedAppBuilderClient(Snapshot("Enterprise dashboard") with
