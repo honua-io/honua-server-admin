@@ -8,30 +8,29 @@ using System.Threading;
 using System.Threading.Tasks;
 using Honua.Admin.Models.DataConnections;
 using Honua.Admin.Services.DataConnections;
+using Honua.Sdk.Admin;
 using Xunit;
 
 namespace Honua.Admin.Tests.DataConnections;
 
 /// <summary>
-/// Pin the wire contract between the admin UI and honua-server's
-/// <c>/api/v1/admin/connections</c> endpoints. honua-server wraps every payload
-/// in <see cref="ApiResponse{T}"/>; the client must unwrap via
-/// <c>envelope.Data</c>. Network / cancellation / malformed-JSON failures must
-/// land as typed <see cref="ConnectionOperationError"/> values, not exceptions.
+/// Pins the UI adapter over Honua.Sdk.Admin for the data-connection workspace.
+/// The SDK owns HTTP/envelope parsing; this adapter owns local state-friendly
+/// result and error projection.
 /// </summary>
-public sealed class HttpDataConnectionClientTests
+public sealed class SdkDataConnectionClientTests
 {
     private const string ServerBase = "https://server.test/";
 
     [Fact]
-    public async Task ListAsync_unwraps_envelope_and_returns_summaries()
+    public async Task ListAsync_uses_sdk_client_and_projects_summaries()
     {
         var connectionId = Guid.NewGuid();
         var handler = new FakeHttpMessageHandler();
         handler.Enqueue(req =>
         {
             Assert.Equal(HttpMethod.Get, req.Method);
-            Assert.Equal($"{ServerBase}api/v1/admin/connections", req.RequestUri!.ToString());
+            Assert.Equal($"{ServerBase}api/v1/admin/connections/", req.RequestUri!.ToString());
             return JsonOk(new
             {
                 success = true,
@@ -48,10 +47,11 @@ public sealed class HttpDataConnectionClientTests
         Assert.True(result.IsSuccess);
         Assert.Single(result.Value!);
         Assert.Equal(connectionId, result.Value![0].ConnectionId);
+        Assert.Equal("postgres", result.Value[0].ProviderId);
     }
 
     [Fact]
-    public async Task GetAsync_unwraps_envelope_and_returns_detail()
+    public async Task GetAsync_projects_detail()
     {
         var connectionId = Guid.NewGuid();
         var handler = new FakeHttpMessageHandler();
@@ -76,7 +76,7 @@ public sealed class HttpDataConnectionClientTests
     }
 
     [Fact]
-    public async Task CreateAsync_returns_summary_per_server_contract()
+    public async Task CreateAsync_projects_local_request_to_sdk_request()
     {
         var connectionId = Guid.NewGuid();
         var handler = new FakeHttpMessageHandler();
@@ -84,7 +84,7 @@ public sealed class HttpDataConnectionClientTests
         handler.Enqueue(req =>
         {
             Assert.Equal(HttpMethod.Post, req.Method);
-            Assert.Equal($"{ServerBase}api/v1/admin/connections", req.RequestUri!.ToString());
+            Assert.Equal($"{ServerBase}api/v1/admin/connections/", req.RequestUri!.ToString());
             capturedBody = req.Content!.ReadAsStringAsync().Result;
             return JsonCreated(new
             {
@@ -110,14 +110,16 @@ public sealed class HttpDataConnectionClientTests
     }
 
     [Fact]
-    public async Task UpdateAsync_returns_summary_per_server_contract()
+    public async Task UpdateAsync_projects_local_request_to_sdk_request()
     {
         var connectionId = Guid.NewGuid();
         var handler = new FakeHttpMessageHandler();
+        string? capturedBody = null;
         handler.Enqueue(req =>
         {
             Assert.Equal(HttpMethod.Put, req.Method);
             Assert.Equal($"{ServerBase}api/v1/admin/connections/{connectionId}", req.RequestUri!.ToString());
+            capturedBody = req.Content!.ReadAsStringAsync().Result;
             return JsonOk(new
             {
                 success = true,
@@ -133,10 +135,43 @@ public sealed class HttpDataConnectionClientTests
 
         Assert.True(result.IsSuccess);
         Assert.Equal(6432, result.Value!.Port);
+        Assert.NotNull(capturedBody);
+        Assert.Contains("\"port\":6432", capturedBody, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task SetActiveAsync_projects_to_update_request(bool active)
+    {
+        var connectionId = Guid.NewGuid();
+        var handler = new FakeHttpMessageHandler();
+        string? capturedBody = null;
+        handler.Enqueue(req =>
+        {
+            Assert.Equal(HttpMethod.Put, req.Method);
+            Assert.Equal($"{ServerBase}api/v1/admin/connections/{connectionId}", req.RequestUri!.ToString());
+            capturedBody = req.Content!.ReadAsStringAsync().Result;
+            return JsonOk(new
+            {
+                success = true,
+                data = SampleSummaryPayload(connectionId, isActive: active)
+            });
+        });
+
+        var client = MakeClient(handler);
+        var result = active
+            ? await client.EnableAsync(connectionId, CancellationToken.None)
+            : await client.DisableAsync(connectionId, CancellationToken.None);
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal(active, result.Value!.IsActive);
+        Assert.NotNull(capturedBody);
+        Assert.Contains($"\"isActive\":{active.ToString().ToLowerInvariant()}", capturedBody, StringComparison.Ordinal);
     }
 
     [Fact]
-    public async Task TestExistingAsync_unwraps_envelope_and_returns_outcome()
+    public async Task TestExistingAsync_projects_sdk_result()
     {
         var connectionId = Guid.NewGuid();
         var handler = new FakeHttpMessageHandler();
@@ -149,7 +184,7 @@ public sealed class HttpDataConnectionClientTests
                 success = true,
                 data = new
                 {
-                    connectionId = connectionId,
+                    connectionId,
                     connectionName = "primary",
                     isHealthy = true,
                     testedAt = DateTimeOffset.UtcNow,
@@ -163,10 +198,11 @@ public sealed class HttpDataConnectionClientTests
 
         Assert.True(result.IsSuccess);
         Assert.True(result.Value!.IsHealthy);
+        Assert.Equal("primary", result.Value.ConnectionName);
     }
 
     [Fact]
-    public async Task DeleteAsync_returns_ok_on_2xx()
+    public async Task DeleteAsync_returns_ok_on_2xx_envelope()
     {
         var connectionId = Guid.NewGuid();
         var handler = new FakeHttpMessageHandler();
@@ -181,6 +217,7 @@ public sealed class HttpDataConnectionClientTests
         var result = await client.DeleteAsync(connectionId, CancellationToken.None);
 
         Assert.True(result.IsSuccess);
+        Assert.True(result.Value);
     }
 
     [Fact]
@@ -191,7 +228,8 @@ public sealed class HttpDataConnectionClientTests
         {
             Content = new StringContent(
                 "{\"type\":\"about:blank\",\"title\":\"boom\",\"status\":500,\"detail\":\"engine failure\"}",
-                Encoding.UTF8, "application/problem+json")
+                Encoding.UTF8,
+                "application/problem+json")
         });
 
         var client = MakeClient(handler);
@@ -216,6 +254,7 @@ public sealed class HttpDataConnectionClientTests
 
         Assert.False(result.IsSuccess);
         Assert.Equal(ConnectionErrorKind.NotFound, result.Error!.Kind);
+        Assert.Equal("missing", result.Error.Detail);
     }
 
     [Fact]
@@ -240,9 +279,6 @@ public sealed class HttpDataConnectionClientTests
 
         Assert.False(result.IsSuccess);
         Assert.Equal(ConnectionErrorKind.Validation, result.Error!.Kind);
-        // honua-server returns 4xx as ApiResponse<object>.Failure(message);
-        // the operator-actionable message must survive into the typed error
-        // detail rather than getting dropped by the ProblemDetails parser.
         Assert.Equal("Invalid SSL mode", result.Error.Detail);
     }
 
@@ -254,7 +290,8 @@ public sealed class HttpDataConnectionClientTests
         {
             Content = new StringContent(
                 "{\"success\":false,\"message\":\"Connection is in use by services\"}",
-                Encoding.UTF8, "application/json")
+                Encoding.UTF8,
+                "application/json")
         });
 
         var client = MakeClient(handler);
@@ -263,26 +300,6 @@ public sealed class HttpDataConnectionClientTests
         Assert.False(result.IsSuccess);
         Assert.Equal(ConnectionErrorKind.Conflict, result.Error!.Kind);
         Assert.Equal("Connection is in use by services", result.Error.Detail);
-    }
-
-    [Fact]
-    public async Task ParseProblemAsync_prefers_problem_details_when_both_shapes_could_match()
-    {
-        // ProblemDetails-shaped 5xx body should still take precedence over
-        // a coincidentally parseable envelope shape.
-        var handler = new FakeHttpMessageHandler();
-        handler.Enqueue(_ => new HttpResponseMessage(HttpStatusCode.InternalServerError)
-        {
-            Content = new StringContent(
-                "{\"type\":\"about:blank\",\"title\":\"boom\",\"status\":500,\"detail\":\"engine failure\"}",
-                Encoding.UTF8, "application/problem+json")
-        });
-
-        var client = MakeClient(handler);
-        var result = await client.ListAsync(CancellationToken.None);
-
-        Assert.False(result.IsSuccess);
-        Assert.Equal("engine failure", result.Error!.Detail);
     }
 
     [Fact]
@@ -344,7 +361,7 @@ public sealed class HttpDataConnectionClientTests
         Assert.Equal("error.timeout", result.Error.CopyKey);
     }
 
-    private static object SampleSummaryPayload(Guid connectionId, int port = 5432) => new
+    private static object SampleSummaryPayload(Guid connectionId, int port = 5432, bool isActive = true) => new
     {
         connectionId,
         name = "primary",
@@ -356,7 +373,7 @@ public sealed class HttpDataConnectionClientTests
         sslRequired = true,
         sslMode = "Require",
         storageType = "managed",
-        isActive = true,
+        isActive,
         healthStatus = "Unknown",
         lastHealthCheck = (DateTimeOffset?)null,
         createdAt = DateTimeOffset.UtcNow,
@@ -403,10 +420,10 @@ public sealed class HttpDataConnectionClientTests
         };
     }
 
-    private static HttpDataConnectionClient MakeClient(FakeHttpMessageHandler handler)
+    private static SdkDataConnectionClient MakeClient(FakeHttpMessageHandler handler)
     {
         var http = new HttpClient(handler) { BaseAddress = new Uri(ServerBase) };
-        return new HttpDataConnectionClient(http);
+        return new SdkDataConnectionClient(new HonuaAdminClient(http));
     }
 
     private sealed class FakeHttpMessageHandler : HttpMessageHandler
@@ -430,6 +447,7 @@ public sealed class HttpDataConnectionClientTests
                 return Task.FromException<HttpResponseMessage>(new InvalidOperationException(
                     $"Unexpected HTTP request: {request.Method} {request.RequestUri}"));
             }
+
             var responder = _queue.Dequeue();
             try
             {

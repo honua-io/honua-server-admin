@@ -4,10 +4,9 @@ using System.Text.Json.Serialization;
 namespace Honua.Admin.Models.DataConnections;
 
 /// <summary>
-/// Mirror of <c>SecureConnectionSummary</c> on the server. Hand-rolled until the
-/// audit ticket (<c>#28</c>) replaces these DTOs with a generated client.
-/// Property naming policy is inherited from the JSON context — server uses
-/// camelCase on the wire.
+/// UI projection of <c>Honua.Sdk.Admin.Models.SecureConnectionSummary</c>.
+/// The local model keeps the workspace provider metadata out of the reusable SDK
+/// wire contract.
 /// </summary>
 public sealed record DataConnectionSummary
 {
