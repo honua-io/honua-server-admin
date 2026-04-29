@@ -10,6 +10,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Honua.Admin.IntegrationTests.Fixtures;
 using Honua.Admin.Models.Admin;
+using Honua.Sdk.Admin.Exceptions;
 using Xunit;
 
 namespace Honua.Admin.IntegrationTests.Tests;
@@ -293,6 +294,11 @@ public sealed class ContainerizedAdminApiEndToEndTests
             // A published layer can make connection deletion fail on current
             // server images. Cleanup is best-effort so this admin-client E2E
             // lane reports the lifecycle assertion that failed, not teardown.
+        }
+        catch (HonuaAdminApiException)
+        {
+            // SDK-backed admin clients surface the same server-side failure as a
+            // typed API exception. Keep cleanup best-effort for this known case.
         }
     }
 

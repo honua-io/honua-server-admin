@@ -11,11 +11,15 @@ using System.Text.Json.Serialization.Metadata;
 using System.Threading;
 using System.Threading.Tasks;
 using Honua.Admin.Models.Admin;
+using Honua.Sdk.Admin.Exceptions;
+using SdkAdminClient = Honua.Sdk.Admin.IHonuaAdminClient;
+using SdkAdminHttpClient = Honua.Sdk.Admin.HonuaAdminClient;
 
 namespace Honua.Admin.Services.Admin;
 
 /// <summary>
-/// Hand-rolled typed HttpClient implementation of <see cref="IHonuaAdminClient"/>.
+/// Admin UI client that delegates SDK-stable REST contracts to Honua.Sdk.Admin
+/// while keeping admin-only endpoints in this repo.
 /// Authentication and base-URL rebasing live in <c>AdminAuthHandler</c>; 401/CORS
 /// handling lives in <c>GlobalErrorHandler</c>.
 /// </summary>
@@ -25,11 +29,18 @@ public sealed class HonuaAdminClient : IHonuaAdminClient
 
     private readonly HttpClient _http;
     private readonly IAdminTelemetry _telemetry;
+    private readonly SdkAdminClient _sdk;
 
     public HonuaAdminClient(HttpClient http, IAdminTelemetry telemetry)
+        : this(http, telemetry, new SdkAdminHttpClient(http))
+    {
+    }
+
+    public HonuaAdminClient(HttpClient http, IAdminTelemetry telemetry, SdkAdminClient sdk)
     {
         _http = http;
         _telemetry = telemetry;
+        _sdk = sdk;
     }
 
     public Task<FeatureOverview> GetFeatureOverviewAsync(CancellationToken cancellationToken)
@@ -62,175 +73,192 @@ public sealed class HonuaAdminClient : IHonuaAdminClient
         => GetAsync(nameof(GetAdminOpenApiAsync), $"{ApiVersionPrefix}/openapi.json", TypeInfo<JsonElement>(), cancellationToken);
 
     public async Task<IReadOnlyList<ConnectionSummary>> ListConnectionsAsync(CancellationToken cancellationToken)
-        => await GetApiAsync(nameof(ListConnectionsAsync), $"{ApiVersionPrefix}/connections/", TypeInfo<AdminApiResponse<ConnectionSummary[]>>(), cancellationToken)
+        => await ExecuteSdkAsync(
+                nameof(ListConnectionsAsync),
+                async ct => SdkAdminModelMapper.MapList(
+                    await _sdk.ListConnectionsAsync(ct).ConfigureAwait(false),
+                    SdkAdminModelMapper.ToConnectionSummary),
+                cancellationToken)
             .ConfigureAwait(false);
 
     public Task<ConnectionDetail> GetConnectionAsync(string connectionId, CancellationToken cancellationToken)
-        => GetApiAsync(nameof(GetConnectionAsync), $"{ApiVersionPrefix}/connections/{Uri.EscapeDataString(connectionId)}", TypeInfo<AdminApiResponse<ConnectionDetail>>(), cancellationToken);
+        => ExecuteSdkAsync(
+            nameof(GetConnectionAsync),
+            async ct => SdkAdminModelMapper.ToConnectionDetail(await _sdk.GetConnectionAsync(connectionId, ct).ConfigureAwait(false)),
+            cancellationToken);
 
     public Task<ConnectionSummary> CreateConnectionAsync(CreateConnectionRequest request, CancellationToken cancellationToken)
-        => SendApiAsync(
+        => ExecuteSdkAsync(
             nameof(CreateConnectionAsync),
-            HttpMethod.Post,
-            $"{ApiVersionPrefix}/connections/",
-            request,
-            TypeInfo<CreateConnectionRequest>(),
-            TypeInfo<AdminApiResponse<ConnectionSummary>>(),
+            async ct => SdkAdminModelMapper.ToConnectionSummary(
+                await _sdk.CreateConnectionAsync(SdkAdminModelMapper.ToSdk(request), ct).ConfigureAwait(false)),
             cancellationToken);
 
     public Task<ConnectionSummary> UpdateConnectionAsync(string connectionId, UpdateConnectionRequest request, CancellationToken cancellationToken)
-        => SendApiAsync(
+        => ExecuteSdkAsync(
             nameof(UpdateConnectionAsync),
-            HttpMethod.Put,
-            $"{ApiVersionPrefix}/connections/{Uri.EscapeDataString(connectionId)}",
-            request,
-            TypeInfo<UpdateConnectionRequest>(),
-            TypeInfo<AdminApiResponse<ConnectionSummary>>(),
+            async ct => SdkAdminModelMapper.ToConnectionSummary(
+                await _sdk.UpdateConnectionAsync(connectionId, SdkAdminModelMapper.ToSdk(request), ct).ConfigureAwait(false)),
             cancellationToken);
 
-    public async Task DeleteConnectionAsync(string connectionId, CancellationToken cancellationToken)
-    {
-        try
+    public Task DeleteConnectionAsync(string connectionId, CancellationToken cancellationToken)
+        => ExecuteSdkAsync(
+            nameof(DeleteConnectionAsync),
+            async ct =>
         {
-            using var response = await _http.DeleteAsync(
-                $"{ApiVersionPrefix}/connections/{Uri.EscapeDataString(connectionId)}",
-                cancellationToken).ConfigureAwait(false);
-            response.EnsureSuccessStatusCode();
-        }
-        catch (HttpRequestException ex)
-        {
-            _telemetry.ClientRequestFailed(nameof(DeleteConnectionAsync), ex.Message);
-            throw;
-        }
-    }
+            await _sdk.DeleteConnectionAsync(connectionId, ct).ConfigureAwait(false);
+        },
+            cancellationToken);
 
     public Task<TestConnectionResult> TestDraftConnectionAsync(CreateConnectionRequest request, CancellationToken cancellationToken)
-        => SendApiAsync(
+        => ExecuteSdkAsync(
             nameof(TestDraftConnectionAsync),
-            HttpMethod.Post,
-            $"{ApiVersionPrefix}/connections/test",
-            request,
-            TypeInfo<CreateConnectionRequest>(),
-            TypeInfo<AdminApiResponse<TestConnectionResult>>(),
+            async ct => SdkAdminModelMapper.ToTestConnectionResult(
+                await _sdk.TestDraftConnectionAsync(SdkAdminModelMapper.ToSdk(request), ct).ConfigureAwait(false)),
             cancellationToken);
 
     public Task<TestConnectionResult> TestConnectionAsync(string connectionId, CancellationToken cancellationToken)
-        => PostEmptyApiAsync<TestConnectionResult>(
+        => ExecuteSdkAsync(
             nameof(TestConnectionAsync),
-            $"{ApiVersionPrefix}/connections/{Uri.EscapeDataString(connectionId)}/test",
-            TypeInfo<AdminApiResponse<TestConnectionResult>>(),
+            async ct => SdkAdminModelMapper.ToTestConnectionResult(await _sdk.TestConnectionAsync(connectionId, ct).ConfigureAwait(false)),
             cancellationToken);
 
     public Task<EncryptionValidationResult> ValidateEncryptionAsync(CancellationToken cancellationToken)
-        => PostEmptyApiAsync<EncryptionValidationResult>(
+        => ExecuteSdkAsync(
             nameof(ValidateEncryptionAsync),
-            $"{ApiVersionPrefix}/connections/encryption/validate",
-            TypeInfo<AdminApiResponse<EncryptionValidationResult>>(),
+            async ct => SdkAdminModelMapper.ToEncryptionValidationResult(await _sdk.ValidateEncryptionAsync(ct).ConfigureAwait(false)),
             cancellationToken);
 
     public Task<KeyRotationResult> RotateEncryptionKeyAsync(CancellationToken cancellationToken)
-        => PostEmptyApiAsync<KeyRotationResult>(
+        => ExecuteSdkAsync(
             nameof(RotateEncryptionKeyAsync),
-            $"{ApiVersionPrefix}/connections/encryption/rotate-key",
-            TypeInfo<AdminApiResponse<KeyRotationResult>>(),
+            async ct => SdkAdminModelMapper.ToKeyRotationResult(await _sdk.RotateEncryptionKeyAsync(ct).ConfigureAwait(false)),
             cancellationToken);
 
-    public async Task<IReadOnlyList<DiscoveredTable>> DiscoverConnectionTablesAsync(string connectionId, CancellationToken cancellationToken)
-    {
-        var response = await GetAsync(
+    public Task<IReadOnlyList<DiscoveredTable>> DiscoverConnectionTablesAsync(string connectionId, CancellationToken cancellationToken)
+        => ExecuteSdkAsync(
             nameof(DiscoverConnectionTablesAsync),
-            $"{ApiVersionPrefix}/connections/{Uri.EscapeDataString(connectionId)}/tables",
-            TypeInfo<TableDiscoveryResponse>(),
-            cancellationToken).ConfigureAwait(false);
-        return response.Tables;
-    }
+            async ct => SdkAdminModelMapper.MapList(
+                (await _sdk.DiscoverTablesAsync(connectionId, ct).ConfigureAwait(false)).Tables,
+                SdkAdminModelMapper.ToDiscoveredTable),
+            cancellationToken);
 
     public async Task<IReadOnlyList<LayerSummary>> ListLayersAsync(string connectionId, string? serviceName, CancellationToken cancellationToken)
-        => await GetApiAsync(
+        => await ExecuteSdkAsync(
                 nameof(ListLayersAsync),
-                WithServiceName($"{ApiVersionPrefix}/connections/{Uri.EscapeDataString(connectionId)}/layers/", serviceName),
-                TypeInfo<AdminApiResponse<LayerSummary[]>>(),
+                async ct => SdkAdminModelMapper.MapList(
+                    await _sdk.ListLayersAsync(connectionId, serviceName, ct).ConfigureAwait(false),
+                    SdkAdminModelMapper.ToLayerSummary),
                 cancellationToken)
             .ConfigureAwait(false);
 
     public Task<LayerSummary> PublishLayerAsync(string connectionId, PublishLayerRequest request, CancellationToken cancellationToken)
-        => SendApiAsync(
+        => ExecuteSdkAsync(
             nameof(PublishLayerAsync),
-            HttpMethod.Post,
-            $"{ApiVersionPrefix}/connections/{Uri.EscapeDataString(connectionId)}/layers/",
-            request,
-            TypeInfo<PublishLayerRequest>(),
-            TypeInfo<AdminApiResponse<LayerSummary>>(),
+            async ct => SdkAdminModelMapper.ToLayerSummary(
+                await _sdk.PublishLayerAsync(connectionId, SdkAdminModelMapper.ToSdk(request), ct).ConfigureAwait(false)),
             cancellationToken);
 
     public Task<LayerSummary> SetLayerEnabledAsync(string connectionId, int layerId, bool enabled, string? serviceName, CancellationToken cancellationToken)
-        => SendApiAsync(
+        => ExecuteSdkAsync(
             nameof(SetLayerEnabledAsync),
-            HttpMethod.Put,
-            WithServiceName($"{ApiVersionPrefix}/connections/{Uri.EscapeDataString(connectionId)}/layers/{layerId}/enabled", serviceName),
-            new LayerEnabledRequest { Enabled = enabled },
-            TypeInfo<LayerEnabledRequest>(),
-            TypeInfo<AdminApiResponse<LayerSummary>>(),
+            async ct => SdkAdminModelMapper.ToLayerSummary(
+                await _sdk.SetLayerEnabledAsync(connectionId, layerId, enabled, serviceName, ct).ConfigureAwait(false)),
             cancellationToken);
 
     public async Task<IReadOnlyList<LayerSummary>> SetServiceLayersEnabledAsync(string connectionId, bool enabled, string? serviceName, CancellationToken cancellationToken)
-        => await SendApiAsync(
+        => await ExecuteSdkAsync(
                 nameof(SetServiceLayersEnabledAsync),
-                HttpMethod.Put,
-                WithServiceName($"{ApiVersionPrefix}/connections/{Uri.EscapeDataString(connectionId)}/layers/enabled", serviceName),
-                new LayerEnabledRequest { Enabled = enabled },
-                TypeInfo<LayerEnabledRequest>(),
-                TypeInfo<AdminApiResponse<LayerSummary[]>>(),
+                async ct => SdkAdminModelMapper.MapList(
+                    await _sdk.SetServiceLayersEnabledAsync(connectionId, enabled, serviceName, ct).ConfigureAwait(false),
+                    SdkAdminModelMapper.ToLayerSummary),
                 cancellationToken)
             .ConfigureAwait(false);
 
     public Task<LayerStyle> GetLayerStyleAsync(int layerId, CancellationToken cancellationToken)
-        => GetApiAsync(nameof(GetLayerStyleAsync), $"{ApiVersionPrefix}/metadata/layers/{layerId}/style", TypeInfo<AdminApiResponse<LayerStyle>>(), cancellationToken);
+        => ExecuteSdkAsync(
+            nameof(GetLayerStyleAsync),
+            async ct => SdkAdminModelMapper.ToLayerStyle(await _sdk.GetLayerStyleAsync(layerId, ct).ConfigureAwait(false)),
+            cancellationToken);
 
     public Task<LayerStyle> UpdateLayerStyleAsync(int layerId, LayerStyleUpdateRequest request, CancellationToken cancellationToken)
-        => SendApiAsync(
+        => ExecuteSdkAsync(
             nameof(UpdateLayerStyleAsync),
-            HttpMethod.Put,
-            $"{ApiVersionPrefix}/metadata/layers/{layerId}/style",
-            request,
-            TypeInfo<LayerStyleUpdateRequest>(),
-            TypeInfo<AdminApiResponse<LayerStyle>>(),
+            async ct => SdkAdminModelMapper.ToLayerStyle(
+                await _sdk.UpdateLayerStyleAsync(layerId, SdkAdminModelMapper.ToSdk(request), ct).ConfigureAwait(false)),
             cancellationToken);
 
     public async Task<IReadOnlyList<ServiceSummary>> ListServicesAsync(CancellationToken cancellationToken)
-        => await GetApiAsync(nameof(ListServicesAsync), $"{ApiVersionPrefix}/services/", TypeInfo<AdminApiResponse<ServiceSummary[]>>(), cancellationToken)
+        => await ExecuteSdkAsync(
+                nameof(ListServicesAsync),
+                async ct => SdkAdminModelMapper.MapList(
+                    await _sdk.ListServicesAsync(ct).ConfigureAwait(false),
+                    SdkAdminModelMapper.ToServiceSummary),
+                cancellationToken)
             .ConfigureAwait(false);
 
     public Task<ServiceSettings> GetServiceSettingsAsync(string serviceName, CancellationToken cancellationToken)
-        => GetApiAsync(nameof(GetServiceSettingsAsync), $"{ApiVersionPrefix}/services/{Uri.EscapeDataString(serviceName)}/settings", TypeInfo<AdminApiResponse<ServiceSettings>>(), cancellationToken);
+        => ExecuteSdkAsync(
+            nameof(GetServiceSettingsAsync),
+            async ct => SdkAdminModelMapper.ToServiceSettings(await _sdk.GetServiceSettingsAsync(serviceName, ct).ConfigureAwait(false)),
+            cancellationToken);
 
     public Task<ServiceSettings> UpdateServiceProtocolsAsync(string serviceName, UpdateProtocolsRequest request, CancellationToken cancellationToken)
-        => SendApiAsync(nameof(UpdateServiceProtocolsAsync), HttpMethod.Put, $"{ApiVersionPrefix}/services/{Uri.EscapeDataString(serviceName)}/protocols", request, TypeInfo<UpdateProtocolsRequest>(), TypeInfo<AdminApiResponse<ServiceSettings>>(), cancellationToken);
+        => ExecuteSdkAsync(
+            nameof(UpdateServiceProtocolsAsync),
+            async ct => SdkAdminModelMapper.ToServiceSettings(
+                await _sdk.UpdateProtocolsAsync(serviceName, request.EnabledProtocols, ct).ConfigureAwait(false)),
+            cancellationToken);
 
     public Task<ServiceSettings> UpdateServiceMapServerAsync(string serviceName, MapServerSettings request, CancellationToken cancellationToken)
-        => SendApiAsync(nameof(UpdateServiceMapServerAsync), HttpMethod.Put, $"{ApiVersionPrefix}/services/{Uri.EscapeDataString(serviceName)}/mapserver", request, TypeInfo<MapServerSettings>(), TypeInfo<AdminApiResponse<ServiceSettings>>(), cancellationToken);
+        => ExecuteSdkAsync(
+            nameof(UpdateServiceMapServerAsync),
+            async ct => SdkAdminModelMapper.ToServiceSettings(
+                await _sdk.UpdateMapServerSettingsAsync(serviceName, SdkAdminModelMapper.ToSdk(request), ct).ConfigureAwait(false)),
+            cancellationToken);
 
     public Task<ServiceSettings> UpdateServiceAccessPolicyAsync(string serviceName, AccessPolicySettings request, CancellationToken cancellationToken)
-        => SendApiAsync(nameof(UpdateServiceAccessPolicyAsync), HttpMethod.Put, $"{ApiVersionPrefix}/services/{Uri.EscapeDataString(serviceName)}/access-policy", request, TypeInfo<AccessPolicySettings>(), TypeInfo<AdminApiResponse<ServiceSettings>>(), cancellationToken);
+        => ExecuteSdkAsync(
+            nameof(UpdateServiceAccessPolicyAsync),
+            async ct => SdkAdminModelMapper.ToServiceSettings(
+                await _sdk.UpdateAccessPolicyAsync(serviceName, SdkAdminModelMapper.ToSdk(request), ct).ConfigureAwait(false)),
+            cancellationToken);
 
     public Task<ServiceSettings> UpdateServiceTimeInfoAsync(string serviceName, TimeInfoSettings request, CancellationToken cancellationToken)
-        => SendApiAsync(nameof(UpdateServiceTimeInfoAsync), HttpMethod.Put, $"{ApiVersionPrefix}/services/{Uri.EscapeDataString(serviceName)}/timeinfo", request, TypeInfo<TimeInfoSettings>(), TypeInfo<AdminApiResponse<ServiceSettings>>(), cancellationToken);
+        => ExecuteSdkAsync(
+            nameof(UpdateServiceTimeInfoAsync),
+            async ct => SdkAdminModelMapper.ToServiceSettings(
+                await _sdk.UpdateTimeInfoAsync(serviceName, SdkAdminModelMapper.ToSdk(request), ct).ConfigureAwait(false)),
+            cancellationToken);
 
     public Task<LayerMetadataResponse> UpdateServiceLayerMetadataAsync(string serviceName, int layerId, UpdateLayerMetadataRequest request, CancellationToken cancellationToken)
-        => SendApiAsync(nameof(UpdateServiceLayerMetadataAsync), HttpMethod.Put, $"{ApiVersionPrefix}/services/{Uri.EscapeDataString(serviceName)}/layers/{layerId}/metadata", request, TypeInfo<UpdateLayerMetadataRequest>(), TypeInfo<AdminApiResponse<LayerMetadataResponse>>(), cancellationToken);
+        => ExecuteSdkAsync(
+            nameof(UpdateServiceLayerMetadataAsync),
+            async ct => SdkAdminModelMapper.ToLayerMetadataResponse(
+                await _sdk.UpdateLayerMetadataAsync(serviceName, layerId, SdkAdminModelMapper.ToSdk(request), ct).ConfigureAwait(false)),
+            cancellationToken);
 
     public async Task<IReadOnlyList<MetadataResource>> ListMetadataResourcesAsync(string? kind, string? resourceNamespace, CancellationToken cancellationToken)
-        => await GetApiAsync(
+        => await ExecuteSdkAsync(
                 nameof(ListMetadataResourcesAsync),
-                WithMetadataResourceQuery($"{ApiVersionPrefix}/metadata/resources/", kind, resourceNamespace),
-                TypeInfo<AdminApiResponse<MetadataResource[]>>(),
+                async ct => SdkAdminModelMapper.MapList(
+                    await _sdk.ListMetadataResourcesAsync(kind, resourceNamespace, ct).ConfigureAwait(false),
+                    SdkAdminModelMapper.ToMetadataResource),
                 cancellationToken)
             .ConfigureAwait(false);
 
     public Task<MetadataResourceResponse> GetMetadataResourceAsync(string kind, string resourceNamespace, string name, CancellationToken cancellationToken)
-        => GetMetadataResourceCoreAsync(
+        => ExecuteSdkAsync(
             nameof(GetMetadataResourceAsync),
-            MetadataResourcePath(kind, resourceNamespace, name),
+            async ct =>
+            {
+                var (resource, eTag) = await _sdk.GetMetadataResourceAsync(kind, resourceNamespace, name, ct).ConfigureAwait(false);
+                return new MetadataResourceResponse
+                {
+                    Resource = SdkAdminModelMapper.ToMetadataResource(resource),
+                    ETag = eTag,
+                };
+            },
             cancellationToken);
 
     public Task<MetadataResourceResponse> CreateMetadataResourceAsync(MetadataResource resource, CancellationToken cancellationToken)
@@ -261,7 +289,7 @@ public sealed class HonuaAdminClient : IHonuaAdminClient
             cancellationToken);
     }
 
-    public async Task DeleteMetadataResourceAsync(
+    public Task DeleteMetadataResourceAsync(
         string kind,
         string resourceNamespace,
         string name,
@@ -270,18 +298,13 @@ public sealed class HonuaAdminClient : IHonuaAdminClient
     {
         EnsureIfMatch(ifMatch, nameof(DeleteMetadataResourceAsync));
 
-        try
+        return ExecuteSdkAsync(
+            nameof(DeleteMetadataResourceAsync),
+            async ct =>
         {
-            using var message = new HttpRequestMessage(HttpMethod.Delete, MetadataResourcePath(kind, resourceNamespace, name));
-            message.Headers.TryAddWithoutValidation("If-Match", ifMatch);
-            using var response = await _http.SendAsync(message, cancellationToken).ConfigureAwait(false);
-            response.EnsureSuccessStatusCode();
-        }
-        catch (HttpRequestException ex)
-        {
-            _telemetry.ClientRequestFailed(nameof(DeleteMetadataResourceAsync), ex.Message);
-            throw;
-        }
+            await _sdk.DeleteMetadataResourceAsync(kind, resourceNamespace, name, ifMatch, ct).ConfigureAwait(false);
+        },
+            cancellationToken);
     }
 
     public Task<DeployPreflightResult> GetDeployPreflightAsync(CancellationToken cancellationToken)
@@ -443,6 +466,58 @@ public sealed class HonuaAdminClient : IHonuaAdminClient
     private static JsonTypeInfo<T> TypeInfo<T>()
         => (JsonTypeInfo<T>)AdminJsonContext.Default.GetTypeInfo(typeof(T))!;
 
+    private async Task ExecuteSdkAsync(
+        string operation,
+        Func<CancellationToken, Task> action,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            await action(cancellationToken).ConfigureAwait(false);
+        }
+        catch (HttpRequestException ex)
+        {
+            _telemetry.ClientRequestFailed(operation, ex.Message);
+            throw;
+        }
+        catch (HonuaAdminApiException ex)
+        {
+            _telemetry.ClientRequestFailed(operation, ex.Message);
+            throw;
+        }
+        catch (HonuaAdminOperationException ex)
+        {
+            _telemetry.ClientRequestFailed(operation, ex.Message);
+            throw;
+        }
+    }
+
+    private async Task<T> ExecuteSdkAsync<T>(
+        string operation,
+        Func<CancellationToken, Task<T>> action,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            return await action(cancellationToken).ConfigureAwait(false);
+        }
+        catch (HttpRequestException ex)
+        {
+            _telemetry.ClientRequestFailed(operation, ex.Message);
+            throw;
+        }
+        catch (HonuaAdminApiException ex)
+        {
+            _telemetry.ClientRequestFailed(operation, ex.Message);
+            throw;
+        }
+        catch (HonuaAdminOperationException ex)
+        {
+            _telemetry.ClientRequestFailed(operation, ex.Message);
+            throw;
+        }
+    }
+
     private async Task<T> GetAsync<T>(string operation, string path, JsonTypeInfo<T> typeInfo, CancellationToken cancellationToken)
     {
         try
@@ -578,26 +653,6 @@ public sealed class HonuaAdminClient : IHonuaAdminClient
         return Unwrap(operation, envelope);
     }
 
-    private async Task<T> PostEmptyApiAsync<T>(
-        string operation,
-        string path,
-        JsonTypeInfo<AdminApiResponse<T>> responseTypeInfo,
-        CancellationToken cancellationToken)
-    {
-        try
-        {
-            using var response = await _http.PostAsync(path, content: null, cancellationToken).ConfigureAwait(false);
-            response.EnsureSuccessStatusCode();
-            var envelope = await response.Content.ReadFromJsonAsync(responseTypeInfo, cancellationToken).ConfigureAwait(false);
-            return Unwrap(operation, envelope ?? throw new InvalidOperationException($"{operation} returned an empty response."));
-        }
-        catch (HttpRequestException ex)
-        {
-            _telemetry.ClientRequestFailed(operation, ex.Message);
-            throw;
-        }
-    }
-
     private static T Unwrap<T>(string operation, AdminApiResponse<T> envelope)
     {
         if (!envelope.Success)
@@ -608,29 +663,8 @@ public sealed class HonuaAdminClient : IHonuaAdminClient
         return envelope.Data ?? throw new InvalidOperationException($"{operation} returned an empty data payload.");
     }
 
-    private static string WithServiceName(string path, string? serviceName)
-        => string.IsNullOrWhiteSpace(serviceName)
-            ? path
-            : $"{path}?serviceName={Uri.EscapeDataString(serviceName)}";
-
     private static string MetadataResourcePath(string kind, string resourceNamespace, string name)
         => $"{ApiVersionPrefix}/metadata/resources/{Uri.EscapeDataString(kind)}/{Uri.EscapeDataString(resourceNamespace)}/{Uri.EscapeDataString(name)}";
-
-    private static string WithMetadataResourceQuery(string path, string? kind, string? resourceNamespace)
-    {
-        var query = new List<string>();
-        if (!string.IsNullOrWhiteSpace(kind))
-        {
-            query.Add($"kind={Uri.EscapeDataString(kind)}");
-        }
-
-        if (!string.IsNullOrWhiteSpace(resourceNamespace))
-        {
-            query.Add($"namespace={Uri.EscapeDataString(resourceNamespace)}");
-        }
-
-        return query.Count == 0 ? path : $"{path}?{string.Join("&", query)}";
-    }
 
     private static void EnsureIfMatch(string ifMatch, string operation)
     {
