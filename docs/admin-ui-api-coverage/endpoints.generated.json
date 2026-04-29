@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
-  "honua_server_commit": "1b301c3a98e7c97ff75c394852bfc614d5db8a7a",
-  "generated_count": 447,
+  "honua_server_commit": "6cf9365a2b8d8bc5a58ca6e6a4eba5b6bf75ceaf",
+  "generated_count": 453,
   "endpoints": [
     {
       "key": "Admin/AdminAuthEndpoints:GET:/api/v{version:apiVersion}/admin/auth/config",
@@ -442,6 +442,26 @@
       "route": "/api/v{version:apiVersion}/admin/manifest/apply",
       "source_file": "Admin/AdminMetadataEndpoints.cs",
       "source_line": 52
+    },
+    {
+      "key": "Admin/AdminSldStyleEndpoints:GET:/api/v{version:apiVersion}/admin/metadata/layers/{layerId:int}/style/export-sld",
+      "feature": "Admin",
+      "file": "AdminSldStyleEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/api/v{version:apiVersion}/admin/metadata/layers/{layerId:int}/style/export-sld",
+      "source_file": "Admin/AdminSldStyleEndpoints.cs",
+      "source_line": 46
+    },
+    {
+      "key": "Admin/AdminSldStyleEndpoints:POST:/api/v{version:apiVersion}/admin/metadata/layers/{layerId:int}/style/import-sld",
+      "feature": "Admin",
+      "file": "AdminSldStyleEndpoints",
+      "kind": "http",
+      "verb": "POST",
+      "route": "/api/v{version:apiVersion}/admin/metadata/layers/{layerId:int}/style/import-sld",
+      "source_file": "Admin/AdminSldStyleEndpoints.cs",
+      "source_line": 36
     },
     {
       "key": "Admin/AdminStyleSuggestionEndpoints:POST:/api/v{version:apiVersion}/admin/metadata/layers/{layerId:int}/suggest-style",
@@ -1181,7 +1201,7 @@
       "verb": "DELETE",
       "route": "/api/v{version:apiVersion}/admin/connections/{id:guid}",
       "source_file": "Admin/SecureConnectionEndpoints.cs",
-      "source_line": 94
+      "source_line": 95
     },
     {
       "key": "Admin/SecureConnectionEndpoints:GET:/api/v{version:apiVersion}/admin/connections/",
@@ -1191,7 +1211,7 @@
       "verb": "GET",
       "route": "/api/v{version:apiVersion}/admin/connections/",
       "source_file": "Admin/SecureConnectionEndpoints.cs",
-      "source_line": 74
+      "source_line": 75
     },
     {
       "key": "Admin/SecureConnectionEndpoints:GET:/api/v{version:apiVersion}/admin/connections/{id:guid}",
@@ -1201,7 +1221,7 @@
       "verb": "GET",
       "route": "/api/v{version:apiVersion}/admin/connections/{id:guid}",
       "source_file": "Admin/SecureConnectionEndpoints.cs",
-      "source_line": 78
+      "source_line": 79
     },
     {
       "key": "Admin/SecureConnectionEndpoints:POST:/api/v{version:apiVersion}/admin/connections/",
@@ -1211,7 +1231,7 @@
       "verb": "POST",
       "route": "/api/v{version:apiVersion}/admin/connections/",
       "source_file": "Admin/SecureConnectionEndpoints.cs",
-      "source_line": 82
+      "source_line": 83
     },
     {
       "key": "Admin/SecureConnectionEndpoints:POST:/api/v{version:apiVersion}/admin/connections/encryption/rotate-key",
@@ -1221,7 +1241,7 @@
       "verb": "POST",
       "route": "/api/v{version:apiVersion}/admin/connections/encryption/rotate-key",
       "source_file": "Admin/SecureConnectionEndpoints.cs",
-      "source_line": 108
+      "source_line": 109
     },
     {
       "key": "Admin/SecureConnectionEndpoints:POST:/api/v{version:apiVersion}/admin/connections/encryption/validate",
@@ -1231,7 +1251,7 @@
       "verb": "POST",
       "route": "/api/v{version:apiVersion}/admin/connections/encryption/validate",
       "source_file": "Admin/SecureConnectionEndpoints.cs",
-      "source_line": 104
+      "source_line": 105
     },
     {
       "key": "Admin/SecureConnectionEndpoints:POST:/api/v{version:apiVersion}/admin/connections/test",
@@ -1241,7 +1261,7 @@
       "verb": "POST",
       "route": "/api/v{version:apiVersion}/admin/connections/test",
       "source_file": "Admin/SecureConnectionEndpoints.cs",
-      "source_line": 86
+      "source_line": 87
     },
     {
       "key": "Admin/SecureConnectionEndpoints:POST:/api/v{version:apiVersion}/admin/connections/{id:guid}/test",
@@ -1251,7 +1271,7 @@
       "verb": "POST",
       "route": "/api/v{version:apiVersion}/admin/connections/{id:guid}/test",
       "source_file": "Admin/SecureConnectionEndpoints.cs",
-      "source_line": 99
+      "source_line": 100
     },
     {
       "key": "Admin/SecureConnectionEndpoints:PUT:/api/v{version:apiVersion}/admin/connections/{id:guid}",
@@ -1261,7 +1281,7 @@
       "verb": "PUT",
       "route": "/api/v{version:apiVersion}/admin/connections/{id:guid}",
       "source_file": "Admin/SecureConnectionEndpoints.cs",
-      "source_line": 90
+      "source_line": 91
     },
     {
       "key": "Admin/ServiceSettingsEndpoints:GET:/api/v{version:apiVersion}/admin/services/",
@@ -1764,6 +1784,16 @@
       "source_line": 36
     },
     {
+      "key": "Import/CrossServerConsumeProbeEndpoints:GET:/__test/cross-server-consume/proxy",
+      "feature": "Import",
+      "file": "CrossServerConsumeProbeEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/__test/cross-server-consume/proxy",
+      "source_file": "Import/CrossServerConsumeProbeEndpoints.cs",
+      "source_line": 19
+    },
+    {
       "key": "Import/GeoServerImportEndpoints:GET:/api/v{version:apiVersion}/admin/import/geoserver/jobs",
       "feature": "Import",
       "file": "GeoServerImportEndpoints",
@@ -2081,7 +2111,7 @@
       "verb": "GET",
       "route": "/monitoring/alerts",
       "source_file": "Infrastructure/Monitoring/ProductionMonitoringEndpoints.cs",
-      "source_line": 55
+      "source_line": 57
     },
     {
       "key": "Infrastructure/ProductionMonitoringEndpoints:GET:/monitoring/health/comprehensive",
@@ -2091,7 +2121,7 @@
       "verb": "GET",
       "route": "/monitoring/health/comprehensive",
       "source_file": "Infrastructure/Monitoring/ProductionMonitoringEndpoints.cs",
-      "source_line": 67
+      "source_line": 69
     },
     {
       "key": "Infrastructure/ProductionMonitoringEndpoints:GET:/monitoring/health/production",
@@ -2101,7 +2131,7 @@
       "verb": "GET",
       "route": "/monitoring/health/production",
       "source_file": "Infrastructure/Monitoring/ProductionMonitoringEndpoints.cs",
-      "source_line": 31
+      "source_line": 33
     },
     {
       "key": "Infrastructure/ProductionMonitoringEndpoints:GET:/monitoring/metrics/cache",
@@ -2111,7 +2141,7 @@
       "verb": "GET",
       "route": "/monitoring/metrics/cache",
       "source_file": "Infrastructure/Monitoring/ProductionMonitoringEndpoints.cs",
-      "source_line": 43
+      "source_line": 45
     },
     {
       "key": "Infrastructure/ProductionMonitoringEndpoints:GET:/monitoring/metrics/connection-pool",
@@ -2121,7 +2151,7 @@
       "verb": "GET",
       "route": "/monitoring/metrics/connection-pool",
       "source_file": "Infrastructure/Monitoring/ProductionMonitoringEndpoints.cs",
-      "source_line": 37
+      "source_line": 39
     },
     {
       "key": "Infrastructure/ProductionMonitoringEndpoints:GET:/monitoring/metrics/database-resilience",
@@ -2131,7 +2161,7 @@
       "verb": "GET",
       "route": "/monitoring/metrics/database-resilience",
       "source_file": "Infrastructure/Monitoring/ProductionMonitoringEndpoints.cs",
-      "source_line": 73
+      "source_line": 75
     },
     {
       "key": "Infrastructure/ProductionMonitoringEndpoints:GET:/monitoring/metrics/resources",
@@ -2141,7 +2171,7 @@
       "verb": "GET",
       "route": "/monitoring/metrics/resources",
       "source_file": "Infrastructure/Monitoring/ProductionMonitoringEndpoints.cs",
-      "source_line": 49
+      "source_line": 51
     },
     {
       "key": "Infrastructure/ProductionMonitoringEndpoints:GET:/monitoring/metrics/upload-queue",
@@ -2151,7 +2181,7 @@
       "verb": "GET",
       "route": "/monitoring/metrics/upload-queue",
       "source_file": "Infrastructure/Monitoring/ProductionMonitoringEndpoints.cs",
-      "source_line": 61
+      "source_line": 63
     },
     {
       "key": "Infrastructure/StyleEndpoints:GET:/api/styles/{layerId:int}.json",
@@ -4384,6 +4414,26 @@
       "source_line": 62
     },
     {
+      "key": "Reporting/AnalysisReportEndpoints:GET:/api/v{version:apiVersion}/analysis/reports/{jobId}/",
+      "feature": "Reporting",
+      "file": "AnalysisReportEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/api/v{version:apiVersion}/analysis/reports/{jobId}/",
+      "source_file": "Reporting/AnalysisReportEndpoints.cs",
+      "source_line": 39
+    },
+    {
+      "key": "Reporting/AnalysisReportEndpoints:GET:/api/v{version:apiVersion}/analysis/reports/{jobId}/render",
+      "feature": "Reporting",
+      "file": "AnalysisReportEndpoints",
+      "kind": "http",
+      "verb": "GET",
+      "route": "/api/v{version:apiVersion}/analysis/reports/{jobId}/render",
+      "source_file": "Reporting/AnalysisReportEndpoints.cs",
+      "source_line": 43
+    },
+    {
       "key": "Spec/SpecEndpoints:GET:/v1/spec/artifact/{hash}",
       "feature": "Spec",
       "file": "SpecEndpoints",
@@ -4391,7 +4441,7 @@
       "verb": "GET",
       "route": "/v1/spec/artifact/{hash}",
       "source_file": "Spec/SpecEndpoints.cs",
-      "source_line": 51
+      "source_line": 59
     },
     {
       "key": "Spec/SpecEndpoints:POST:/v1/spec/apply",
@@ -4401,7 +4451,7 @@
       "verb": "POST",
       "route": "/v1/spec/apply",
       "source_file": "Spec/SpecEndpoints.cs",
-      "source_line": 38
+      "source_line": 46
     },
     {
       "key": "Spec/SpecEndpoints:POST:/v1/spec/cancel",
@@ -4411,7 +4461,7 @@
       "verb": "POST",
       "route": "/v1/spec/cancel",
       "source_file": "Spec/SpecEndpoints.cs",
-      "source_line": 44
+      "source_line": 52
     },
     {
       "key": "Spec/SpecEndpoints:POST:/v1/spec/plan",
@@ -4421,7 +4471,17 @@
       "verb": "POST",
       "route": "/v1/spec/plan",
       "source_file": "Spec/SpecEndpoints.cs",
-      "source_line": 31
+      "source_line": 39
+    },
+    {
+      "key": "Spec/SpecEndpoints:POST:/v1/spec/validate",
+      "feature": "Spec",
+      "file": "SpecEndpoints",
+      "kind": "http",
+      "verb": "POST",
+      "route": "/v1/spec/validate",
+      "source_file": "Spec/SpecEndpoints.cs",
+      "source_line": 32
     },
     {
       "key": "StaticMap/StaticMapEndpoints:GET:/static/{serviceId}/bbox/{bbox}/{dimensions}.{format}",

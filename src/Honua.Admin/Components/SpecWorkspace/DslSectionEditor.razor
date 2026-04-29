@@ -79,7 +79,7 @@
     private IReadOnlyList<CatalogCandidate> _candidates = Array.Empty<CatalogCandidate>();
     private long _lastLatencyMs;
     private string _lastCached = "–";
-    private CompletionRequest? _completion;
+    private SpecCompletionRequest? _completion;
 
     [Parameter] public SpecSectionId SectionId { get; set; }
 
@@ -131,7 +131,11 @@
         var selection = await ReadSelectionAsync();
         State.SetDslSelection(SectionId, selection.Start, selection.End);
 
-        var query = BuildCompletionRequest(State.GetSectionText(SectionId), selection.Start);
+        var query = SpecCompletionQueryBuilder.Build(
+            State.GetSectionText(SectionId),
+            selection.Start,
+            SectionId,
+            State.PrincipalId);
         _completion = query;
         if (query is null)
         {
@@ -148,12 +152,7 @@
 
     private async Task InsertCandidateAsync(CatalogCandidate candidate)
     {
-        var token = candidate.Kind switch
-        {
-            CatalogCandidateKind.Dataset => $"@{candidate.Id}",
-            CatalogCandidateKind.Column => $"@{candidate.Parent}.{candidate.Label}",
-            _ => candidate.Label
-        };
+        var token = SpecCompletionQueryBuilder.GetInsertionText(candidate, _completion);
 
         await State.InsertDslTokenAsync(token);
         _candidates = Array.Empty<CatalogCandidate>();
@@ -171,73 +170,6 @@
             var length = State.GetSectionText(SectionId).Length;
             return new TextSelection(length, length);
         }
-    }
-
-    private CompletionRequest? BuildCompletionRequest(string text, int cursor)
-    {
-        if (cursor < 0 || cursor > text.Length)
-        {
-            return null;
-        }
-
-        var prefixText = text[..cursor];
-        var atIndex = prefixText.LastIndexOf('@');
-        if (atIndex < 0)
-        {
-            return null;
-        }
-
-        var tail = prefixText[atIndex..];
-        if (tail.Any(ch => char.IsWhiteSpace(ch) || ch == ',' || ch == ')' || ch == '(' || ch == ':'))
-        {
-            return null;
-        }
-
-        var raw = prefixText[(atIndex + 1)..];
-        if (raw.Length == 0)
-        {
-            return new CompletionRequest(
-                new ResolveQuery
-                {
-                    Trigger = CatalogTrigger.AtMention,
-                    Prefix = string.Empty,
-                    PrincipalId = State.PrincipalId
-                },
-                atIndex,
-                cursor);
-        }
-
-        var dotIndex = raw.IndexOf('.');
-        if (dotIndex >= 0)
-        {
-            var parent = raw[..dotIndex];
-            var memberPrefix = raw[(dotIndex + 1)..];
-            if (parent.Length == 0)
-            {
-                return null;
-            }
-
-            return new CompletionRequest(
-                new ResolveQuery
-                {
-                    Trigger = CatalogTrigger.DotMember,
-                    Parent = parent,
-                    Prefix = memberPrefix,
-                    PrincipalId = State.PrincipalId
-                },
-                atIndex,
-                cursor);
-        }
-
-        return new CompletionRequest(
-            new ResolveQuery
-            {
-                Trigger = CatalogTrigger.AtMention,
-                Prefix = raw,
-                PrincipalId = State.PrincipalId
-            },
-            atIndex,
-            cursor);
     }
 
     private string BuildHighlightedMarkup()
@@ -330,8 +262,6 @@
         CatalogCandidateKind.SymbologyRamp => Icons.Material.Filled.Palette,
         _ => Icons.Material.Filled.Code
     };
-
-    private sealed record CompletionRequest(ResolveQuery Query, int ReplaceStart, int ReplaceEnd);
 
     private sealed record TextSelection(int Start, int End);
 
