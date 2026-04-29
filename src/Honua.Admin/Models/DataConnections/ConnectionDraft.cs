@@ -49,8 +49,8 @@ public enum CredentialMode
 }
 
 /// <summary>
-/// Wire shape for create. Mirrors <c>CreateSecureConnectionRequest</c> on the
-/// server bytes-for-bytes.
+/// Local create request produced from the workspace draft and projected into
+/// <c>Honua.Sdk.Admin.Models.CreateSecureConnectionRequest</c>.
 /// </summary>
 public sealed class CreateConnectionRequest
 {
@@ -78,8 +78,8 @@ public sealed class CreateConnectionRequest
 }
 
 /// <summary>
-/// Wire shape for update. Every field is nullable so the caller can pass a
-/// partial body — the server keeps prior values for fields left null.
+/// Local update request produced from the workspace draft and projected into
+/// <c>Honua.Sdk.Admin.Models.UpdateSecureConnectionRequest</c>.
 /// </summary>
 public sealed class UpdateConnectionRequest
 {

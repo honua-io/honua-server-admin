@@ -71,10 +71,10 @@ public sealed class ConnectionDiagnostic
 }
 
 /// <summary>
-/// Wire shape for <c>POST /api/v1/admin/connections/test</c> and
-/// <c>POST /api/v1/admin/connections/{id}/test</c>. Today the server returns
-/// only <c>IsHealthy + Message</c>; the diagnostic mapper distributes that
-/// signal across the six cells. Server gap recorded in the gap report.
+/// Local projection of <c>Honua.Sdk.Admin.Models.ConnectionTestResult</c>.
+/// Today the server returns only <c>IsHealthy + Message</c>; the diagnostic
+/// mapper distributes that signal across the six cells. Server gap recorded in
+/// the gap report.
 /// </summary>
 public sealed class ConnectionTestOutcome
 {
