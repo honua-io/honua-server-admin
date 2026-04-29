@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using Honua.Admin.Models.LicenseWorkspace;
+using Honua.Sdk.Admin.Models;
 
 namespace Honua.Admin.Services.LicenseWorkspace;
 
@@ -12,7 +13,7 @@ namespace Honua.Admin.Services.LicenseWorkspace;
 /// </summary>
 public interface ILicenseWorkspaceClient
 {
-    Task<LicenseClientResult<LicenseStatusDto>> GetStatusAsync(CancellationToken cancellationToken);
+    Task<LicenseClientResult<LicenseStatusResponse>> GetStatusAsync(CancellationToken cancellationToken);
 
     Task<LicenseClientResult<EntitlementListBox>> GetEntitlementsAsync(CancellationToken cancellationToken);
 
@@ -22,16 +23,16 @@ public interface ILicenseWorkspaceClient
     /// them after the call. The successful result contains the metadata-only
     /// status returned by the server, never the uploaded bytes.
     /// </summary>
-    Task<LicenseClientResult<LicenseStatusDto>> UploadLicenseAsync(byte[] bytes, CancellationToken cancellationToken);
+    Task<LicenseClientResult<LicenseStatusResponse>> UploadLicenseAsync(byte[] bytes, CancellationToken cancellationToken);
 }
 
 /// <summary>
 /// Boxing wrapper so <see cref="LicenseClientResult{T}"/> (which constrains
 /// <c>T : class</c>) can carry the entitlement collection. A bare
-/// <c>IReadOnlyList&lt;EntitlementDto&gt;</c> is structurally a class but the
+/// <c>IReadOnlyList&lt;LicenseEntitlement&gt;</c> is structurally a class but the
 /// generic constraint chokes on the interface.
 /// </summary>
 public sealed class EntitlementListBox
 {
-    public required IReadOnlyList<EntitlementDto> Items { get; init; }
+    public required IReadOnlyList<LicenseEntitlement> Items { get; init; }
 }

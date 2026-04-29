@@ -16,8 +16,7 @@ namespace Honua.Admin.Services.DataConnections;
 /// <c>/api/v1/admin/connections</c> HTTP surface using
 /// <see cref="HttpClient"/> + source-generated JSON. honua-server admin
 /// endpoints wrap every payload in <see cref="ApiResponse{T}"/>; this client
-/// unwraps via <c>envelope.Data</c> exactly like
-/// <c>HttpIdentityAdminClient</c> does. Every method funnels through
+/// unwraps via <c>envelope.Data</c>. Every method funnels through
 /// <see cref="ExecuteRequestAsync{T}"/> so network / cancellation / JSON
 /// failures land as typed <see cref="ConnectionOperationError"/> values.
 /// The gRPC swap (<c>Honua.Sdk.Grpc</c>) replaces this once the audit

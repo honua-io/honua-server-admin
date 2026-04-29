@@ -1,5 +1,5 @@
 using System;
-using Honua.Admin.Models.Identity;
+using Honua.Sdk.Admin.Models;
 using Honua.Admin.Services.Identity;
 using Xunit;
 
@@ -47,7 +47,7 @@ public sealed class IdentityDiagnosticsTests
             ProviderType = "Generic",
             IsReachable = true,
             ResponseTimeMs = 12.34,
-            DiscoveryUrl = "https://idp.example/.well-known/openid-configuration",
+            DiscoveryUrl = new Uri("https://idp.example/.well-known/openid-configuration"),
             Issuer = "https://idp.example"
         };
 
@@ -67,7 +67,7 @@ public sealed class IdentityDiagnosticsTests
             ProviderType = "Generic",
             IsReachable = true,
             ResponseTimeMs = 9,
-            DiscoveryUrl = "https://idp.example/.well-known/openid-configuration",
+            DiscoveryUrl = new Uri("https://idp.example/.well-known/openid-configuration"),
             Issuer = "https://other-idp.example"
         };
 

@@ -7,7 +7,8 @@ using System.Text;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
-using Honua.Admin.Models.Identity;
+using Honua.Sdk.Admin;
+using Honua.Sdk.Admin.Models;
 using Honua.Admin.Services.Identity;
 using Xunit;
 
@@ -15,7 +16,7 @@ namespace Honua.Admin.Tests.Identity;
 
 /// <summary>
 /// End-to-end test exercising the OIDC provider lifecycle through the typed
-/// admin client against a fake honua-server. Substitutes for a Playwright /
+/// SDK-backed admin client against a fake honua-server. Substitutes for a Playwright /
 /// browser-driven E2E (the admin repo has no harness yet — see
 /// <c>docs/identity-admin-gaps.md</c>) by routing through the same wire contract
 /// the page UI uses. Per-user API key lifecycle is excluded; the corresponding
@@ -27,8 +28,8 @@ public sealed class IdentityAdminEndToEndTests
     public async Task Provider_create_test_delete_walks_the_full_lifecycle()
     {
         var server = new FakeIdentityServer();
-        var client = new HttpIdentityAdminClient(
-            new HttpClient(server) { BaseAddress = new Uri("https://server.test/") },
+        var client = new SdkIdentityAdminClient(
+            new HonuaAdminClient(new HttpClient(server) { BaseAddress = new Uri("https://server.test/") }),
             new NullTelemetry());
 
         // 1. Empty starting state.

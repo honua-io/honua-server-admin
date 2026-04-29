@@ -1,5 +1,6 @@
 using Honua.Admin.Models.LicenseWorkspace;
 using Honua.Admin.Services.LicenseWorkspace;
+using Honua.Sdk.Admin.Models;
 using Xunit;
 
 namespace Honua.Admin.Tests.LicenseWorkspace;
@@ -39,7 +40,7 @@ public sealed class LicenseDiagnosticClassifierTests
     [InlineData("license expiry has passed")]
     public void Expired_validation_state_classifies_as_expired(string state)
     {
-        var status = new LicenseStatusDto
+        var status = new LicenseStatusResponse
         {
             Edition = "Professional",
             IsValid = false,
@@ -55,7 +56,7 @@ public sealed class LicenseDiagnosticClassifierTests
     [InlineData("verification failed")]
     public void Signature_validation_state_classifies_as_invalid_signature(string state)
     {
-        var status = new LicenseStatusDto
+        var status = new LicenseStatusResponse
         {
             Edition = "Unknown",
             IsValid = false,
@@ -67,7 +68,7 @@ public sealed class LicenseDiagnosticClassifierTests
     [Fact]
     public void Unknown_invalid_state_falls_back_to_unknown()
     {
-        var status = new LicenseStatusDto
+        var status = new LicenseStatusResponse
         {
             Edition = "Mystery",
             IsValid = false,

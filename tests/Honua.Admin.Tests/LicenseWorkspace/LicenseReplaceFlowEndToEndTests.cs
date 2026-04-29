@@ -2,17 +2,20 @@ using System.Net;
 using System.Net.Http;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
 using Honua.Admin.Models.LicenseWorkspace;
 using Honua.Admin.Services.LicenseWorkspace;
+using Honua.Sdk.Admin;
+using Honua.Sdk.Admin.Models;
 using Xunit;
 
 namespace Honua.Admin.Tests.LicenseWorkspace;
 
 /// <summary>
 /// End-to-end coverage of the replace-license flow against the
-/// <see cref="HttpLicenseWorkspaceClient"/> + <see cref="LicenseWorkspaceState"/>
+/// <see cref="SdkLicenseWorkspaceClient"/> + <see cref="LicenseWorkspaceState"/>
 /// composite. Walks the operator path the design brief calls out for the E2E
 /// AC: Expired → upload → Valid, and a non-Valid (InvalidSignature) failure
 /// surface. Implemented as an in-process HTTP exchange because no browser-level
@@ -20,6 +23,12 @@ namespace Honua.Admin.Tests.LicenseWorkspace;
 /// </summary>
 public sealed class LicenseReplaceFlowEndToEndTests
 {
+    private static readonly JsonSerializerOptions JsonOptions = new()
+    {
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
+    };
+
     [Fact]
     public async Task Replace_flow_transitions_expired_to_valid_and_refreshes_status_from_get()
     {
@@ -31,7 +40,7 @@ public sealed class LicenseReplaceFlowEndToEndTests
         var requests = new List<HttpRequestMessage>();
         var handler = new RecordingMessageHandler(responses, requests);
         var http = new HttpClient(handler) { BaseAddress = new Uri("http://localhost/") };
-        var client = new HttpLicenseWorkspaceClient(http);
+        var client = new SdkLicenseWorkspaceClient(new HonuaAdminClient(http));
         var state = new LicenseWorkspaceState(client, new NullTelemetry());
 
         await state.RefreshAsync();
@@ -67,7 +76,7 @@ public sealed class LicenseReplaceFlowEndToEndTests
         var requests = new List<HttpRequestMessage>();
         var handler = new RecordingMessageHandler(responses, requests);
         var http = new HttpClient(handler) { BaseAddress = new Uri("http://localhost/") };
-        var client = new HttpLicenseWorkspaceClient(http);
+        var client = new SdkLicenseWorkspaceClient(new HonuaAdminClient(http));
         var state = new LicenseWorkspaceState(client, new NullTelemetry());
 
         await state.RefreshAsync();
@@ -95,7 +104,7 @@ public sealed class LicenseReplaceFlowEndToEndTests
         var requests = new List<HttpRequestMessage>();
         var handler = new RecordingMessageHandler(responses, requests);
         var http = new HttpClient(handler) { BaseAddress = new Uri("http://localhost/") };
-        var client = new HttpLicenseWorkspaceClient(http);
+        var client = new SdkLicenseWorkspaceClient(new HonuaAdminClient(http));
         var state = new LicenseWorkspaceState(client, new NullTelemetry());
 
         await state.RefreshAsync();
@@ -114,7 +123,7 @@ public sealed class LicenseReplaceFlowEndToEndTests
 
     private static string BuildExpiredEnvelope()
     {
-        var dto = new LicenseStatusDto
+        var dto = new LicenseStatusResponse
         {
             Edition = "Professional",
             ExpiresAt = DateTimeOffset.UtcNow.AddDays(-3),
@@ -122,18 +131,14 @@ public sealed class LicenseReplaceFlowEndToEndTests
             LicensedTo = "Acme",
             IsValid = false,
             ValidationState = "expired",
-            Entitlements = Array.Empty<EntitlementDto>()
+            Entitlements = Array.Empty<LicenseEntitlement>()
         };
-        return JsonSerializer.Serialize(new LicenseApiEnvelope<LicenseStatusDto>
-        {
-            Success = true,
-            Data = dto
-        }, LicenseWorkspaceJsonContext.Default.LicenseApiEnvelopeLicenseStatusDto);
+        return JsonSerializer.Serialize(new { success = true, data = dto }, JsonOptions);
     }
 
     private static string BuildHealthyEnvelope()
     {
-        var dto = new LicenseStatusDto
+        var dto = new LicenseStatusResponse
         {
             Edition = "Enterprise",
             ExpiresAt = DateTimeOffset.UtcNow.AddDays(365),
@@ -143,14 +148,10 @@ public sealed class LicenseReplaceFlowEndToEndTests
             ValidationState = "valid",
             Entitlements = new[]
             {
-                new EntitlementDto { Key = "oidc", Name = "OIDC sign-in", IsActive = true }
+                new LicenseEntitlement { Key = "oidc", Name = "OIDC sign-in", IsActive = true }
             }
         };
-        return JsonSerializer.Serialize(new LicenseApiEnvelope<LicenseStatusDto>
-        {
-            Success = true,
-            Data = dto
-        }, LicenseWorkspaceJsonContext.Default.LicenseApiEnvelopeLicenseStatusDto);
+        return JsonSerializer.Serialize(new { success = true, data = dto }, JsonOptions);
     }
 
     private sealed class RecordingMessageHandler : HttpMessageHandler

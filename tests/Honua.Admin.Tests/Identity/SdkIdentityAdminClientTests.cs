@@ -6,19 +6,19 @@ using System.Text;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
-using Honua.Admin.Models.Identity;
 using Honua.Admin.Services.Identity;
+using Honua.Sdk.Admin;
+using Honua.Sdk.Admin.Models;
 using Xunit;
 
 namespace Honua.Admin.Tests.Identity;
 
 /// <summary>
-/// Pin the wire contract between the admin UI and honua-server's identity admin
-/// endpoints. The fake handler verifies request paths, methods, and bodies; the
-/// recorded responses verify the client correctly unwraps the
-/// <see cref="ApiResponse{T}"/> envelope without leaking secrets back to callers.
+/// Pins the admin UI adapter against the SDK identity client. The fake handler
+/// verifies request paths, methods, and bodies while the SDK owns envelope
+/// decoding and wire DTOs.
 /// </summary>
-public sealed class HttpIdentityAdminClientTests
+public sealed class SdkIdentityAdminClientTests
 {
     private const string ServerBase = "https://server.test/";
 
@@ -310,10 +310,10 @@ public sealed class HttpIdentityAdminClientTests
         };
     }
 
-    private static HttpIdentityAdminClient MakeClient(FakeHttpMessageHandler handler, IIdentityAdminTelemetry? telemetry = null)
+    private static SdkIdentityAdminClient MakeClient(FakeHttpMessageHandler handler, IIdentityAdminTelemetry? telemetry = null)
     {
         var http = new HttpClient(handler) { BaseAddress = new Uri(ServerBase) };
-        return new HttpIdentityAdminClient(http, telemetry ?? new NullTelemetry());
+        return new SdkIdentityAdminClient(new HonuaAdminClient(http), telemetry ?? new NullTelemetry());
     }
 
     private sealed class FakeHttpMessageHandler : HttpMessageHandler

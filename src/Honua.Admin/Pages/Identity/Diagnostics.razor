@@ -1,7 +1,7 @@
 @page "/admin/identity/diagnostics"
 @using Microsoft.AspNetCore.Authorization
 @attribute [Authorize]
-@using Honua.Admin.Models.Identity
+@using Honua.Sdk.Admin.Models
 @using Honua.Admin.Services.Identity
 @using MudBlazor
 @inject IIdentityAdminClient Client
@@ -213,7 +213,7 @@
             var catalogTask = Client.GetIdentityProvidersAsync(CancellationToken.None);
             await Task.WhenAll(oidcTask, catalogTask);
             _oidcProviders = oidcTask.Result.ToList();
-            _catalogProviders = catalogTask.Result.Providers;
+            _catalogProviders = catalogTask.Result.Providers.ToArray();
         }
         catch (System.Exception ex)
         {

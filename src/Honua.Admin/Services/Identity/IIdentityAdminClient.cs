@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
-using Honua.Admin.Models.Identity;
+using Honua.Sdk.Admin.Models;
 
 namespace Honua.Admin.Services.Identity;
 

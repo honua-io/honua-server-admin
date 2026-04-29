@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
 using Honua.Admin.Models.LicenseWorkspace;
+using Honua.Sdk.Admin.Models;
 
 namespace Honua.Admin.Services.LicenseWorkspace;
 
@@ -22,7 +23,7 @@ public enum LicenseWorkspaceStatus
 /// </summary>
 public sealed class LicenseWorkspaceState
 {
-    private static readonly IReadOnlyList<EntitlementDto> EmptyEntitlements = Array.Empty<EntitlementDto>();
+    private static readonly IReadOnlyList<LicenseEntitlement> EmptyEntitlements = Array.Empty<LicenseEntitlement>();
 
     private readonly ILicenseWorkspaceClient _client;
     private readonly ILicenseWorkspaceTelemetry _telemetry;
@@ -34,9 +35,9 @@ public sealed class LicenseWorkspaceState
         _telemetry = telemetry ?? throw new ArgumentNullException(nameof(telemetry));
     }
 
-    public LicenseStatusDto? Status { get; private set; }
+    public LicenseStatusResponse? Status { get; private set; }
 
-    public IReadOnlyList<EntitlementDto> Entitlements { get; private set; } = EmptyEntitlements;
+    public IReadOnlyList<LicenseEntitlement> Entitlements { get; private set; } = EmptyEntitlements;
 
     public LicenseWorkspaceStatus WorkflowStatus { get; private set; } = LicenseWorkspaceStatus.Idle;
 
@@ -155,7 +156,7 @@ public sealed class LicenseWorkspaceState
         ApplyStatusResult(result, "status_loaded", watch.ElapsedMilliseconds);
     }
 
-    private void ApplyStatusResult(LicenseClientResult<LicenseStatusDto> result, string telemetryName, long elapsedMs)
+    private void ApplyStatusResult(LicenseClientResult<LicenseStatusResponse> result, string telemetryName, long elapsedMs)
     {
         if (!result.IsSuccess)
         {
@@ -202,7 +203,7 @@ public sealed class LicenseWorkspaceState
     /// Entitlement-detail surface: the workspace exposes a stable lookup so
     /// "feature not entitled" callers can land on the row that triggered them.
     /// </summary>
-    public EntitlementDto? FindEntitlement(string key)
+    public LicenseEntitlement? FindEntitlement(string key)
     {
         if (string.IsNullOrWhiteSpace(key))
         {

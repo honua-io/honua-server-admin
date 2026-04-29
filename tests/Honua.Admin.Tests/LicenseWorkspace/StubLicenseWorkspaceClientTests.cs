@@ -1,5 +1,6 @@
 using Honua.Admin.Models.LicenseWorkspace;
 using Honua.Admin.Services.LicenseWorkspace;
+using Honua.Sdk.Admin.Models;
 using Xunit;
 
 namespace Honua.Admin.Tests.LicenseWorkspace;
