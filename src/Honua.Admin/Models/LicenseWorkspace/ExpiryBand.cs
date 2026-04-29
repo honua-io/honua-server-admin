@@ -1,8 +1,10 @@
+using Honua.Sdk.Admin.Models;
+
 namespace Honua.Admin.Models.LicenseWorkspace;
 
 /// <summary>
 /// Visual band the operator sees for license expiry. Computed in UTC from
-/// <see cref="LicenseStatusDto.ExpiresAt"/> by
+/// <see cref="LicenseStatusResponse.ExpiresAt"/> by
 /// <see cref="Services.LicenseWorkspace.ExpiryBandClassifier"/>.
 /// </summary>
 public enum ExpiryBand

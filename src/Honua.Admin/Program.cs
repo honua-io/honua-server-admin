@@ -19,6 +19,8 @@ using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
 using MudBlazor.Services;
+using SdkAdminClient = Honua.Sdk.Admin.IHonuaAdminClient;
+using SdkAdminHttpClient = Honua.Sdk.Admin.HonuaAdminClient;
 
 var builder = WebAssemblyHostBuilder.CreateDefault(args);
 builder.RootComponents.Add<App>("#app");
@@ -132,66 +134,44 @@ else
 
 builder.Services.AddScoped(sp => new HttpClient { BaseAddress = new Uri(builder.HostEnvironment.BaseAddress) });
 
+// Reusable SDK admin REST client shared by identity and license adapters.
+builder.Services.AddHttpClient<SdkAdminClient, SdkAdminHttpClient>(client =>
+{
+    client.BaseAddress = !string.IsNullOrWhiteSpace(honuaBaseUrl)
+        ? new Uri(honuaBaseUrl, UriKind.Absolute)
+        : new Uri(builder.HostEnvironment.BaseAddress, UriKind.Absolute);
+
+    var timeoutSeconds = honuaServerSection.GetValue<int?>("RequestTimeoutSeconds")
+        ?? HonuaAdminOptions.DefaultRequestTimeoutSeconds;
+    client.Timeout = TimeSpan.FromSeconds(Math.Max(1, timeoutSeconds));
+
+    var apiKey = honuaServerSection.GetValue<string>("ApiKey");
+    if (!string.IsNullOrWhiteSpace(apiKey))
+    {
+        if (builder.HostEnvironment.IsDevelopment())
+        {
+            client.DefaultRequestHeaders.Add("X-API-Key", apiKey);
+        }
+        else
+        {
+            Console.Error.WriteLine(
+                "[Honua.Admin] HonuaServer:ApiKey is set in a non-Development build. " +
+                "Refusing to forward it from the browser. Front the admin UI with a same-origin " +
+                "BFF that injects credentials server-side.");
+        }
+    }
+})
+.AddHttpMessageHandler<AdminAuthHandler>();
+
 // Identity admin services (ticket #22).
 builder.Services.AddScoped<IIdentityAdminTelemetry, LoggingIdentityAdminTelemetry>();
-builder.Services.AddHttpClient<IIdentityAdminClient, HttpIdentityAdminClient>(client =>
-{
-    var baseUrl = builder.Configuration["HonuaServer:BaseUrl"];
-    client.BaseAddress = !string.IsNullOrWhiteSpace(baseUrl)
-        ? new Uri(baseUrl)
-        : new Uri(builder.HostEnvironment.BaseAddress);
+builder.Services.AddScoped<IIdentityAdminClient, SdkIdentityAdminClient>();
 
-    // X-API-Key carries server-admin credentials. Shipping it through WASM
-    // configuration leaks it to every browser that loads the static app, so
-    // only attach it in Development. Production deployments must front the
-    // admin UI with a same-origin BFF that injects credentials server-side
-    // (tracked as a follow-on; see README "Identity workspace" security note).
-    var apiKey = builder.Configuration["HonuaServer:ApiKey"];
-    if (!string.IsNullOrWhiteSpace(apiKey))
-    {
-        if (builder.HostEnvironment.IsDevelopment())
-        {
-            client.DefaultRequestHeaders.Add("X-API-Key", apiKey);
-        }
-        else
-        {
-            Console.Error.WriteLine(
-                "[Honua.Admin] HonuaServer:ApiKey is set in a non-Development build. " +
-                "Refusing to forward it from the browser. Front the admin UI with a same-origin " +
-                "BFF that injects credentials server-side.");
-        }
-    }
-});
-
-// License workspace services (ticket #23). HttpLicenseWorkspaceClient is the
-// default so the workspace reads + replaces the actual server license; the
-// in-memory StubLicenseWorkspaceClient stays available for direct test /
-// offline-preview construction (no DI registration). Mirrors the identity
-// client's HonuaServer:BaseUrl + Development-only X-API-Key handling.
+// License workspace services (ticket #23). The admin UI keeps state,
+// telemetry, diagnostics, and stubs locally; the reusable HTTP transport and
+// wire models come from Honua.Sdk.Admin.
 builder.Services.AddScoped<ILicenseWorkspaceTelemetry, LoggingLicenseWorkspaceTelemetry>();
-builder.Services.AddHttpClient<ILicenseWorkspaceClient, HttpLicenseWorkspaceClient>(client =>
-{
-    var baseUrl = builder.Configuration["HonuaServer:BaseUrl"];
-    client.BaseAddress = !string.IsNullOrWhiteSpace(baseUrl)
-        ? new Uri(baseUrl)
-        : new Uri(builder.HostEnvironment.BaseAddress);
-
-    var apiKey = builder.Configuration["HonuaServer:ApiKey"];
-    if (!string.IsNullOrWhiteSpace(apiKey))
-    {
-        if (builder.HostEnvironment.IsDevelopment())
-        {
-            client.DefaultRequestHeaders.Add("X-API-Key", apiKey);
-        }
-        else
-        {
-            Console.Error.WriteLine(
-                "[Honua.Admin] HonuaServer:ApiKey is set in a non-Development build. " +
-                "Refusing to forward it from the browser. Front the admin UI with a same-origin " +
-                "BFF that injects credentials server-side.");
-        }
-    }
-});
+builder.Services.AddScoped<ILicenseWorkspaceClient, SdkLicenseWorkspaceClient>();
 builder.Services.AddScoped<LicenseWorkspaceState>();
 
 // Data connections workspace services (ticket #24). HttpDataConnectionClient

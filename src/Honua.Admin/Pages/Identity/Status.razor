@@ -1,7 +1,7 @@
 @page "/admin/identity/status"
 @using Microsoft.AspNetCore.Authorization
 @attribute [Authorize]
-@using Honua.Admin.Models.Identity
+@using Honua.Sdk.Admin.Models
 @using Honua.Admin.Services.Identity
 @using MudBlazor
 @inject IIdentityAdminClient Client
@@ -46,7 +46,7 @@
             }
         </MudAlert>
 
-        @if (_response.Providers.Length == 0)
+        @if (_response.Providers.Count == 0)
         {
             <MudPaper Class="pa-6" Elevation="0" data-testid="status-empty">
                 <MudText Align="Align.Center">
@@ -84,7 +84,7 @@
                                         <strong>Callback:</strong> <span data-testid="@($"status-callback-{provider.Type}")">@(provider.CallbackPath ?? "—")</span>
                                     </MudListItem>
                                     <MudListItem T="string">
-                                        <strong>Scopes:</strong> @(provider.Scopes is { Length: > 0 } ? string.Join(", ", provider.Scopes) : "—")
+                                        <strong>Scopes:</strong> @(provider.Scopes is { Count: > 0 } ? string.Join(", ", provider.Scopes) : "—")
                                     </MudListItem>
                                     <MudListItem T="string">
                                         <strong>Configuration valid:</strong> @(provider.IsConfigurationValid ? "yes" : "no")

@@ -2,6 +2,7 @@
    active diagnostic. Reuses the shared ExpiryBandIndicator + DiagnosticBanner. *@
 @using Honua.Admin.Models.LicenseWorkspace
 @using Honua.Admin.Services.LicenseWorkspace
+@using Honua.Sdk.Admin.Models
 @inject LicenseWorkspaceState State
 @implements IDisposable
 
@@ -107,8 +108,8 @@
         return $"{local:yyyy-MM-dd HH:mm zzz} ({utc:yyyy-MM-dd HH:mm} UTC)";
     }
 
-    private static string IssuanceSource(LicenseStatusDto status) =>
+    private static string IssuanceSource(LicenseStatusResponse status) =>
         string.IsNullOrWhiteSpace(status.IssuanceSource)
-            ? LicenseStatusDto.DefaultIssuanceSource
+            ? LicenseStatusResponse.DefaultIssuanceSource
             : status.IssuanceSource!;
 }

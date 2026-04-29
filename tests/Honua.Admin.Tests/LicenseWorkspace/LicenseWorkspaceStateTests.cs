@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using Honua.Admin.Models.LicenseWorkspace;
 using Honua.Admin.Services.LicenseWorkspace;
+using Honua.Sdk.Admin.Models;
 using Xunit;
 
 namespace Honua.Admin.Tests.LicenseWorkspace;
@@ -65,7 +66,7 @@ public sealed class LicenseWorkspaceStateTests
     [Fact]
     public async Task IssuanceSource_omitted_by_server_falls_back_to_byol_portal_default()
     {
-        var stub = new StubLicenseWorkspaceClient(new LicenseStatusDto
+        var stub = new StubLicenseWorkspaceClient(new LicenseStatusResponse
         {
             Edition = "Enterprise",
             IsValid = true,
@@ -78,11 +79,11 @@ public sealed class LicenseWorkspaceStateTests
         await state.RefreshAsync();
 
         // The DTO holds whatever the server sent (null today). The status pane
-        // surfaces the BYOL default via LicenseStatusDto.DefaultIssuanceSource;
+        // surfaces the BYOL default via LicenseStatusResponse.DefaultIssuanceSource;
         // marketplace adapters from honua-server#804 will populate the field
         // directly without an admin-side change.
         Assert.Null(state.Status!.IssuanceSource);
-        Assert.Equal("BYOL portal", LicenseStatusDto.DefaultIssuanceSource);
+        Assert.Equal("BYOL portal", LicenseStatusResponse.DefaultIssuanceSource);
     }
 
     [Fact]

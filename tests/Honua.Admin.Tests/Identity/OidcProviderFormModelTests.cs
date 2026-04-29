@@ -1,6 +1,6 @@
 using System;
 using Honua.Admin.Components.Identity;
-using Honua.Admin.Models.Identity;
+using Honua.Sdk.Admin.Models;
 using Xunit;
 
 namespace Honua.Admin.Tests.Identity;

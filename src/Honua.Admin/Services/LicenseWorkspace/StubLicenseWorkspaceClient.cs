@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using Honua.Admin.Models.LicenseWorkspace;
+using Honua.Sdk.Admin.Models;
 
 namespace Honua.Admin.Services.LicenseWorkspace;
 
@@ -15,7 +16,7 @@ namespace Honua.Admin.Services.LicenseWorkspace;
 /// </summary>
 public sealed class StubLicenseWorkspaceClient : ILicenseWorkspaceClient
 {
-    private LicenseStatusDto _status;
+    private LicenseStatusResponse _status;
     private LicenseClientError? _statusError;
     private LicenseClientError? _uploadError;
 
@@ -24,7 +25,7 @@ public sealed class StubLicenseWorkspaceClient : ILicenseWorkspaceClient
     {
     }
 
-    public StubLicenseWorkspaceClient(LicenseStatusDto initialStatus)
+    public StubLicenseWorkspaceClient(LicenseStatusResponse initialStatus)
     {
         _status = initialStatus;
     }
@@ -43,7 +44,7 @@ public sealed class StubLicenseWorkspaceClient : ILicenseWorkspaceClient
     /// </summary>
     public int LastUploadLength { get; private set; }
 
-    public void SetStatus(LicenseStatusDto status)
+    public void SetStatus(LicenseStatusResponse status)
     {
         _status = status ?? throw new ArgumentNullException(nameof(status));
         _statusError = null;
@@ -59,14 +60,14 @@ public sealed class StubLicenseWorkspaceClient : ILicenseWorkspaceClient
         _uploadError = error;
     }
 
-    public Task<LicenseClientResult<LicenseStatusDto>> GetStatusAsync(CancellationToken cancellationToken)
+    public Task<LicenseClientResult<LicenseStatusResponse>> GetStatusAsync(CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
         if (_statusError is not null)
         {
-            return Task.FromResult(LicenseClientResult<LicenseStatusDto>.Failure(_statusError));
+            return Task.FromResult(LicenseClientResult<LicenseStatusResponse>.Failure(_statusError));
         }
-        return Task.FromResult(LicenseClientResult<LicenseStatusDto>.Success(_status));
+        return Task.FromResult(LicenseClientResult<LicenseStatusResponse>.Success(_status));
     }
 
     public Task<LicenseClientResult<EntitlementListBox>> GetEntitlementsAsync(CancellationToken cancellationToken)
@@ -80,7 +81,7 @@ public sealed class StubLicenseWorkspaceClient : ILicenseWorkspaceClient
         return Task.FromResult(LicenseClientResult<EntitlementListBox>.Success(box));
     }
 
-    public Task<LicenseClientResult<LicenseStatusDto>> UploadLicenseAsync(byte[] bytes, CancellationToken cancellationToken)
+    public Task<LicenseClientResult<LicenseStatusResponse>> UploadLicenseAsync(byte[] bytes, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(bytes);
         cancellationToken.ThrowIfCancellationRequested();
@@ -90,7 +91,7 @@ public sealed class StubLicenseWorkspaceClient : ILicenseWorkspaceClient
 
         if (_uploadError is not null)
         {
-            return Task.FromResult(LicenseClientResult<LicenseStatusDto>.Failure(_uploadError));
+            return Task.FromResult(LicenseClientResult<LicenseStatusResponse>.Failure(_uploadError));
         }
 
         // Successful uploads in the stub flip the in-memory status to a
@@ -98,34 +99,34 @@ public sealed class StubLicenseWorkspaceClient : ILicenseWorkspaceClient
         // tests can override with SetStatus() before/after.
         var refreshed = BuildHealthyEnterprise(DateTimeOffset.UtcNow.AddDays(365));
         _status = refreshed;
-        return Task.FromResult(LicenseClientResult<LicenseStatusDto>.Success(refreshed));
+        return Task.FromResult(LicenseClientResult<LicenseStatusResponse>.Success(refreshed));
     }
 
-    public static LicenseStatusDto BuildHealthyEnterprise(DateTimeOffset expiresAt) => new()
+    public static LicenseStatusResponse BuildHealthyEnterprise(DateTimeOffset expiresAt) => new()
     {
         Edition = "Enterprise",
         ExpiresAt = expiresAt,
         IssuedAt = DateTimeOffset.UtcNow.AddDays(-1),
         LicensedTo = "Honua Demo Org",
-        IssuanceSource = LicenseStatusDto.DefaultIssuanceSource,
+        IssuanceSource = LicenseStatusResponse.DefaultIssuanceSource,
         IsValid = true,
         ValidationState = "valid",
         Entitlements = BuildSampleEntitlements(allActive: true)
     };
 
-    public static LicenseStatusDto BuildExpired() => new()
+    public static LicenseStatusResponse BuildExpired() => new()
     {
         Edition = "Professional",
         ExpiresAt = DateTimeOffset.UtcNow.AddDays(-3),
         IssuedAt = DateTimeOffset.UtcNow.AddDays(-365),
         LicensedTo = "Honua Demo Org",
-        IssuanceSource = LicenseStatusDto.DefaultIssuanceSource,
+        IssuanceSource = LicenseStatusResponse.DefaultIssuanceSource,
         IsValid = false,
         ValidationState = "expired",
         Entitlements = BuildSampleEntitlements(allActive: false)
     };
 
-    public static LicenseStatusDto BuildInvalidSignature() => new()
+    public static LicenseStatusResponse BuildInvalidSignature() => new()
     {
         Edition = "Unknown",
         ExpiresAt = null,
@@ -133,26 +134,26 @@ public sealed class StubLicenseWorkspaceClient : ILicenseWorkspaceClient
         LicensedTo = null,
         IsValid = false,
         ValidationState = "invalid signature",
-        Entitlements = Array.Empty<EntitlementDto>()
+        Entitlements = Array.Empty<LicenseEntitlement>()
     };
 
-    public static LicenseStatusDto BuildPerpetualCommunity() => new()
+    public static LicenseStatusResponse BuildPerpetualCommunity() => new()
     {
         Edition = "Community",
         ExpiresAt = null,
         IssuedAt = DateTimeOffset.UtcNow.AddDays(-30),
         LicensedTo = null,
-        IssuanceSource = LicenseStatusDto.DefaultIssuanceSource,
+        IssuanceSource = LicenseStatusResponse.DefaultIssuanceSource,
         IsValid = true,
         ValidationState = "valid",
         Entitlements = BuildSampleEntitlements(allActive: false)
     };
 
-    public static IReadOnlyList<EntitlementDto> BuildSampleEntitlements(bool allActive) => new[]
+    public static IReadOnlyList<LicenseEntitlement> BuildSampleEntitlements(bool allActive) => new[]
     {
-        new EntitlementDto { Key = "oidc", Name = "OIDC sign-in", IsActive = allActive },
-        new EntitlementDto { Key = "rbac", Name = "Role-based access control", IsActive = allActive },
-        new EntitlementDto { Key = "rate-limiting", Name = "Rate limiting", IsActive = allActive },
-        new EntitlementDto { Key = "audit-export", Name = "Audit export", IsActive = false }
+        new LicenseEntitlement { Key = "oidc", Name = "OIDC sign-in", IsActive = allActive },
+        new LicenseEntitlement { Key = "rbac", Name = "Role-based access control", IsActive = allActive },
+        new LicenseEntitlement { Key = "rate-limiting", Name = "Rate limiting", IsActive = allActive },
+        new LicenseEntitlement { Key = "audit-export", Name = "Audit export", IsActive = false }
     };
 }

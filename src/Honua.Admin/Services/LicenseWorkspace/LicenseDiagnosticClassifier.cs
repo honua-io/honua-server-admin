@@ -1,5 +1,6 @@
 using System;
 using Honua.Admin.Models.LicenseWorkspace;
+using Honua.Sdk.Admin.Models;
 
 namespace Honua.Admin.Services.LicenseWorkspace;
 
@@ -27,7 +28,7 @@ public static class LicenseDiagnosticClassifier
         };
     }
 
-    public static LicenseDiagnostic Classify(LicenseStatusDto status)
+    public static LicenseDiagnostic Classify(LicenseStatusResponse status)
     {
         ArgumentNullException.ThrowIfNull(status);
 

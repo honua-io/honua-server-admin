@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
-using Honua.Admin.Models.Identity;
+using Honua.Sdk.Admin.Models;
 
 namespace Honua.Admin.Services.Identity;
 
@@ -100,8 +100,8 @@ public static class IdentityDiagnostics
                 ? $"Reachable in {ms.ToString("F0", CultureInfo.InvariantCulture)} ms."
                 : "Reachable.";
             if (!string.IsNullOrWhiteSpace(result.Issuer)
-                && !string.IsNullOrWhiteSpace(result.DiscoveryUrl)
-                && !DiscoveryIssuerMatches(result.DiscoveryUrl!, result.Issuer!))
+                && result.DiscoveryUrl is not null
+                && !DiscoveryIssuerMatches(result.DiscoveryUrl.ToString(), result.Issuer!))
             {
                 return new DiagnosticCopy(
                     "Issuer mismatch",
