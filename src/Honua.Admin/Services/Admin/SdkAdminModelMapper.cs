@@ -10,6 +10,16 @@ using SdkConnectionDetail = Honua.Sdk.Admin.Models.SecureConnectionDetail;
 using SdkConnectionSummary = Honua.Sdk.Admin.Models.SecureConnectionSummary;
 using SdkConnectionTestResult = Honua.Sdk.Admin.Models.ConnectionTestResult;
 using SdkCreateConnectionRequest = Honua.Sdk.Admin.Models.CreateSecureConnectionRequest;
+using SdkCreateDeployOperationRequest = Honua.Sdk.Admin.Models.CreateDeployOperationRequest;
+using SdkCreateDeployPlanRequest = Honua.Sdk.Admin.Models.CreateDeployPlanRequest;
+using SdkDeployBackendCapabilities = Honua.Sdk.Admin.Models.DeployBackendCapabilities;
+using SdkDeployOperation = Honua.Sdk.Admin.Models.DeployOperation;
+using SdkDeployPlan = Honua.Sdk.Admin.Models.DeployPlan;
+using SdkDeployPlanTarget = Honua.Sdk.Admin.Models.DeployPlanTarget;
+using SdkDeployPreflightDatabaseCompatibility = Honua.Sdk.Admin.Models.DeployPreflightDatabaseCompatibility;
+using SdkDeployPreflightMigration = Honua.Sdk.Admin.Models.DeployPreflightMigration;
+using SdkDeployPreflightReadiness = Honua.Sdk.Admin.Models.DeployPreflightReadiness;
+using SdkDeployPreflightResult = Honua.Sdk.Admin.Models.DeployPreflightResult;
 using SdkEncryptionValidationResult = Honua.Sdk.Admin.Models.EncryptionValidationResult;
 using SdkKeyRotationResult = Honua.Sdk.Admin.Models.KeyRotationResult;
 using SdkLayerMetadataResponse = Honua.Sdk.Admin.Models.LayerMetadataResponse;
@@ -17,12 +27,19 @@ using SdkLayerStyleResponse = Honua.Sdk.Admin.Models.LayerStyleResponse;
 using SdkLayerStyleUpdateRequest = Honua.Sdk.Admin.Models.LayerStyleUpdateRequest;
 using SdkMapServerSettingsResponse = Honua.Sdk.Admin.Models.MapServerSettingsResponse;
 using SdkMetadataResource = Honua.Sdk.Admin.Models.MetadataResource;
+using SdkMetadataResourceResponse = Honua.Sdk.Admin.Models.MetadataResourceResponse;
+using SdkMigrationStatus = Honua.Sdk.Admin.Models.MigrationStatus;
 using SdkPublishedLayerSummary = Honua.Sdk.Admin.Models.PublishedLayerSummary;
 using SdkPublishLayerRequest = Honua.Sdk.Admin.Models.PublishLayerRequest;
+using SdkRecentError = Honua.Sdk.Admin.Models.RecentError;
+using SdkRecentErrorsResponse = Honua.Sdk.Admin.Models.RecentErrorsResponse;
 using SdkResourceMetadata = Honua.Sdk.Admin.Models.ResourceMetadata;
+using SdkRollbackDeployOperationRequest = Honua.Sdk.Admin.Models.RollbackDeployOperationRequest;
 using SdkServiceSettingsResponse = Honua.Sdk.Admin.Models.ServiceSettingsResponse;
 using SdkServiceSummary = Honua.Sdk.Admin.Models.ServiceSummary;
+using SdkSubmitDeployOperationRequest = Honua.Sdk.Admin.Models.SubmitDeployOperationRequest;
 using SdkTableInfo = Honua.Sdk.Admin.Models.TableInfo;
+using SdkTelemetryStatus = Honua.Sdk.Admin.Models.TelemetryStatus;
 using SdkTimeInfoResponse = Honua.Sdk.Admin.Models.TimeInfoResponse;
 using SdkUpdateAccessPolicyRequest = Honua.Sdk.Admin.Models.UpdateAccessPolicyRequest;
 using SdkUpdateConnectionRequest = Honua.Sdk.Admin.Models.UpdateSecureConnectionRequest;
@@ -278,6 +295,120 @@ internal static class SdkAdminModelMapper
         Status = resource.Status,
     };
 
+    public static MetadataResourceResponse ToMetadataResourceResponse(SdkMetadataResourceResponse response) => new()
+    {
+        Resource = ToMetadataResource(response.Resource),
+        ETag = response.ETag,
+    };
+
+    public static SdkCreateDeployPlanRequest ToSdk(DeployPlanRequest request) => new()
+    {
+        TargetId = request.TargetId,
+        DesiredRevision = request.DesiredRevision,
+        CurrentRevision = request.CurrentRevision,
+        Parameters = request.Parameters,
+    };
+
+    public static SdkCreateDeployOperationRequest ToSdk(CreateDeployOperationRequest request) => new()
+    {
+        TargetId = request.TargetId,
+        DesiredRevision = request.DesiredRevision,
+        CurrentRevision = request.CurrentRevision,
+        Reason = request.Reason,
+        IdempotencyKey = request.IdempotencyKey,
+        CorrelationId = request.CorrelationId,
+        Priority = request.Priority,
+        SubmitImmediately = request.SubmitImmediately,
+        Parameters = request.Parameters,
+    };
+
+    public static SdkSubmitDeployOperationRequest ToSdk(SubmitDeployOperationRequest request) => new()
+    {
+        Reason = request.Reason,
+    };
+
+    public static SdkRollbackDeployOperationRequest ToSdk(RollbackDeployOperationRequest request) => new()
+    {
+        Reason = request.Reason,
+    };
+
+    public static DeployPreflightResult ToDeployPreflightResult(SdkDeployPreflightResult result) => new()
+    {
+        Status = result.Status,
+        ReadyForCoordinatedDeploy = result.ReadyForCoordinatedDeploy,
+        Message = result.Message,
+        ServerVersion = result.ServerVersion,
+        Environment = result.Environment,
+        DeploymentMode = result.DeploymentMode,
+        InstanceName = result.InstanceName,
+        GeneratedAt = result.GeneratedAt,
+        Readiness = ToDeployPreflightReadiness(result.Readiness),
+        Migration = ToDeployPreflightMigration(result.Migration),
+        DatabaseCompatibility = ToDeployPreflightDatabaseCompatibility(result.DatabaseCompatibility),
+    };
+
+    public static DeployPlan ToDeployPlan(SdkDeployPlan plan) => new()
+    {
+        Target = plan.Target is null ? new DeployPlanTarget() : ToDeployPlanTarget(plan.Target),
+        ReadyToSubmit = plan.ReadyToSubmit,
+        RequiresApproval = plan.RequiresApproval,
+        RequiresOutOfBandMigrations = plan.RequiresOutOfBandMigrations,
+        BackendRegistered = plan.BackendRegistered,
+        Capabilities = ToDeployBackendCapabilities(plan.Capabilities),
+        Warnings = plan.Warnings,
+        BlockingReasons = plan.BlockingReasons,
+        GeneratedAt = plan.GeneratedAt,
+    };
+
+    public static DeployOperation ToDeployOperation(SdkDeployOperation operation) => new()
+    {
+        OperationId = operation.OperationId,
+        Kind = operation.Kind,
+        Status = operation.Status,
+        Priority = operation.Priority,
+        Target = operation.Target is null ? null : ToDeployPlanTarget(operation.Target),
+        ProviderOperationId = operation.ProviderOperationId,
+        CurrentPhase = operation.CurrentPhase,
+        ObservedState = operation.ObservedState,
+        ErrorMessage = operation.ErrorMessage,
+        Warnings = operation.Warnings,
+        BlockingReasons = operation.BlockingReasons,
+        RequestedBy = operation.RequestedBy,
+        Reason = operation.Reason,
+        CorrelationId = operation.CorrelationId,
+        CreatedAt = operation.CreatedAt,
+        UpdatedAt = operation.UpdatedAt,
+        CompletedAt = operation.CompletedAt,
+    };
+
+    public static RecentErrorsResponse ToRecentErrorsResponse(SdkRecentErrorsResponse response) => new()
+    {
+        Capacity = response.Capacity,
+        InstanceId = response.InstanceId,
+        Errors = MapList(response.Errors, ToRecentErrorEntry),
+    };
+
+    public static ObservabilityStatusResponse ToObservabilityStatusResponse(SdkTelemetryStatus status) => new()
+    {
+        TracingEnabled = status.TracingEnabled,
+        OtlpConfigured = status.OtlpConfigured,
+        OtlpEndpoint = status.OtlpEndpoint,
+    };
+
+    public static MigrationObservabilityResponse ToMigrationObservabilityResponse(SdkMigrationStatus status) => new()
+    {
+        Status = status.Status,
+        IsReady = status.IsReady,
+        IsFailed = status.IsFailed,
+        Message = status.Message,
+        PlanAvailable = status.PlanAvailable,
+        UpgradeRequired = status.UpgradeRequired,
+        PendingScripts = status.PendingScripts,
+        ExecutedButNotDiscoveredScripts = status.ExecutedButNotDiscoveredScripts,
+        PlanError = status.PlanError,
+        GeneratedAt = status.GeneratedAt,
+    };
+
     private static AccessPolicySettings? ToAccessPolicySettings(SdkAccessPolicyResponse? policy)
     {
         if (policy is null)
@@ -360,25 +491,10 @@ internal static class SdkAdminModelMapper
             Labels = metadata.Labels,
             Annotations = metadata.Annotations,
             ResourceVersion = metadata.ResourceVersion,
-            Generation = ToSdkGeneration(metadata.Generation),
+            Generation = metadata.Generation,
             CreatedAt = metadata.CreatedAt,
             UpdatedAt = metadata.UpdatedAt,
         };
-    }
-
-    private static int? ToSdkGeneration(long? generation)
-    {
-        if (generation is null)
-        {
-            return null;
-        }
-
-        if (generation is < int.MinValue or > int.MaxValue)
-        {
-            throw new ArgumentOutOfRangeException(nameof(generation), generation, "Metadata generation exceeds the SDK contract range.");
-        }
-
-        return (int)generation.Value;
     }
 
     private static string[]? ToArrayOrNull(IReadOnlyList<string>? values)
@@ -396,4 +512,78 @@ internal static class SdkAdminModelMapper
 
         return result;
     }
+
+    private static DeployPreflightReadiness? ToDeployPreflightReadiness(SdkDeployPreflightReadiness? readiness)
+        => readiness is null
+            ? null
+            : new DeployPreflightReadiness
+            {
+                IsReady = readiness.IsReady,
+                StatusCode = readiness.StatusCode,
+                Message = readiness.Message,
+            };
+
+    private static DeployPreflightMigration? ToDeployPreflightMigration(SdkDeployPreflightMigration? migration)
+        => migration is null
+            ? null
+            : new DeployPreflightMigration
+            {
+                LifecycleStatus = migration.LifecycleStatus,
+                Message = migration.Message,
+                PlanAvailable = migration.PlanAvailable,
+                UpgradeRequired = migration.UpgradeRequired,
+                PendingScripts = migration.PendingScripts,
+                ExecutedButNotDiscoveredScripts = migration.ExecutedButNotDiscoveredScripts,
+                PlanError = migration.PlanError,
+            };
+
+    private static DeployPreflightDatabaseCompatibility? ToDeployPreflightDatabaseCompatibility(SdkDeployPreflightDatabaseCompatibility? compatibility)
+        => compatibility is null
+            ? null
+            : new DeployPreflightDatabaseCompatibility
+            {
+                IsCompatible = compatibility.IsCompatible,
+                EngineVersion = compatibility.EngineVersion,
+                PostGisVersion = compatibility.PostGisVersion,
+                PostGisRasterVersion = compatibility.PostGisRasterVersion,
+                InstalledExtensions = compatibility.InstalledExtensions,
+                Warnings = compatibility.Warnings,
+                ErrorMessage = compatibility.ErrorMessage,
+            };
+
+    private static DeployPlanTarget ToDeployPlanTarget(SdkDeployPlanTarget target) => new()
+    {
+        TargetId = target.TargetId,
+        TargetKind = target.TargetKind,
+        Backend = target.Backend,
+        Environment = target.Environment,
+        TargetName = target.TargetName,
+        ArtifactReference = target.ArtifactReference,
+        RuntimeProfile = target.RuntimeProfile,
+        CurrentRevision = target.CurrentRevision,
+        DesiredRevision = target.DesiredRevision,
+        Parameters = target.Parameters,
+    };
+
+    private static DeployBackendCapabilities? ToDeployBackendCapabilities(SdkDeployBackendCapabilities? capabilities)
+        => capabilities is null
+            ? null
+            : new DeployBackendCapabilities
+            {
+                SupportsRollback = capabilities.SupportsRollback,
+                SupportsCancellation = capabilities.SupportsCancellation,
+                SupportsTrafficShifting = capabilities.SupportsTrafficShifting,
+                RequiresOutOfBandMigrations = capabilities.RequiresOutOfBandMigrations,
+                SupportsProgressPolling = capabilities.SupportsProgressPolling,
+                SupportsRevisionPinning = capabilities.SupportsRevisionPinning,
+            };
+
+    private static RecentErrorEntry ToRecentErrorEntry(SdkRecentError error) => new()
+    {
+        Timestamp = error.Timestamp,
+        CorrelationId = error.CorrelationId,
+        Path = error.Path,
+        StatusCode = error.StatusCode,
+        Message = error.Message,
+    };
 }

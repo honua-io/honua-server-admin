@@ -262,12 +262,10 @@ public sealed class HonuaAdminClient : IHonuaAdminClient
             cancellationToken);
 
     public Task<MetadataResourceResponse> CreateMetadataResourceAsync(MetadataResource resource, CancellationToken cancellationToken)
-        => SendMetadataResourceAsync(
+        => ExecuteSdkAsync(
             nameof(CreateMetadataResourceAsync),
-            HttpMethod.Post,
-            $"{ApiVersionPrefix}/metadata/resources/",
-            resource,
-            ifMatch: null,
+            async ct => SdkAdminModelMapper.ToMetadataResourceResponse(
+                await _sdk.CreateMetadataResourceWithResponseAsync(SdkAdminModelMapper.ToSdk(resource), ct).ConfigureAwait(false)),
             cancellationToken);
 
     public Task<MetadataResourceResponse> UpdateMetadataResourceAsync(
@@ -280,12 +278,16 @@ public sealed class HonuaAdminClient : IHonuaAdminClient
     {
         EnsureIfMatch(ifMatch, nameof(UpdateMetadataResourceAsync));
 
-        return SendMetadataResourceAsync(
+        return ExecuteSdkAsync(
             nameof(UpdateMetadataResourceAsync),
-            HttpMethod.Put,
-            MetadataResourcePath(kind, resourceNamespace, name),
-            resource,
-            ifMatch,
+            async ct => SdkAdminModelMapper.ToMetadataResourceResponse(
+                await _sdk.UpdateMetadataResourceWithResponseAsync(
+                    kind,
+                    resourceNamespace,
+                    name,
+                    SdkAdminModelMapper.ToSdk(resource),
+                    ifMatch,
+                    ct).ConfigureAwait(false)),
             cancellationToken);
     }
 
@@ -308,22 +310,44 @@ public sealed class HonuaAdminClient : IHonuaAdminClient
     }
 
     public Task<DeployPreflightResult> GetDeployPreflightAsync(CancellationToken cancellationToken)
-        => GetAsync(nameof(GetDeployPreflightAsync), $"{ApiVersionPrefix}/deploy/preflight?includeDiagnostics=true", TypeInfo<DeployPreflightResult>(), cancellationToken);
+        => ExecuteSdkAsync(
+            nameof(GetDeployPreflightAsync),
+            async ct => SdkAdminModelMapper.ToDeployPreflightResult(await _sdk.GetDeployPreflightAsync(includeDiagnostics: true, ct).ConfigureAwait(false)),
+            cancellationToken);
 
     public Task<DeployPlan> PlanDeployAsync(DeployPlanRequest request, CancellationToken cancellationToken)
-        => SendAsync(nameof(PlanDeployAsync), HttpMethod.Post, $"{ApiVersionPrefix}/deploy/plan", request, TypeInfo<DeployPlanRequest>(), TypeInfo<DeployPlan>(), cancellationToken);
+        => ExecuteSdkAsync(
+            nameof(PlanDeployAsync),
+            async ct => SdkAdminModelMapper.ToDeployPlan(
+                await _sdk.CreateDeployPlanAsync(SdkAdminModelMapper.ToSdk(request), ct).ConfigureAwait(false)),
+            cancellationToken);
 
     public Task<DeployOperation> CreateDeployOperationAsync(CreateDeployOperationRequest request, CancellationToken cancellationToken)
-        => SendAsync(nameof(CreateDeployOperationAsync), HttpMethod.Post, $"{ApiVersionPrefix}/deploy/operations", request, TypeInfo<CreateDeployOperationRequest>(), TypeInfo<DeployOperation>(), cancellationToken);
+        => ExecuteSdkAsync(
+            nameof(CreateDeployOperationAsync),
+            async ct => SdkAdminModelMapper.ToDeployOperation(
+                await _sdk.CreateDeployOperationAsync(SdkAdminModelMapper.ToSdk(request), ct).ConfigureAwait(false)),
+            cancellationToken);
 
     public Task<DeployOperation> GetDeployOperationAsync(string operationId, CancellationToken cancellationToken)
-        => GetAsync(nameof(GetDeployOperationAsync), $"{ApiVersionPrefix}/deploy/operations/{Uri.EscapeDataString(operationId)}", TypeInfo<DeployOperation>(), cancellationToken);
+        => ExecuteSdkAsync(
+            nameof(GetDeployOperationAsync),
+            async ct => SdkAdminModelMapper.ToDeployOperation(await _sdk.GetDeployOperationAsync(operationId, ct).ConfigureAwait(false)),
+            cancellationToken);
 
     public Task<DeployOperation> SubmitDeployOperationAsync(string operationId, SubmitDeployOperationRequest request, CancellationToken cancellationToken)
-        => SendAsync(nameof(SubmitDeployOperationAsync), HttpMethod.Post, $"{ApiVersionPrefix}/deploy/operations/{Uri.EscapeDataString(operationId)}/submit", request, TypeInfo<SubmitDeployOperationRequest>(), TypeInfo<DeployOperation>(), cancellationToken);
+        => ExecuteSdkAsync(
+            nameof(SubmitDeployOperationAsync),
+            async ct => SdkAdminModelMapper.ToDeployOperation(
+                await _sdk.SubmitDeployOperationAsync(operationId, SdkAdminModelMapper.ToSdk(request), ct).ConfigureAwait(false)),
+            cancellationToken);
 
     public Task<DeployOperation> RollbackDeployOperationAsync(string operationId, RollbackDeployOperationRequest request, CancellationToken cancellationToken)
-        => SendAsync(nameof(RollbackDeployOperationAsync), HttpMethod.Post, $"{ApiVersionPrefix}/deploy/operations/{Uri.EscapeDataString(operationId)}/rollback", request, TypeInfo<RollbackDeployOperationRequest>(), TypeInfo<DeployOperation>(), cancellationToken);
+        => ExecuteSdkAsync(
+            nameof(RollbackDeployOperationAsync),
+            async ct => SdkAdminModelMapper.ToDeployOperation(
+                await _sdk.RollbackDeployOperationAsync(operationId, SdkAdminModelMapper.ToSdk(request), ct).ConfigureAwait(false)),
+            cancellationToken);
 
     public Task<ManifestApplyResult> ApplyManifestAsync(ManifestApplyRequest request, CancellationToken cancellationToken)
         => SendApiAsync(
@@ -455,13 +479,22 @@ public sealed class HonuaAdminClient : IHonuaAdminClient
             cancellationToken);
 
     public Task<RecentErrorsResponse> GetRecentErrorsAsync(CancellationToken cancellationToken)
-        => GetAsync(nameof(GetRecentErrorsAsync), $"{ApiVersionPrefix}/observability/errors", TypeInfo<RecentErrorsResponse>(), cancellationToken);
+        => ExecuteSdkAsync(
+            nameof(GetRecentErrorsAsync),
+            async ct => SdkAdminModelMapper.ToRecentErrorsResponse(await _sdk.GetRecentErrorsResponseAsync(limit: null, ct).ConfigureAwait(false)),
+            cancellationToken);
 
     public Task<ObservabilityStatusResponse> GetTelemetryStatusAsync(CancellationToken cancellationToken)
-        => GetAsync(nameof(GetTelemetryStatusAsync), $"{ApiVersionPrefix}/observability/telemetry", TypeInfo<ObservabilityStatusResponse>(), cancellationToken);
+        => ExecuteSdkAsync(
+            nameof(GetTelemetryStatusAsync),
+            async ct => SdkAdminModelMapper.ToObservabilityStatusResponse(await _sdk.GetTelemetryStatusAsync(ct).ConfigureAwait(false)),
+            cancellationToken);
 
     public Task<MigrationObservabilityResponse> GetMigrationStatusAsync(CancellationToken cancellationToken)
-        => GetAsync(nameof(GetMigrationStatusAsync), $"{ApiVersionPrefix}/observability/migrations", TypeInfo<MigrationObservabilityResponse>(), cancellationToken);
+        => ExecuteSdkAsync(
+            nameof(GetMigrationStatusAsync),
+            async ct => SdkAdminModelMapper.ToMigrationObservabilityResponse(await _sdk.GetMigrationStatusAsync(ct).ConfigureAwait(false)),
+            cancellationToken);
 
     private static JsonTypeInfo<T> TypeInfo<T>()
         => (JsonTypeInfo<T>)AdminJsonContext.Default.GetTypeInfo(typeof(T))!;
@@ -572,73 +605,6 @@ public sealed class HonuaAdminClient : IHonuaAdminClient
         }
     }
 
-    private async Task<MetadataResourceResponse> GetMetadataResourceCoreAsync(
-        string operation,
-        string path,
-        CancellationToken cancellationToken)
-    {
-        try
-        {
-            using var response = await _http.GetAsync(path, cancellationToken).ConfigureAwait(false);
-            response.EnsureSuccessStatusCode();
-            return await ReadMetadataResourceResponseAsync(operation, response, cancellationToken).ConfigureAwait(false);
-        }
-        catch (HttpRequestException ex)
-        {
-            _telemetry.ClientRequestFailed(operation, ex.Message);
-            throw;
-        }
-    }
-
-    private async Task<MetadataResourceResponse> SendMetadataResourceAsync(
-        string operation,
-        HttpMethod method,
-        string path,
-        MetadataResource resource,
-        string? ifMatch,
-        CancellationToken cancellationToken)
-    {
-        try
-        {
-            using var message = new HttpRequestMessage(method, path)
-            {
-                Content = new StringContent(
-                    JsonSerializer.Serialize(resource, TypeInfo<MetadataResource>()),
-                    Encoding.UTF8,
-                    "application/json"),
-            };
-
-            if (!string.IsNullOrWhiteSpace(ifMatch))
-            {
-                message.Headers.TryAddWithoutValidation("If-Match", ifMatch);
-            }
-
-            using var response = await _http.SendAsync(message, cancellationToken).ConfigureAwait(false);
-            response.EnsureSuccessStatusCode();
-            return await ReadMetadataResourceResponseAsync(operation, response, cancellationToken).ConfigureAwait(false);
-        }
-        catch (HttpRequestException ex)
-        {
-            _telemetry.ClientRequestFailed(operation, ex.Message);
-            throw;
-        }
-    }
-
-    private static async Task<MetadataResourceResponse> ReadMetadataResourceResponseAsync(
-        string operation,
-        HttpResponseMessage response,
-        CancellationToken cancellationToken)
-    {
-        var envelope = await response.Content
-            .ReadFromJsonAsync(TypeInfo<AdminApiResponse<MetadataResource>>(), cancellationToken)
-            .ConfigureAwait(false);
-        return new MetadataResourceResponse
-        {
-            Resource = Unwrap(operation, envelope ?? throw new InvalidOperationException($"{operation} returned an empty response.")),
-            ETag = response.Headers.ETag?.ToString(),
-        };
-    }
-
     private async Task<TResponse> SendApiAsync<TRequest, TResponse>(
         string operation,
         HttpMethod method,
@@ -662,9 +628,6 @@ public sealed class HonuaAdminClient : IHonuaAdminClient
 
         return envelope.Data ?? throw new InvalidOperationException($"{operation} returned an empty data payload.");
     }
-
-    private static string MetadataResourcePath(string kind, string resourceNamespace, string name)
-        => $"{ApiVersionPrefix}/metadata/resources/{Uri.EscapeDataString(kind)}/{Uri.EscapeDataString(resourceNamespace)}/{Uri.EscapeDataString(name)}";
 
     private static void EnsureIfMatch(string ifMatch, string operation)
     {
