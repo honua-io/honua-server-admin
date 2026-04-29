@@ -7,7 +7,9 @@ on:
   pull_request:
     branches: [master, main, trunk]
 
-permissions: {}
+permissions:
+  contents: read
+  packages: read
 
 env:
   DOTNET_VERSION: '10.0.x'
@@ -24,6 +26,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+      packages: read
     outputs:
       build-succeeded: ${{ steps.build.outcome == 'success' }}
     steps:
@@ -33,6 +36,9 @@ jobs:
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Configure GitHub Packages
+        run: dotnet nuget update source github-honua --username "${{ github.actor }}" --password "${{ secrets.GITHUB_TOKEN }}" --store-password-in-clear-text
 
       - name: Cache NuGet packages
         uses: actions/cache@v5
@@ -58,6 +64,7 @@ jobs:
     needs: build
     permissions:
       contents: read
+      packages: read
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
@@ -66,6 +73,9 @@ jobs:
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Configure GitHub Packages
+        run: dotnet nuget update source github-honua --username "${{ github.actor }}" --password "${{ secrets.GITHUB_TOKEN }}" --store-password-in-clear-text
 
       - name: Cache NuGet packages
         uses: actions/cache@v5
@@ -110,6 +120,7 @@ jobs:
     needs: build
     permissions:
       contents: read
+      packages: read
     timeout-minutes: 10
     env:
       HONUA_ADMIN_CONTAINER_E2E: ${{ vars.HONUA_ADMIN_CONTAINER_E2E || 'false' }}
@@ -123,6 +134,9 @@ jobs:
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Configure GitHub Packages
+        run: dotnet nuget update source github-honua --username "${{ github.actor }}" --password "${{ secrets.GITHUB_TOKEN }}" --store-password-in-clear-text
 
       - name: Cache NuGet packages
         uses: actions/cache@v5
@@ -159,6 +173,7 @@ jobs:
     needs: build
     permissions:
       contents: read
+      packages: read
     steps:
       - uses: actions/checkout@v4
 
@@ -166,6 +181,9 @@ jobs:
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Configure GitHub Packages
+        run: dotnet nuget update source github-honua --username "${{ github.actor }}" --password "${{ secrets.GITHUB_TOKEN }}" --store-password-in-clear-text
 
       - name: Restore
         run: dotnet restore Honua.Admin.sln
@@ -218,6 +236,7 @@ jobs:
     needs: build
     permissions:
       contents: read
+      packages: read
       security-events: write
     steps:
       - uses: actions/checkout@v4
@@ -231,6 +250,9 @@ jobs:
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Configure GitHub Packages
+        run: dotnet nuget update source github-honua --username "${{ github.actor }}" --password "${{ secrets.GITHUB_TOKEN }}" --store-password-in-clear-text
 
       - name: Restore and Build for Analysis
         run: |
