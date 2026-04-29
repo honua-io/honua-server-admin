@@ -1,8 +1,8 @@
 # Admin UI ↔ honua-server API coverage matrix.
 # Authored by `dotnet run --project tools/audit-api-surface -- seed-coverage`.
 # Hand-edit rows for per-endpoint classifications; the seeder preserves them on re-run.
-snapshot_date: 2026-04-26
-honua_server_commit: 1b301c3a98e7c97ff75c394852bfc614d5db8a7a
+snapshot_date: 2026-04-29
+honua_server_commit: 6cf9365a2b8d8bc5a58ca6e6a4eba5b6bf75ceaf
 rows:
   - key: "Admin/AdminAuthEndpoints:GET:/api/v{version:apiVersion}/admin/auth/config"
     coverage: out-of-scope
@@ -312,6 +312,20 @@ rows:
     out_of_scope_reason: ""
     follow_up_ticket: ""
     notes: "Layer/connection metadata edit; deferred to follow-up"
+  - key: "Admin/AdminSldStyleEndpoints:GET:/api/v{version:apiVersion}/admin/metadata/layers/{layerId:int}/style/export-sld"
+    coverage: missing
+    admin_page: ""
+    priority: deferred
+    out_of_scope_reason: ""
+    follow_up_ticket: ""
+    notes: "TODO: classify this endpoint family in CoverageRules.cs"
+  - key: "Admin/AdminSldStyleEndpoints:POST:/api/v{version:apiVersion}/admin/metadata/layers/{layerId:int}/style/import-sld"
+    coverage: missing
+    admin_page: ""
+    priority: deferred
+    out_of_scope_reason: ""
+    follow_up_ticket: ""
+    notes: "TODO: classify this endpoint family in CoverageRules.cs"
   - key: "Admin/AdminStyleSuggestionEndpoints:POST:/api/v{version:apiVersion}/admin/metadata/layers/{layerId:int}/suggest-style"
     coverage: missing
     admin_page: ""
@@ -1236,6 +1250,13 @@ rows:
     out_of_scope_reason: "Liveness/readiness probes consumed by infra, not admin UI"
     follow_up_ticket: ""
     notes: ""
+  - key: Import/CrossServerConsumeProbeEndpoints:GET:/__test/cross-server-consume/proxy
+    coverage: missing
+    admin_page: ""
+    priority: deferred
+    out_of_scope_reason: ""
+    follow_up_ticket: ""
+    notes: "TODO: classify this endpoint family in CoverageRules.cs"
   - key: "Import/GeoServerImportEndpoints:GET:/api/v{version:apiVersion}/admin/import/geoserver/jobs"
     coverage: missing
     admin_page: ""
@@ -3070,6 +3091,20 @@ rows:
     out_of_scope_reason: "Public OGC API surface, not admin"
     follow_up_ticket: ""
     notes: ""
+  - key: "Reporting/AnalysisReportEndpoints:GET:/api/v{version:apiVersion}/analysis/reports/{jobId}/"
+    coverage: missing
+    admin_page: ""
+    priority: deferred
+    out_of_scope_reason: ""
+    follow_up_ticket: ""
+    notes: "TODO: classify this endpoint family in CoverageRules.cs"
+  - key: "Reporting/AnalysisReportEndpoints:GET:/api/v{version:apiVersion}/analysis/reports/{jobId}/render"
+    coverage: missing
+    admin_page: ""
+    priority: deferred
+    out_of_scope_reason: ""
+    follow_up_ticket: ""
+    notes: "TODO: classify this endpoint family in CoverageRules.cs"
   - key: "Spec/SpecEndpoints:GET:/v1/spec/artifact/{hash}"
     coverage: out-of-scope
     admin_page: ""
@@ -3092,6 +3127,13 @@ rows:
     follow_up_ticket: "honua-server-admin#26 (delivered via PR #27)"
     notes: ""
   - key: Spec/SpecEndpoints:POST:/v1/spec/plan
+    coverage: out-of-scope
+    admin_page: ""
+    priority: n/a
+    out_of_scope_reason: "Spec workspace shipped in #27; admin coverage lives in /operator/spec"
+    follow_up_ticket: "honua-server-admin#26 (delivered via PR #27)"
+    notes: ""
+  - key: Spec/SpecEndpoints:POST:/v1/spec/validate
     coverage: out-of-scope
     admin_page: ""
     priority: n/a
