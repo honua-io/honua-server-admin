@@ -57,6 +57,20 @@ The PR gate renders these top workflows with the deterministic
 Add a row here when a workflow becomes release-critical, then extend
 `AdminQualityGateTests.TopWorkflows` in the same PR.
 
+## SDK browser smoke
+
+The admin app consumes `Honua.Sdk.Admin` through NuGet and adapts it behind
+`IHonuaAdminClient`. Browser-sensitive SDK changes should keep
+`HonuaAdminClientBrowserSafetyTests` green; those tests exercise SDK-backed
+observability and deploy-control calls through an injected `HttpClient` handler
+without native transports or static credentials.
+
+The `Publish Verification` job remains the WebAssembly build gate. It proves
+the SDK package graph still publishes with the Blazor app and keeps bundle-size
+budgets in check. See
+[Browser SDK Validation](browser-sdk-validation.md) for the auth, CORS, and
+native-transport boundaries.
+
 ## Release checklist
 
 Before tagging or merging a release branch:
@@ -64,6 +78,8 @@ Before tagging or merging a release branch:
 - confirm `CI Gate` and `Require CI Success` passed on the release candidate;
 - review the publish-size output in `Publish Verification` and compare it with
   the budgets above;
+- confirm SDK-backed admin client smoke tests passed when the release changes
+  `Honua.Sdk.Admin`, admin client DI, auth handlers, or admin REST adapters;
 - run the top workflow smoke suite locally if the release contains major UI or
   dependency changes;
 - complete the manual accessibility pass for changed workflows;
