@@ -21,7 +21,7 @@
     <PackageReference Include="MudBlazor" Version="8.15.0" />
     <PackageReference Include="QRCoder" Version="1.6.0" />
     <PackageReference Include="Blazor-ApexCharts" Version="3.4.0" />
-    <PackageReference Include="Honua.Sdk.Admin" Version="0.1.1-alpha.1" />
+    <PackageReference Include="Honua.Sdk.Admin" Version="0.1.2-alpha.1" />
   </ItemGroup>
 
   <ItemGroup>

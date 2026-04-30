@@ -224,7 +224,7 @@ public sealed class ContainerizedAdminApiEndToEndTests
         Assert.NotEqual(createdEtag, updatedEtag);
         Assert.NotEqual(loaded.Resource.Metadata?.ResourceVersion, updated.Resource.Metadata?.ResourceVersion);
 
-        var staleUpdate = await Assert.ThrowsAsync<HttpRequestException>(() =>
+        var staleUpdate = await Assert.ThrowsAsync<HonuaAdminApiException>(() =>
             fixture.AdminClient.UpdateMetadataResourceAsync(
                 "Layer",
                 "default",
