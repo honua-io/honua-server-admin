@@ -110,6 +110,10 @@ injects credentials server-side (or replace the dev auth scaffold with a
 real OIDC bearer-token flow). Tracked as a follow-on in
 [`docs/identity-admin-gaps.md`](docs/identity-admin-gaps.md).
 
+`Honua.Sdk.Admin` is the reusable REST client behind the admin UI adapter. The
+browser-safe boundary and smoke coverage are documented in
+[`docs/browser-sdk-validation.md`](docs/browser-sdk-validation.md).
+
 ### Operator Spec Workspace
 
 The S1 operator workspace lives at `/operator/spec` (gated by `[Authorize]`;
