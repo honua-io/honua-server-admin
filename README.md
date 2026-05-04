@@ -2,6 +2,8 @@
 
 Web-based administration interface for Honua Server. Built with Blazor WebAssembly and MudBlazor.
 
+Current admin workspace capabilities are summarized in [docs/features/README.md](docs/features/README.md).
+
 ## Overview
 
 This is the official admin UI for managing Honua Server instances:
